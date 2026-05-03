@@ -36,6 +36,21 @@ export const AedesAPI = {
     },
 
     /**
+     * Busca a lista oficial de focais cadastrados
+     */
+    async getFocais() {
+        try {
+            // Seguindo o padrão REST do seu projeto
+            const response = await fetch(`${API_BASE}/api/aedes/focais`);
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error("❌ AedesAPI.getFocais:", error);
+            return [];
+        }
+    },
+
+    /**
      * Envia as vistorias preenchidas no escritório (Desktop)
      */
     async postLote(payload) {
@@ -56,5 +71,5 @@ export const AedesAPI = {
             console.error("❌ AedesAPI.postLote:", error);
             throw error;
         }
-    },
+    }
 };

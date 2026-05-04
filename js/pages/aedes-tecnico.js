@@ -34,8 +34,25 @@ async function inicializarDashboardAedes() {
 
         const dataMaster = [];
         lotes.forEach(lote => {
-            const registros = lote.payload_completo?.registros || [];
-            registros.forEach(reg => { dataMaster.push({ ...reg }); });
+            // AJUSTE: No novo formato, os dados ficam em 'dados' e não em 'registros'
+            const registros = lote.payload_completo?.dados || [];
+            const nomeDoFocal = lote.focal_nome || "Não Identificado";
+
+            registros.forEach(reg => { 
+                // Transformamos a Matriz em um objeto temporário para manter a compatibilidade com a função renderDados
+                dataMaster.push({
+                    focal_nome: nomeDoFocal,
+                    unidadeId: reg[0],
+                    unidade: reg[1],
+                    vistoriaRealizada: reg[2],
+                    focoEncontrado: reg[3],
+                    focoRemediado: reg[4],
+                    locaisFocoResumo: Array.isArray(reg[5]) ? reg[5][0] : reg[5], // Pega o primeiro local se for array
+                    motivosNaoVistoriaResumo: Array.isArray(reg[6]) ? reg[6][0] : reg[6],
+                    motivosNaoRemediacaoResumo: Array.isArray(reg[7]) ? reg[7][0] : reg[7],
+                    observacoes: reg[8]
+                }); 
+            });
         });
 
         renderDados(dataMaster, listaFocais);
@@ -58,6 +75,8 @@ function renderDados(data, listaFocais) {
     const tbodyConsolidada = document.getElementById('table-body-consolidada');
     const tbodyFocais = document.getElementById('table-body-focais');
 
+    if (!tbodyConsolidada) return;
+
     tbodyConsolidada.innerHTML = data.map(reg => {
         const vist = String(reg.vistoriaRealizada || "").toLowerCase() === 'sim';
         const foco = vist ? (String(reg.focoEncontrado || "").toLowerCase() === 'sim') : null;
@@ -68,15 +87,26 @@ function renderDados(data, listaFocais) {
         }
 
         stats.t++;
+        
+        // Contagem de motivos de não vistoria
         if (!vist) {
             stats.p++;
-            if (stats.mV.hasOwnProperty(reg.motivosNaoVistoriaResumo)) stats.mV[reg.motivosNaoVistoriaResumo]++;
+            const labelMotivo = MOTIVOS_NAO_VISTORIA_OPTIONS.find(o => o.value === reg.motivosNaoVistoriaResumo)?.label;
+            if (labelMotivo && stats.mV.hasOwnProperty(labelMotivo)) stats.mV[labelMotivo]++;
         }
+        
+        // Contagem de focos e remediação
         if (vist && foco) {
             stats.f++;
-            if (remd) stats.r++;
-            else if (stats.mR.hasOwnProperty(reg.motivosNaoRemediacaoResumo)) stats.mR[reg.motivosNaoRemediacaoResumo]++;
-            if (stats.locais.hasOwnProperty(reg.locaisFocoResumo)) stats.locais[reg.locaisFocoResumo]++;
+            if (remd) {
+                stats.r++;
+            } else {
+                const labelMotivoR = MOTIVOS_NAO_REMEDIACAO_OPTIONS.find(o => o.value === reg.motivosNaoRemediacaoResumo)?.label;
+                if (labelMotivoR && stats.mR.hasOwnProperty(labelMotivoR)) stats.mR[labelMotivoR]++;
+            }
+            
+            const labelLocal = LOCAIS_FOCO_OPTIONS.find(o => o.value === reg.locaisFocoResumo)?.label;
+            if (labelLocal && stats.locais.hasOwnProperty(labelLocal)) stats.locais[labelLocal]++;
         }
 
         return `
@@ -91,6 +121,7 @@ function renderDados(data, listaFocais) {
             </tr>`;
     }).join('');
 
+    // Renderização da tabela de Focais (Status de envio)
     if (tbodyFocais && listaFocais) {
         tbodyFocais.innerHTML = listaFocais.map(f => {
             const enviou = stats.nomesQueEnviaram.has(f.nome.trim());
@@ -107,17 +138,17 @@ function renderDados(data, listaFocais) {
         }).join('');
     }
 
+    // KPIs principais
     document.getElementById('kpi-total').innerText = stats.t;
     document.getElementById('kpi-pendentes').innerText = stats.p;
     document.getElementById('kpi-focos').innerText = stats.f;
     document.getElementById('kpi-remediados').innerText = stats.r;
 
-    // ✅ CORREÇÃO: chamadas corretas, sem duplicatas e sem função inexistente
+    // Renderização dos Gráficos
     renderVistoriaChart('chart-motivos-vistoria', stats.mV);
     renderParetoRemediacao('chart-motivos-remediacao', stats.mR);
     renderLocaisChart('chart-locais-foco', stats.locais);
 }
-
 // ✨ Gráfico moderno de motivos de não vistoria — barras horizontais com gradiente e destaque
 function renderVistoriaChart(canvasId, dataMap) {
     const canvas = document.getElementById(canvasId);

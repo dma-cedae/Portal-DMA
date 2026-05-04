@@ -40,9 +40,9 @@ async function initSchema() {
         vistoria_realizada     TEXT,
         foco_encontrado        TEXT,
         foco_remediado         TEXT,
+        locais_foco            JSONB,
         motivos_nao_vistoria   JSONB,
         motivos_nao_remediacao JSONB,
-        locais_foco            JSONB,
         observacoes            TEXT,
         data_registro          TIMESTAMP DEFAULT NOW()
       );
@@ -181,30 +181,21 @@ app.get("/api/aedes/certificados", async (_req, res) => {
 /* =========================================================
    ROTAS DE VISTORIAS (LOTES)
 ========================================================= */
-
 app.post("/api/aedes/lotes", async (req, res) => {
   const client = await pool.connect();
   try {
-    // 1. Desestrutura conforme o buildBatchPayload do seu txt
-    const { cabecalho, dados } = req.body; 
-
+    const { cabecalho, dados } = req.body;
     await client.query('BEGIN');
 
-    // 2. Salva o Lote (Schema aedes. especificado)
-    const loteQuery = `
-      INSERT INTO aedes.lotes (focal_nome, payload_completo, data_envio)
-      VALUES ($1, $2, NOW())
-      RETURNING id;
-    `;
-    
-    const loteRes = await client.query(loteQuery, [
-      cabecalho.focal_nome, 
-      JSON.stringify(req.body) // Mantém o rastro completo
-    ]);
-
+    // 1. Inserir no Lote (Referência explícita ao schema aedes)
+    const loteRes = await client.query(
+      `INSERT INTO aedes.lotes (focal_nome, payload_completo) 
+       VALUES ($1, $2) RETURNING id`,
+      [cabecalho.focal_nome, JSON.stringify(req.body)]
+    );
     const loteId = loteRes.rows[0].id;
 
-    // 3. Loop para inserir a MATRIZ na vistorias_itens
+    // 2. Inserir nos Itens (Referência explícita ao schema aedes)
     const itemQuery = `
       INSERT INTO aedes.vistorias_itens (
         lote_id, unidade_id, unidade_nome, vistoria_realizada, 
@@ -218,12 +209,12 @@ app.post("/api/aedes/lotes", async (req, res) => {
         loteId,
         row[0], // unidadeId
         row[1], // unidadeNome
-        row[2], // vistoria_realizada
-        row[3], // foco_encontrado
-        row[4], // foco_remediado
-        JSON.stringify(row[5] || []), // locais_foco (Array)
-        JSON.stringify(row[6] || []), // motivos_nao_vistoria (Array)
-        JSON.stringify(row[7] || []), // motivos_nao_remediacao (Array)
+        row[2], // vistoriaRealizada
+        row[3], // focoEncontrado
+        row[4], // focoRemediado
+        JSON.stringify(row[5] || []), // locaisFoco
+        JSON.stringify(row[6] || []), // motivosNaoVistoria
+        JSON.stringify(row[7] || []), // motivosNaoRemediacao
         row[8]  // observacoes
       ]);
     }
@@ -233,13 +224,12 @@ app.post("/api/aedes/lotes", async (req, res) => {
 
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error("❌ Erro ao salvar:", err.message);
-    res.status(500).json({ ok: false, error: err.message });
+    console.error("❌ ERRO NO BANCO:", err.message); // Verifique este log no seu terminal!
+    res.status(500).json({ error: err.message });
   } finally {
     client.release();
   }
 });
-
 
 app.get("/api/aedes/lotes", async (_req, res) => {
   try {

@@ -298,9 +298,12 @@ function getStatusClass(s) { return s === "Pronto" ? "status-pill--success" : (s
  * ============================================================
  */
 
+/**
+ * ENVIO DE DADOS (AJUSTADO PARA O SERVER)
+ */
 function buildBatchPayload(dataRef) {
-  // Verifique se o objeto de sessão se chama 'session' ou 'currentSession'
-  const user = window.currentSession || window.session; 
+  // Usa a variável global currentSession que já foi definida no topo do arquivo
+  const user = currentSession; 
 
   return {
     cabecalho: {
@@ -312,20 +315,34 @@ function buildBatchPayload(dataRef) {
       total_registros: gridRows.length,
       lote_id_cliente: createLocalId("lote")
     },
-    // Matriz de dados otimizada
+    // Matriz de dados enviada para a rota POST /api/aedes/lotes
     dados: gridRows.map(row => [
-      row.unidadeId || row.unidade_pk,          // 0
-      row.unidadeNome || row.unidade,           // 1
-      row.vistoriaRealizada || DASH_VALUE,      // 2
-      row.focoEncontrado || DASH_VALUE,         // 3
-      row.focoRemediado || DASH_VALUE,          // 4
-      row.locaisFoco || [],                     // 5 (Array -> JSONB)
-      row.motivosNaoVistoria || [],             // 6 (Array -> JSONB)
-      row.motivosNaoRemediacao || [],           // 7 (Array -> JSONB)
-      safeTrim(row.observacoes) || DASH_VALUE   // 8
+      row.unidadeId,                            // 0: unidade_id
+      row.unidade,                              // 1: unidade_nome
+      row.vistoriaRealizada || DASH_VALUE,      // 2: vistoria_realizada
+      row.focoEncontrado || DASH_VALUE,         // 3: foco_encontrado
+      row.focoRemediado || DASH_VALUE,          // 4: foco_remediado
+      row.locaisFoco || [],                     // 5: locais_foco (Array)
+      row.motivosNaoVistoria || [],             // 6: motivos_nao_vistoria (Array)
+      row.motivosNaoRemediacao || [],           // 7: motivos_nao_remediacao (Array)
+      safeTrim(row.observacoes) || DASH_VALUE   // 8: observacoes
     ])
   };
 }
+
+// Corrija também o listener do botão no final do arquivo para gerenciar o cursor
+document.addEventListener('DOMContentLoaded', () => {
+    const chk = document.getElementById('chkResponsabilidade');
+    const btn = document.getElementById('btnEnviarRelatorio');
+    
+    if (chk && btn) {
+        chk.addEventListener('change', () => { 
+            btn.disabled = !chk.checked;
+            // Removemos o estilo inline de cursor para o CSS (que adicionamos antes) assumir
+            btn.style.opacity = chk.checked ? "1" : "0.5"; 
+        });
+    }
+});
 async function handleSubmitReport(event) {
   if (event?.preventDefault) event.preventDefault();
   if (!document.getElementById('chkResponsabilidade').checked) return alert("Aceite o termo.");

@@ -27,6 +27,7 @@ async function initSchema() {
         id               SERIAL PRIMARY KEY,
         focal_nome       TEXT,
         payload_completo JSONB,
+        total_registros  INTEGER, -- ADICIONE ESTA LINHA
         data_envio       TIMESTAMP DEFAULT NOW()
       );
     `);

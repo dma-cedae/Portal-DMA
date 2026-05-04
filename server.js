@@ -22,18 +22,32 @@ async function initSchema() {
   try {
     await pool.query(`CREATE SCHEMA IF NOT EXISTS aedes;`);
 
-    // Tabela de Lotes
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.lotes (
-        id              SERIAL PRIMARY KEY,
-        focal_nome      TEXT,
-        total_registros INTEGER DEFAULT 0,
-        unidades_vitoriadas JSONB,
-        payload_completo    JSONB,
-        data_envio      TIMESTAMP DEFAULT NOW()
+        id               SERIAL PRIMARY KEY,
+        focal_nome       TEXT,
+        payload_completo JSONB,
+        data_envio       TIMESTAMP DEFAULT NOW()
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
+        id                     SERIAL PRIMARY KEY,
+        lote_id                INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
+        unidade_id             TEXT,
+        unidade_nome           TEXT,
+        vistoria_realizada     TEXT,
+        foco_encontrado        TEXT,
+        foco_remediado         TEXT,
+        motivos_nao_vistoria   JSONB,
+        motivos_nao_remediacao JSONB,
+        locais_foco            JSONB,
+        observacoes            TEXT,
+        data_registro          TIMESTAMP DEFAULT NOW()
+      );
+    `);
+  
     // Tabela de Focais
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focais (
@@ -44,7 +58,6 @@ async function initSchema() {
         ativo BOOLEAN DEFAULT true
       );
     `);
-
     console.log("✅ Tabelas aedes.lotes e aedes.focais verificadas.");
   } catch (err) {
     console.error("❌ Erro no initSchema:", err.message);
@@ -104,10 +117,129 @@ app.get("/api/aedes/focais/login", async (req, res) => {
     res.status(500).json({ ok: false, error: "Erro no servidor." });
   }
 });
+/* =========================================================
+   BASE CONSOLIDADA
+========================================================= */
+app.get("/api/aedes/base", async (req, res) => {
+  try {
+    const { filtro } = req.query;
 
+    let sql = `
+      SELECT 
+        matricula, 
+        unidade, 
+        focal AS "focalNome", 
+        email 
+      FROM aedes.stg_importacao_excel
+    `;
+    let params = [];
+
+    // Ajustado para aceitar o e-mail que vem do front-end
+    if (filtro && filtro.trim() !== "") {
+      sql += " WHERE CAST(matricula AS TEXT) = $1 OR focal ILIKE $2 OR email = $3";
+      params.push(filtro.trim(), `%${filtro.trim()}%`, filtro.trim());
+    }
+
+    sql += " ORDER BY unidade ASC";
+
+    const result = await pool.query(sql, params);
+    console.log(`[API] /aedes/base — Filtro: ${filtro} | Registros: ${result.rowCount}`);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Erro na rota /api/aedes/base:", err.message);
+    res.status(500).json({ error: "Erro interno ao buscar base consolidada." });
+  }
+});
+/* =========================================================
+   CERTIFICADOS
+========================================================= */
+app.get("/api/aedes/certificados", async (_req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        unidade,
+        EXTRACT(MONTH FROM data_envio) AS mes,
+        EXTRACT(YEAR  FROM data_envio) AS ano,
+        COUNT(*) AS total_vistorias
+      FROM (
+        SELECT 
+          jsonb_array_elements(payload_completo->'registros')->>'unidade' AS unidade,
+          data_envio
+        FROM aedes.lotes
+      ) subconsulta
+      GROUP BY unidade, ano, mes
+      HAVING COUNT(*) >= 2
+      ORDER BY ano DESC, mes DESC, unidade ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Erro ao calcular certificados:", err.message);
+    res.status(500).json({ error: "Erro ao calcular certificados" });
+  }
+});
 /* =========================================================
    ROTAS DE VISTORIAS (LOTES)
 ========================================================= */
+
+app.post("/api/aedes/lotes", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // 1. Desestrutura conforme o buildBatchPayload do seu txt
+    const { cabecalho, dados } = req.body; 
+
+    await client.query('BEGIN');
+
+    // 2. Salva o Lote (Schema aedes. especificado)
+    const loteQuery = `
+      INSERT INTO aedes.lotes (focal_nome, payload_completo, data_envio)
+      VALUES ($1, $2, NOW())
+      RETURNING id;
+    `;
+    
+    const loteRes = await client.query(loteQuery, [
+      cabecalho.focal_nome, 
+      JSON.stringify(req.body) // Mantém o rastro completo
+    ]);
+
+    const loteId = loteRes.rows[0].id;
+
+    // 3. Loop para inserir a MATRIZ na vistorias_itens
+    const itemQuery = `
+      INSERT INTO aedes.vistorias_itens (
+        lote_id, unidade_id, unidade_nome, vistoria_realizada, 
+        foco_encontrado, foco_remediado, locais_foco, 
+        motivos_nao_vistoria, motivos_nao_remediacao, observacoes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `;
+
+    for (const row of dados) {
+      await client.query(itemQuery, [
+        loteId,
+        row[0], // unidadeId
+        row[1], // unidadeNome
+        row[2], // vistoria_realizada
+        row[3], // foco_encontrado
+        row[4], // foco_remediado
+        JSON.stringify(row[5] || []), // locais_foco (Array)
+        JSON.stringify(row[6] || []), // motivos_nao_vistoria (Array)
+        JSON.stringify(row[7] || []), // motivos_nao_remediacao (Array)
+        row[8]  // observacoes
+      ]);
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, loteId });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("❌ Erro ao salvar:", err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 
 app.get("/api/aedes/lotes", async (_req, res) => {
   try {
@@ -120,21 +252,6 @@ app.get("/api/aedes/lotes", async (_req, res) => {
     res.status(500).json({ error: "Erro ao buscar lotes." });
   }
 });
-
-app.post("/api/aedes/lotes", async (req, res) => {
-  try {
-    const { focal_nome, totalRegistros, payload_completo } = req.body;
-    const result = await pool.query(
-      `INSERT INTO aedes.lotes (focal_nome, total_registros, payload_completo, data_envio)
-       VALUES ($1, $2, $3, NOW()) RETURNING id;`,
-      [focal_nome || "Focal não identificado", totalRegistros || 0, payload_completo || {}]
-    );
-    res.status(201).json({ ok: true, loteId: result.rows[0].id });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: "Falha ao gravar dados." });
-  }
-});
-
 /* =========================================================
    ROTAS GERAIS
 ========================================================= */

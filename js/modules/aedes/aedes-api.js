@@ -2,8 +2,10 @@
  * Módulo de Comunicação API - AEDES
  */
 
-// Única fonte de verdade para a base da API
-const API_BASE = window.AEDES_API_BASE_URL || "http://localhost:3001";
+// aedes-api.js
+const API_BASE = window.location.hostname === "localhost" 
+    ? "http://localhost:3001" 
+    : "https://dma-aedes-api.onrender.com"; // Substitua pela sua URL do Render
 
 export const AedesAPI = {
 

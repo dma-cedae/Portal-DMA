@@ -298,38 +298,34 @@ function getStatusClass(s) { return s === "Pronto" ? "status-pill--success" : (s
  * ============================================================
  */
 
-/**
- * Nova função buildBatchPayload:
- * Organiza os dados em um cabeçalho único e uma matriz (dados),
- * eliminando as chaves repetidas para cada unidade.
- */
 function buildBatchPayload(dataRef) {
+  // Verifique se o objeto de sessão se chama 'session' ou 'currentSession'
+  const user = window.currentSession || window.session; 
+
   return {
     cabecalho: {
-      focal_nome: currentSession.nome,
-      focal_email: currentSession.email,
-      matricula: String(currentSession.matricula || currentSession.focal_id || ""),
+      focal_nome: user?.nome || "Não Identificado",
+      focal_email: user?.email || "",
+      matricula: String(user?.matricula || ""),
       semana_iso: String(getIsoWeek(dataRef)),
       ano_iso: getIsoWeekYear(dataRef),
       total_registros: gridRows.length,
       lote_id_cliente: createLocalId("lote")
     },
-    // Matriz de dados: cada linha é um Array, não um Objeto.
-    // Ordem: [0]unidadeId, [1]unidadeNome, [2]vistoria, [3]foco, [4]remediado, [5]locaisArray, [6]motivosVistoriaArray, [7]motivosRemediacaoArray, [8]obs
+    // Matriz de dados otimizada
     dados: gridRows.map(row => [
-      row.unidadeId,                        // 0
-      row.unidade,                          // 1
-      row.vistoriaRealizada,                // 2
-      row.focoEncontrado,                   // 3
-      row.focoRemediado,                    // 4
-      row.locaisFoco,                       // 5 (Array)
-      row.motivosNaoVistoria,               // 6 (Array)
-      row.motivosNaoRemediacao,             // 7 (Array)
-      safeTrim(row.observacoes) || DASH_VALUE // 8
+      row.unidadeId || row.unidade_pk,          // 0
+      row.unidadeNome || row.unidade,           // 1
+      row.vistoriaRealizada || DASH_VALUE,      // 2
+      row.focoEncontrado || DASH_VALUE,         // 3
+      row.focoRemediado || DASH_VALUE,          // 4
+      row.locaisFoco || [],                     // 5 (Array -> JSONB)
+      row.motivosNaoVistoria || [],             // 6 (Array -> JSONB)
+      row.motivosNaoRemediacao || [],           // 7 (Array -> JSONB)
+      safeTrim(row.observacoes) || DASH_VALUE   // 8
     ])
   };
 }
-
 async function handleSubmitReport(event) {
   if (event?.preventDefault) event.preventDefault();
   if (!document.getElementById('chkResponsabilidade').checked) return alert("Aceite o termo.");

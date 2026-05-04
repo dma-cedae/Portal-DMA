@@ -317,7 +317,7 @@ function buildBatchPayload(dataRef) {
     },
     // Matriz de dados enviada para a rota POST /api/aedes/lotes
     dados: gridRows.map(row => [
-      row.unidadeId,                            // 0: unidade_id
+      row.unidade_id,                            // 0: unidade_id
       row.unidade,                              // 1: unidade_nome
       row.vistoriaRealizada || DASH_VALUE,      // 2: vistoria_realizada
       row.focoEncontrado || DASH_VALUE,         // 3: foco_encontrado

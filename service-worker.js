@@ -1,4 +1,4 @@
-const CACHE_NAME = "portal-dma-v15";
+const CACHE_NAME = "portal-dma-v16";
 
 const APP_ASSETS = [
   "./",

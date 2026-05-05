@@ -58,94 +58,131 @@
     .badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.65rem; display: inline-block; }
     .badge-sim { background: #dcfce7; color: #16a34a; }
     .badge-nao { background: #fee2e2; color: #dc2626; }
+
+    @media print {
+        /* Esconde tudo */
+        body * { visibility: hidden; }
+        
+        /* Mostra apenas a div do relatório e seus filhos */
+        #relatorio-tecnico-print, 
+        #relatorio-tecnico-print * { visibility: visible; }
+        
+        /* Posiciona o relatório no topo da folha de impressão */
+        #relatorio-tecnico-print {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            border: none !important; /* Remove borda na impressão */
+        }
+
+        /* Esconde o botão de imprimir durante a impressão */
+        .no-print { display: none !important; }
+        
+        /* Garante que as cores de fundo apareçam no PDF */
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body>
 
-  <aside class="sidebar">
-    <div class="sidebar__header">
-      <div class="logo-dma">DMA</div>
-      <div><b style="font-size: 0.8rem;">ÁREA TÉCNICA</b></div>
-    </div>
-    <nav class="sidebar__nav">
-      <a href="./area-tecnica.html" class="nav-item">
-        <i class="fas fa-chart-line"></i> Auditoria
+<aside class="sidebar">
+  <div class="sidebar__header">
+    <div class="logo-dma">DMA</div>
+    <div><b style="font-size: 0.8rem;">ÁREA TÉCNICA</b></div>
+  </div>
+  
+  <nav class="sidebar__nav">
+    <a href="./area-tecnica.html" class="nav-item">
+      <i class="fas fa-chart-line"></i> Auditoria
+    </a>
+    
+    <div class="nav-item active"><i class="fas fa-bug"></i> Módulo Aedes</div>
+    
+    <div class="sub-nav">
+      <a id="menu-painel" class="sub-item active" style="cursor:pointer">Painel de Controle</a>
+      <a id="menu-consolidada" class="sub-item" style="cursor:pointer">Tabela Consolidada</a>
+      <a id="menu-relatorios" class="sub-item" style="cursor:pointer">
+        <i class="fas fa-file-medical-alt"></i> Relatórios IA
       </a>
-      <div class="nav-item active"><i class="fas fa-bug"></i> Módulo Aedes</div>
-      <div class="sub-nav">
-        <a id="menu-painel" class="sub-item active">Painel de Controle</a>
-        <a id="menu-consolidada" class="sub-item">Tabela Consolidada</a>
-        <a href="./aedes-focais.html" class="sub-item">Área dos Focais</a>
-      </div>
-    </nav>
-  </aside>
+      <a href="./aedes-focais.html" class="sub-item">Área dos Focais</a>
+    </div>
+  </nav>
+</aside>
 
-  <main class="main-container">
-    <div class="scroll-area">
-      
-      <section class="kpi-grid">
-          <div class="kpi-card"><small>Unidades</small><h3 id="kpi-total">0</h3></div>
-          <div class="kpi-card" style="border-color: #ef4444"><small>Não Vistoriadas</small><h3 id="kpi-pendentes">0</h3></div>
-          <div class="kpi-card" style="border-color: #f59e0b"><small>Focos Totais</small><h3 id="kpi-focos">0</h3></div>
-          <div class="kpi-card" style="border-color: var(--accent-green)"><small>Focos Remediados</small><h3 id="kpi-remediados">0</h3></div>
+<main class="main-container">
+  <div class="scroll-area">
+    
+    <section class="kpi-grid">
+      <div class="kpi-card"><small>Unidades</small><h3 id="kpi-total">0</h3></div>
+      <div class="kpi-card" style="border-color: #ef4444"><small>Não Vistoriadas</small><h3 id="kpi-pendentes">0</h3></div>
+      <div class="kpi-card" style="border-color: #f59e0b"><small>Focos Totais</small><h3 id="kpi-focos">0</h3></div>
+      <div class="kpi-card" style="border-color: var(--accent-green)"><small>Focos Remediados</small><h3 id="kpi-remediados">0</h3></div>
+    </section>
+
+    <div id="section-painel">
+      <section class="charts-row">
+        <div class="chart-box">
+          <h5 style="font-size: 0.7rem; color: #64748b; margin-bottom: 10px;">MOTIVOS DE NÃO VISTORIA</h5>
+          <div class="canvas-wrapper"><canvas id="chart-motivos-vistoria"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h5 style="font-size: 0.7rem; color: #64748b; margin-bottom: 10px;">MOTIVOS DE NÃO REMEDIAÇÃO</h5>
+          <div class="canvas-wrapper"><canvas id="chart-motivos-remediacao"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h5 style="font-size: 0.7rem; color: #64748b; margin-bottom: 10px;">LOCAIS DE FOCO (INCIDÊNCIA)</h5>
+          <div class="canvas-wrapper"><canvas id="chart-locais-foco"></canvas></div>
+        </div>
       </section>
-
-      <div id="section-painel">
-        <section class="charts-row">
-            <div class="chart-box">
-                <h5 style="font-size: 0.7rem; color: #64748b; margin-bottom: 10px;">MOTIVOS DE NÃO VISTORIA</h5>
-                <div class="canvas-wrapper"><canvas id="chart-motivos-vistoria"></canvas></div>
-            </div>
-            <div class="chart-box">
-                <h5 style="font-size: 0.7rem; color: #64748b; margin-bottom: 10px;">MOTIVOS DE NÃO REMEDIAÇÃO</h5>
-                <div class="canvas-wrapper"><canvas id="chart-motivos-remediacao"></canvas></div>
-            </div>
-            <div class="chart-box">
-                <h5 style="font-size: 0.7rem; color: #64748b; margin-bottom: 10px;">LOCAIS DE FOCO (INCIDÊNCIA)</h5>
-                <div class="canvas-wrapper"><canvas id="chart-locais-foco"></canvas></div>
-            </div>
-        </section>
-          <section class="panel" style="margin-top: 20px;">
-    <div class="panel-header">Status de Envio por Focal</div>
-    <div class="table-container" style="max-height: 350px;">
-        <table>
+      
+      <section class="panel" style="margin-top: 20px;">
+        <div class="panel-header">Status de Envio por Focal</div>
+        <div class="table-container" style="max-height: 350px;">
+          <table>
             <thead>
-                <tr>
-                    <th>Nome do Focal</th>
-                    <th style="width: 200px; text-align: center;">Status de Envio</th>
-                </tr>
+              <tr>
+                <th>Nome do Focal</th>
+                <th style="width: 200px; text-align: center;">Status de Envio</th>
+              </tr>
             </thead>
             <tbody id="table-body-focais"></tbody>
-        </table>
+          </table>
+        </div>
+      </section>
     </div>
-</section>
-      </div>
 
-      <div id="section-consolidada" style="display: none;">
-        <section class="panel">
-            <div class="panel-header">Registros de Vistoria e Remediação</div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Unidade</th>
-                            <th style="width: 100px;">Vistoria</th>
-                            <th style="width: 100px;">Foco</th>
-                            <th style="width: 120px;">Remediação</th>
-                            <th>Motivo Não Vistoria</th>
-                            <th>Motivo Não Remediação</th>
-                            <th>Observações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body-consolidada"></tbody>
-                </table>
+    <div id="section-consolidada" style="display: none;">
+      <section class="panel">
+        <div class="panel-header">Registros de Vistoria e Remediação</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Unidade</th>
+                <th style="width: 100px;">Vistoria</th>
+                <th style="width: 100px;">Foco</th>
+                <th style="width: 120px;">Remediação</th>
+                <th>Motivo Não Vistoria</th>
+                <th>Motivo Não Remediação</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody id="table-body-consolidada"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div id="section-relatorios" style="display: none;">
+    <section class="panel">
+        <div class="panel-header">Parecer Técnico de Biomonitoramento</div>
+        <div id="conteudo-relatorio" style="padding: 20px; line-height: 1.8; color: #333; background: #fff;">
             </div>
-            
-        </section>
-      </div>
-
-    </div>
-  </main>
+    </section>
+</div>
+  </div>
+</main>
 
   <script src="./js/core/api-config.js"></script>
   <script src="./js/core/auth.js"></script>

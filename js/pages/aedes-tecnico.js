@@ -27,19 +27,19 @@ const LOCAIS_FOCO_OPTIONS = [
 
 async function inicializarDashboardAedes() {
     try {
+        // CORREÇÃO: Removido o 'new' pois AedesAPI é um objeto estático
         const [lotes, listaFocais] = await Promise.all([
             AedesAPI.getLotes(),
             AedesAPI.getFocais()
         ]);
 
         const dataMaster = [];
+
         lotes.forEach(lote => {
-            // AJUSTE: No novo formato, os dados ficam em 'dados' e não em 'registros'
             const registros = lote.payload_completo?.dados || [];
             const nomeDoFocal = lote.focal_nome || "Não Identificado";
 
             registros.forEach(reg => { 
-                // Transformamos a Matriz em um objeto temporário para manter a compatibilidade com a função renderDados
                 dataMaster.push({
                     focal_nome: nomeDoFocal,
                     unidadeId: reg[0],
@@ -47,7 +47,7 @@ async function inicializarDashboardAedes() {
                     vistoriaRealizada: reg[2],
                     focoEncontrado: reg[3],
                     focoRemediado: reg[4],
-                    locaisFocoResumo: Array.isArray(reg[5]) ? reg[5][0] : reg[5], // Pega o primeiro local se for array
+                    locaisFocoResumo: Array.isArray(reg[5]) ? reg[5].join(", ") : reg[5], 
                     motivosNaoVistoriaResumo: Array.isArray(reg[6]) ? reg[6][0] : reg[6],
                     motivosNaoRemediacaoResumo: Array.isArray(reg[7]) ? reg[7][0] : reg[7],
                     observacoes: reg[8]
@@ -55,13 +55,19 @@ async function inicializarDashboardAedes() {
             });
         });
 
-        renderDados(dataMaster, listaFocais);
-        setupNavigation();
+        // Renderiza a interface existente
+        if (typeof renderDados === "function") {
+            renderDados(dataMaster, listaFocais);
+        }
+
+        // Inicializa a navegação passando os dados processados
+        setupNavigation(dataMaster);
 
     } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+        console.error("❌ Erro na inicialização do Dashboard:", error);
     }
 }
+
 
 function renderDados(data, listaFocais) {
     const stats = {
@@ -381,22 +387,150 @@ function renderLocaisChart(canvasId, dict) {
         }
     });
 }
-
-function setupNavigation() {
+function setupNavigation(dataMaster) {
     const btnPainel = document.getElementById('menu-painel');
     const btnConsol = document.getElementById('menu-consolidada');
+    const btnRelat = document.getElementById('menu-relatorios');
+
     const secPainel = document.getElementById('section-painel');
     const secConsol = document.getElementById('section-consolidada');
+    const secRelat = document.getElementById('section-relatorios');
 
-    btnPainel?.addEventListener('click', () => {
-        secPainel.style.display = 'block'; secConsol.style.display = 'none';
-        btnPainel.classList.add('active'); btnConsol.classList.remove('active');
-    });
+    const alternar = (btnAtivo, secExibir) => {
+        // Gerencia classes active
+        [btnPainel, btnConsol, btnRelat].forEach(b => b?.classList.remove('active'));
+        // Gerencia visibilidade das seções
+        [secPainel, secConsol, secRelat].forEach(s => { if(s) s.style.display = 'none'; });
+        
+        btnAtivo?.classList.add('active');
+        if(secExibir) secExibir.style.display = 'block';
+    };
 
-    btnConsol?.addEventListener('click', () => {
-        secPainel.style.display = 'none'; secConsol.style.display = 'block';
-        btnConsol.classList.add('active'); btnPainel.classList.remove('active');
+    btnPainel?.addEventListener('click', () => alternar(btnPainel, secPainel));
+    btnConsol?.addEventListener('click', () => alternar(btnConsol, secConsol));
+    
+    btnRelat?.addEventListener('click', () => {
+        alternar(btnRelat, secRelat);
+        const container = document.getElementById('conteudo-relatorio');
+        
+        // Gera o relatório usando os dados que já temos na memória
+        container.innerHTML = gerarRelatorioTexto(dataMaster);
     });
 }
 
+function gerarRelatorioTexto(dados) {
+    const vistorias = dados.filter(d => d.vistoriaRealizada === 'sim');
+    const focos = vistorias.filter(d => d.focoEncontrado === 'sim');
+    const remediados = focos.filter(d => d.focoRemediado === 'sim');
+    
+    // Cálculos de Performance
+    const taxaInfestacao = vistorias.length > 0 ? ((focos.length / vistorias.length) * 100).toFixed(1) : 0;
+    const taxaRemediacao = focos.length > 0 ? ((remediados.length / focos.length) * 100).toFixed(1) : 0;
+
+    // Cruzamento de Dados: Foco vs Motivo de Não Remediação
+    const analiseCruzada = {};
+    focos.filter(f => f.focoRemediado === 'nao').forEach(f => {
+        const chave = `${f.locaisFocoResumo} | ${f.motivosNaoRemediacaoResumo}`;
+        analiseCruzada[chave] = (analiseCruzada[chave] || 0) + 1;
+    });
+
+    const topFalhas = Object.entries(analiseCruzada)
+        .sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    // Unidades Modelo (Exemplo de 3 unidades com 100% conformidade)
+    const modelos = vistorias.filter(v => v.focoEncontrado === 'nao').slice(0, 3);
+
+    return `
+    <div id="relatorio-tecnico-print" style="padding: 40px; background: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; color: #1e293b; max-width: 900px; margin: auto; border: 1px solid #e2e8f0;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0b3d91; padding-bottom: 20px; margin-bottom: 30px;">
+            <div>
+                <h1 style="color: #0b3d91; font-size: 22pt; margin: 0; letter-spacing: -1px;">PARECER TÉCNICO DE BIOMONITORAMENTO</h1>
+                <p style="margin: 5px 0 0 0; color: #64748b; font-size: 10pt; font-weight: bold;">MÓDULO AEDES | DEPARTAMENTO DE MANUTENÇÃO AMBIENTAL</p>
+            </div>
+            <div style="text-align: right;">
+                <button onclick="window.print()" class="no-print" style="background: #0b3d91; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    <i class="fas fa-print"></i> EXPORTAR PARA PDF
+                </button>
+                <p style="font-size: 9pt; color: #94a3b8; margin-top: 10px;">Gerado em: ${new Date().toLocaleString()}</p>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px;">
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; text-align: center;">
+                <span style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Taxa de Infestação</span>
+                <h2 style="font-size: 24pt; color: #ef4444; margin: 10px 0;">${taxaInfestacao}%</h2>
+                <div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${taxaInfestacao}%; background: #ef4444; height: 100%;"></div>
+                </div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; text-align: center;">
+                <span style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Eficiência de Remediação</span>
+                <h2 style="font-size: 24pt; color: #22c55e; margin: 10px 0;">${taxaRemediacao}%</h2>
+                <div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${taxaRemediacao}%; background: #22c55e; height: 100%;"></div>
+                </div>
+            </div>
+            <div style="background: #0b3d91; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+                <span style="font-size: 8pt; font-weight: bold; text-transform: uppercase; opacity: 0.8;">Unidades Modelo</span>
+                <h2 style="font-size: 24pt; margin: 10px 0;">${modelos.length}</h2>
+                <span style="font-size: 8pt;">STATUS: CONFORMIDADE</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 12pt; border-left: 4px solid #0b3d91; padding-left: 10px; margin-bottom: 15px; color: #0b3d91;">DIAGNÓSTICO DE CAUSA RAIZ (FOCO vs IMPEDIMENTO)</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                <thead>
+                    <tr style="background: #f1f5f9; text-align: left;">
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1;">Local do Foco</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1;">Motivo Principal de Não Remediação</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; text-align: center;">Ocorrências</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${topFalhas.length > 0 ? topFalhas.map(([chave, qtd]) => {
+                        const [local, motivo] = chave.split(' | ');
+                        return `
+                        <tr>
+                            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>${local}</strong></td>
+                            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #ef4444;">${motivo}</td>
+                            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold;">${qtd}</td>
+                        </tr>`;
+                    }).join('') : '<tr><td colspan="3" style="padding: 20px; text-align: center; color: #64748b;">Nenhuma falha crítica de remediação detectada no período.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 12pt; border-left: 4px solid #22c55e; padding-left: 10px; margin-bottom: 15px; color: #166534;">BENCHMARK: UNIDADES DE REFERÊNCIA</h3>
+            <div style="display: flex; gap: 10px;">
+                ${modelos.map(u => `
+                    <div style="flex: 1; border: 1px solid #bbf7d0; background: #f0fdf4; padding: 10px; border-radius: 4px; text-align: center;">
+                        <i class="fas fa-certificate" style="color: #22c55e; margin-bottom: 5px;"></i><br>
+                        <span style="font-size: 9pt; font-weight: bold; color: #166534;">${u.unidade}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div style="padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 11pt; color: #0b3d91;">RECOMENDAÇÕES DA ENGENHARIA AMBIENTAL</h4>
+            <p style="font-size: 10pt; line-height: 1.6; color: #334155; margin: 0;">
+                Considerando os dados apresentados, a taxa de remediação de <strong>${taxaRemediacao}%</strong> exige atenção imediata às falhas de <strong>${topFalhas[0] ? topFalhas[0][0].split(' | ')[1] : 'logística'}</strong>. 
+                Recomenda-se o reforço das barreiras físicas nas unidades críticas para evitar a dispersão do vetor nas próximas 72 horas.
+            </p>
+        </div>
+
+        <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div style="width: 200px; border-top: 1px solid #94a3b8; text-align: center; padding-top: 5px; font-size: 8pt; color: #64748b;">
+                Responsável Técnico
+            </div>
+            <div style="text-align: right; font-size: 8pt; color: #94a3b8;">
+                Documento Digitalizado - Sistema Integrado de Gestão Ambiental (SIGA)
+            </div>
+        </div>
+    </div>
+    `;
+}
 document.addEventListener('DOMContentLoaded', inicializarDashboardAedes);

@@ -153,7 +153,8 @@
       <header class="aedes-topbar">
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="background: var(--primary-blue); color:white; padding:6px 12px; border-radius:8px; font-weight:900; font-size:0.75rem;">DMA</div>
-          <strong style="color:var(--dark-blue); font-size:1rem;">Programa de Combate ao Aedes aegypti</strong>
+          <strong style="color:var(--dark-blue); font-size:1rem;">Programa de Combate ao <i>Aedes aegypti</i></strong>
+
         </div>
 
         <div class="nav-group">
@@ -226,9 +227,9 @@
     1. api-config.js primeiro (define window.AEDES_API_BASE_URL)
     2. aedes-publico.js depois (consome a variável global acima)
     Removido certs.js pois não é usado nesta página
+  <script src="./js/certs.js"></script>
   -->
   <script src="./js/core/api-config.js"></script>
-  <script src="./js/certs.js"></script>
   <script type="module" src="./js/pages/aedes-publico.js"></script>
 
 </body>

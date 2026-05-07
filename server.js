@@ -159,19 +159,17 @@ app.get("/api/aedes/certificados", async (_req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        unidade,
-        EXTRACT(MONTH FROM data_envio) AS mes,
-        EXTRACT(YEAR  FROM data_envio) AS ano,
-        COUNT(*) AS total_vistorias
-      FROM (
-        SELECT 
-          jsonb_array_elements(payload_completo->'registros')->>'unidade' AS unidade,
-          data_envio
-        FROM aedes.lotes
-      ) subconsulta
-      GROUP BY unidade, ano, mes
-      HAVING COUNT(*) >= 2
-      ORDER BY ano DESC, mes DESC, unidade ASC
+          unidade_nome as unidade,
+          EXTRACT(MONTH FROM data_registro) as mes,
+          EXTRACT(YEAR FROM data_registro) as ano,
+          -- Contamos IDs de lotes distintos para garantir envios em momentos diferentes
+          COUNT(DISTINCT lote_id) as total_vistorias 
+      FROM aedes.vistorias_itens
+      -- Filtramos apenas vistorias marcadas como 'sim' (ignora maiúsculas/minúsculas)
+      WHERE LOWER(vistoria_realizada) = 'sim' 
+      GROUP BY unidade_nome, ano, mes
+      -- Removido o HAVING para permitir que o front-end mostre vistorias < 4
+      ORDER BY ano DESC, mes DESC, unidade ASC;
     `);
     res.json(result.rows);
   } catch (err) {

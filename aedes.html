@@ -4,23 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Aedes | Portal DMA</title>
-  
+
   <link rel="icon" href="./assets/icon.png" type="image/png" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <link rel="stylesheet" href="./css/global.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
 
   <style>
+    /* ── Tokens ─────────────────────────────────────────────── */
     :root {
-      --primary-blue: #0b3d91;
-      --dark-blue: #001d3d;
-      --accent-green: #22c55e;
+      --primary-blue:  #0b3d91;
+      --dark-blue:     #001d3d;
+      --accent-green:  #22c55e;
       --accent-yellow: #facc15;
-      --white: #ffffff;
-      --bg-canvas: #cbd5e1;
+      --white:         #ffffff;
+      --bg-canvas:     #cbd5e1;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+    /* ── Reset ───────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
     body, html {
       height: 100vh; width: 100vw;
       overflow: hidden;
@@ -28,6 +33,7 @@
       background-color: var(--bg-canvas);
     }
 
+    /* ── Layout raiz ─────────────────────────────────────────── */
     .viewport-wrapper {
       height: 100vh;
       display: flex; align-items: center; justify-content: center;
@@ -43,42 +49,61 @@
       overflow: hidden;
     }
 
-    /* TOPBAR */
+    /* ── Topbar ──────────────────────────────────────────────── */
     .aedes-topbar {
-      height: 9vh; min-height: 75px;
+      height: 9vh; min-height: 72px;
       padding: 0 2vw;
       display: flex; justify-content: space-between; align-items: center;
       background: var(--white);
       border-bottom: 1px solid #e2e8f0;
       z-index: 10;
+      flex-shrink: 0;
     }
 
-    .nav-group { display: flex; align-items: center; gap: 12px; }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 12px;
+    }
 
-    .btn-nav-yellow {
-      background: var(--accent-yellow); color: var(--dark-blue);
-      padding: 10px 18px; border-radius: 8px;
-      font-weight: 800; font-size: 0.75rem; text-decoration: none;
+    .topbar-badge {
+      background: var(--primary-blue);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-weight: 900;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+    }
+
+    .topbar-title {
+      color: var(--dark-blue);
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .nav-group { display: flex; align-items: center; gap: 10px; }
+
+    .btn-nav {
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 0.75rem;
+      text-decoration: none;
       display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 4px 10px rgba(250, 204, 21, 0.2); transition: 0.3s;
+      transition: transform 0.2s, filter 0.2s;
+      letter-spacing: 0.03em;
     }
 
-    .btn-nav-green {
-      background: var(--accent-green); color: white;
-      padding: 10px 18px; border-radius: 8px;
-      font-weight: 800; font-size: 0.75rem; text-decoration: none;
-      display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2); transition: 0.3s;
-    }
+    .btn-nav:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-    .btn-nav-yellow:hover, .btn-nav-green:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .btn-nav--green  { background: var(--accent-green);  color: white; box-shadow: 0 4px 12px rgba(34,197,94,0.25); }
+    .btn-nav--yellow { background: var(--accent-yellow);  color: var(--dark-blue); box-shadow: 0 4px 12px rgba(250,204,21,0.25); }
 
-    /* CONTEÚDO SPLIT */
+    /* ── Conteúdo split ─────────────────────────────────────── */
     .aedes-content {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      height: 91vh;
+      min-height: 0; /* permite que o flex-child seja scrollável */
     }
 
     .split-col {
@@ -88,60 +113,245 @@
       padding: 2vh;
     }
 
-    /* LADO ESQUERDO */
+    /* ── Lado esquerdo — visual ──────────────────────────────── */
     .col-visual {
-      background: #ffffff;
-      justify-content: flex-start;
+      background: #f8fafc;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Blob decorativo no fundo */
+    .col-visual::before {
+      content: "";
+      position: absolute;
+      width: 60%;
+      aspect-ratio: 1;
+      background: radial-gradient(circle, rgba(11,61,145,0.07) 0%, transparent 70%);
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .visual-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      height: 100%;
+      width: 100%;
+      z-index: 1;
     }
 
     .image-container {
-      width: 85%;
-      height: 80%;
-      margin-top: 5vh;
+      width: 70%;
+      max-width: 280px;
+      aspect-ratio: 1;
       background-image: url('./assets/dengue_icon2.png');
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
     }
 
-    /* LADO DIREITO */
+    .visual-caption {
+      text-align: center;
+      max-width: 300px;
+    }
+
+    .visual-caption h2 {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: var(--dark-blue);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .visual-caption p {
+      font-size: 0.82rem;
+      color: #64748b;
+      line-height: 1.55;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(11,61,145,0.08);
+      color: var(--primary-blue);
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Lado direito — formulário ───────────────────────────── */
     .col-form {
       background: linear-gradient(145deg, var(--dark-blue) 0%, var(--primary-blue) 100%);
       color: white;
       justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Padrão decorativo sutil no fundo */
+    .col-form::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.04) 0%, transparent 50%);
+      pointer-events: none;
     }
 
     .glass-box {
+      position: relative;
+      z-index: 1;
       width: 85%;
       max-width: 420px;
-      padding: 40px;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(12px);
+      padding: 36px 40px 40px;
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-radius: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      margin-bottom: 10vh;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
     }
 
-    .field { margin-bottom: 20px; }
-    .field label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; color: #cbd5e1; }
-    
+    .form-title {
+      font-size: 1.65rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+      line-height: 1.15;
+    }
+
+    .form-subtitle {
+      font-size: 0.82rem;
+      opacity: 0.7;
+      margin-bottom: 28px;
+      line-height: 1.4;
+    }
+
+    .field { margin-bottom: 18px; }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+      color: #94a3b8;
+    }
+
     .custom-input {
-      width: 100%; padding: 12px; border-radius: 10px; border: none;
-      background: white; font-weight: 600; font-size: 1rem; color: var(--dark-blue);
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1.5px solid transparent;
+      background: white;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: var(--dark-blue);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
     }
 
+    .custom-input:focus {
+      outline: none;
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.2);
+    }
+
+    .row-2col {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 12px;
+    }
+
+    /* Divisor */
+    .form-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.12);
+      margin: 22px 0;
+    }
+
+    /* Botões principais */
     .btn-main {
-      width: 100%; padding: 16px; border-radius: 10px; border: none;
-      font-weight: 800; cursor: pointer; transition: 0.3s;
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      font-family: inherit;
+      font-weight: 800;
+      font-size: 0.83rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: transform 0.15s, filter 0.15s, opacity 0.2s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
-    .btn-verify { background: var(--accent-green); color: white; margin-bottom: 12px; }
+    .btn-main:not(:disabled):hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
 
+    .btn-main:not(:disabled):active { transform: scale(0.98); }
+
+    .btn-main:disabled { cursor: default; }
+
+    .btn-verify {
+      background: var(--accent-green);
+      color: white;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 16px rgba(34,197,94,0.30);
+    }
+
+    .btn-download {
+      background: white;
+      color: var(--primary-blue);
+      opacity: 0.45;
+    }
+
+    /* Estado ativo do botão de download */
+    .btn-download.is-active {
+      opacity: 1;
+      background: var(--accent-yellow);
+      color: var(--dark-blue);
+      box-shadow: 0 4px 16px rgba(250,204,21,0.35);
+    }
+
+    /* ── Status feedback ─────────────────────────────────────── */
+    .status-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .status-bar.show { display: flex; }
+    .status-bar.success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .status-bar.error   { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; }
+
+    /* ── Responsivo ──────────────────────────────────────────── */
     @media (max-width: 900px) {
       .aedes-content { grid-template-columns: 1fr; overflow-y: auto; }
       .col-visual { display: none; }
-      .glass-box { margin-bottom: 20px; margin-top: 20px; }
+      .glass-box { margin: 20px 0; width: 92%; padding: 28px 24px; }
     }
   </style>
 </head>
@@ -149,52 +359,76 @@
 
   <div class="viewport-wrapper">
     <div class="main-canvas">
-      
-      <header class="aedes-topbar">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="background: var(--primary-blue); color:white; padding:6px 12px; border-radius:8px; font-weight:900; font-size:0.75rem;">DMA</div>
-          <strong style="color:var(--dark-blue); font-size:1rem;">Programa de Combate ao <i>Aedes aegypti</i></strong>
 
+      <!-- Topbar -->
+      <header class="aedes-topbar">
+        <div class="topbar-brand">
+          <span class="topbar-badge">DMA</span>
+          <strong class="topbar-title">
+            Programa de Combate ao <em>Aedes aegypti</em>
+          </strong>
         </div>
 
-        <div class="nav-group">
-          <a href="./index.html" class="btn-nav-green">
+        <nav class="nav-group">
+          <a href="./index.html" class="btn-nav btn-nav--green">
             <i class="fas fa-home"></i>
             <span>PORTAL DMA</span>
           </a>
-          <a href="./aedes-focais.html" class="btn-nav-yellow">
+          <a href="./aedes-focais.html" class="btn-nav btn-nav--yellow">
             <i class="fas fa-file-signature"></i>
             <span>ENVIAR RELATÓRIO</span>
           </a>
-        </div>
+        </nav>
       </header>
 
+      <!-- Conteúdo split -->
       <div class="aedes-content">
+
+        <!-- Esquerdo: visual -->
         <section class="split-col col-visual">
-          <div class="image-container"></div>
+          <div class="visual-inner">
+            <div class="badge-pill">
+              <i class="fas fa-shield-virus"></i>
+              Vigilância Ambiental
+            </div>
+
+            <div class="image-container" role="img" aria-label="Ícone de combate à dengue"></div>
+
+            <div class="visual-caption">
+              <h2>Controle de Vetores<br />em Tempo Real</h2>
+              <p>
+                Verifique se sua unidade cumpriu o número mínimo de
+                vistorias mensais e emita o certificado de conformidade.
+              </p>
+            </div>
+          </div>
         </section>
 
+        <!-- Direito: formulário -->
         <section class="split-col col-form">
           <div class="glass-box">
-            <h2 style="font-size: 1.8rem; margin-bottom: 10px; letter-spacing: -0.5px;">Consulta Online</h2>
-            <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 30px;">Verifique a elegibilidade da sua unidade.</p>
 
+            <h2 class="form-title">Consulta Online</h2>
+            <p class="form-subtitle">Verifique a elegibilidade da sua unidade e baixe o certificado.</p>
+
+            <!-- Unidade -->
             <div class="field">
-              <label>Unidade Operacional</label>
+              <label for="certUnidade"><i class="fas fa-building" style="margin-right:5px;"></i>Unidade Operacional</label>
               <select id="certUnidade" class="custom-input">
                 <option value="">Carregando unidades...</option>
               </select>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+            <!-- Mês + Ano -->
+            <div class="row-2col">
               <div class="field">
-                <label>Mês de Referência</label>
+                <label for="certMes"><i class="fas fa-calendar-alt" style="margin-right:5px;"></i>Mês de Referência</label>
                 <select id="certMes" class="custom-input">
                   <option value="1">Janeiro</option>
                   <option value="2">Fevereiro</option>
-                  <option value="3" selected>Março</option>
+                  <option value="3">Março</option>
                   <option value="4">Abril</option>
-                  <option value="5">Maio</option>
+                  <option value="5" selected>Maio</option>
                   <option value="6">Junho</option>
                   <option value="7">Julho</option>
                   <option value="8">Agosto</option>
@@ -205,7 +439,7 @@
                 </select>
               </div>
               <div class="field">
-                <label>Ano</label>
+                <label for="certAno"><i class="fas fa-calendar-check" style="margin-right:5px;"></i>Ano</label>
                 <select id="certAno" class="custom-input">
                   <option value="2025">2025</option>
                   <option value="2026" selected>2026</option>
@@ -213,23 +447,35 @@
               </div>
             </div>
 
-            <button id="checkCertificateBtn" class="btn-main btn-verify" onclick="verificarElegibilidade()">VERIFICAR STATUS</button>
-            <button id="downloadCertificateBtn" class="btn-main" style="background:white; color:var(--primary-blue); opacity:0.5;" disabled>BAIXAR CERTIFICADO</button>
+            <div class="form-divider"></div>
+
+            <!-- Feedback de status (controlado pelo JS) -->
+            <div id="statusBar" class="status-bar" role="alert" aria-live="polite"></div>
+
+            <!-- Botões -->
+            <button id="checkCertificateBtn" class="btn-main btn-verify">
+              <i class="fas fa-search"></i> VERIFICAR STATUS
+            </button>
+
+            <button id="downloadCertificateBtn" class="btn-main btn-download" disabled>
+              <i class="fas fa-file-certificate"></i> BAIXAR CERTIFICADO
+            </button>
+
           </div>
         </section>
-      </div>
 
-    </div>
-  </div>
+      </div><!-- /.aedes-content -->
+
+    </div><!-- /.main-canvas -->
+  </div><!-- /.viewport-wrapper -->
+
+  <!-- api-config continua como script global (sem módulo) -->
+  <script src="./js/core/api-config.js"></script>
 
   <!--
-    ORDEM CORRETA DE SCRIPTS:
-    1. api-config.js primeiro (define window.AEDES_API_BASE_URL)
-    2. aedes-publico.js depois (consome a variável global acima)
-    Removido certs.js pois não é usado nesta página
-  <script src="./js/certs.js"></script>
+    aedes-publico.js é type="module" e importa o aedes-certs.js internamente.
+    NÃO adicione um <script src="certs.js"> separado — causaria o erro de "export".
   -->
-  <script src="./js/core/api-config.js"></script>
   <script type="module" src="./js/pages/aedes-publico.js"></script>
 
 </body>

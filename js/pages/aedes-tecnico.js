@@ -27,7 +27,6 @@ const LOCAIS_FOCO_OPTIONS = [
 
 async function inicializarDashboardAedes() {
     try {
-        // CORREÇÃO: Removido o 'new' pois AedesAPI é um objeto estático
         const [lotes, listaFocais] = await Promise.all([
             AedesAPI.getLotes(),
             AedesAPI.getFocais()
@@ -36,11 +35,16 @@ async function inicializarDashboardAedes() {
         const dataMaster = [];
 
         lotes.forEach(lote => {
+            // A data está aqui, na raiz do objeto lote (coluna data_envio da sua imagem)
+            const dataEnvioBanco = lote.data_envio; 
+            
             const registros = lote.payload_completo?.dados || [];
             const nomeDoFocal = lote.focal_nome || "Não Identificado";
 
             registros.forEach(reg => { 
                 dataMaster.push({
+                    // ✨ CORREÇÃO: Agora pegamos a data que está FORA do json (lote.data_envio)
+                    data: dataEnvioBanco, 
                     focal_nome: nomeDoFocal,
                     unidadeId: reg[0],
                     unidade: reg[1],
@@ -60,7 +64,7 @@ async function inicializarDashboardAedes() {
             renderDados(dataMaster, listaFocais);
         }
 
-        // Inicializa a navegação passando os dados processados
+        // Inicializa a navegação
         setupNavigation(dataMaster);
 
     } catch (error) {
@@ -388,6 +392,12 @@ function renderLocaisChart(canvasId, dict) {
     });
 }
 function setupNavigation(dataMaster) {
+    const btnExcel = document.getElementById('btn-export-excel');
+     btnExcel?.addEventListener('click', () => {
+        // Exibe um feedback visual opcional
+        console.log("Gerando Excel...");
+        exportarExcelProfissional(dataMaster);
+    });
     const btnPainel = document.getElementById('menu-painel');
     const btnConsol = document.getElementById('menu-consolidada');
     const btnRelat = document.getElementById('menu-relatorios');
@@ -532,5 +542,215 @@ function gerarRelatorioTexto(dados) {
         </div>
     </div>
     `;
+}
+
+// Filtra unidades que possuem foco mas não foram remediadas [cite: 90, 94]
+const obterUnidadesDesconformes = (data) => {
+    return data.filter(d => 
+        String(d.focoEncontrado).toLowerCase() === 'sim' && 
+        String(d.focoRemediado).toLowerCase() !== 'sim'
+    ).map(u => ({ "Unidade Crítica": u.unidade, "Local do Foco": u.locaisFocoResumo, "Motivo": u.motivosNaoRemediacaoResumo }));
+};
+
+// Agrupa contagens para tabelas de apoio a gráficos [cite: 12, 17, 18]
+const contarFrequencia = (data, campo) => {
+    const counts = {};
+    data.forEach(d => {
+        if (d[campo] && d[campo] !== '-') {
+            counts[d[campo]] = (counts[d[campo]] || 0) + 1;
+        }
+    });
+    return Object.entries(counts).map(([Label, Qtd]) => ({ Label, Qtd }));
+};
+
+async function exportarExcelProfissional(dataMaster) {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Configurações de Cores (Padrão Corporativo)
+    const AZUL_DMA = '0B3D91';
+    const VERDE_SUCESSO = '166534';
+    const VERMELHO_ALERTA = 'EF4444';
+    const CINZA_CABECALHO = 'F1F5F9';
+
+    // -------------------------------------------------------------------------
+    // 1. ABA DE DASHBOARD (PAINEL DE CONTROLE)
+    // -------------------------------------------------------------------------
+    const dash = workbook.addWorksheet('Painel de Controle', { views: [{ showGridLines: false }] });
+
+    // Título Principal
+    dash.mergeCells('A1:I1');
+    const titleCell = dash.getCell('A1');
+    titleCell.value = 'PAINEL DE BIOMONITORAMENTO - RESUMO EXECUTIVO';
+    titleCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: AZUL_DMA } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    dash.getRow(1).height = 35;
+
+    // Subtítulo com Data de Extração
+    dash.mergeCells('A2:I2');
+    dash.getCell('A2').value = `Relatório extraído em: ${new Date().toLocaleString('pt-BR')}`;
+    dash.getCell('A2').font = { italic: true, size: 10, color: { argb: '475569' } };
+    dash.getCell('A2').alignment = { horizontal: 'center' };
+
+    // Cálculos de Indicadores
+    const total = dataMaster.length;
+    const vitoriadas = dataMaster.filter(d => d.vistoriaRealizada === 'sim').length;
+    const focos = dataMaster.filter(d => d.focoEncontrado === 'sim').length;
+    const conforme = dataMaster.filter(d => d.vistoriaRealizada === 'sim' && d.focoEncontrado === 'nao').length;
+    const emTratamento = dataMaster.filter(d => d.focoEncontrado === 'sim' && d.focoRemediado === 'sim').length;
+
+    // --- TABELA A: INDICADORES DE COBERTURA ---
+    dash.getCell('A4').value = 'INDICADORES DE OPERAÇÃO';
+    dash.getCell('A4').font = { bold: true, color: { argb: AZUL_DMA } };
+    
+    const kpiHeader = ['CATEGORIA', 'VALOR', '%'];
+    const kpiRows = [
+        ['Unidades Cadastradas', total, '100%'],
+        ['Unidades com Vistoria', vitoriadas, ((vitoriadas / total) * 100 || 0).toFixed(1) + '%'],
+        ['Unidades Conforme (Sem Foco)', conforme, ((conforme / total) * 100 || 0).toFixed(1) + '%'],
+        ['Unidades em Tratamento (Remediado)', emTratamento, ((emTratamento / focos) * 100 || 0).toFixed(1) + '%']
+    ];
+
+    let currentL = 5;
+    const kpiHeaderRow = dash.getRow(currentL);
+    kpiHeaderRow.values = kpiHeader;
+    kpiHeaderRow.font = { bold: true };
+    kpiHeaderRow.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CINZA_CABECALHO } }; });
+    
+    kpiRows.forEach(data => {
+        currentL++;
+        const row = dash.getRow(currentL);
+        row.values = data;
+        if(data[0].includes('Tratamento')) row.getCell(1).font = { color: { argb: VERDE_SUCESSO }, bold: true };
+    });
+
+    // --- TABELA B: LOCAIS DE INCIDÊNCIA ---
+    dash.getCell('E4').value = 'LOCAIS DE FOCO (RANKING)';
+    dash.getCell('E4').font = { bold: true, color: { argb: AZUL_DMA } };
+
+    const contarFrequencia = (lista, opcoes, campo) => {
+        return opcoes.map(opt => {
+            const qtd = lista.filter(d => d[campo] === opt.value || d[campo] === opt.label).length;
+            return [opt.label, qtd];
+        }).sort((a, b) => b[1] - a[1]).filter(item => item[1] > 0);
+    };
+
+    const locaisRanking = contarFrequencia(dataMaster, LOCAIS_FOCO_OPTIONS, 'locaisFocoResumo');
+    locaisRanking.forEach((item, i) => {
+        const row = dash.getRow(5 + i);
+        row.getCell(5).value = item[0];
+        row.getCell(6).value = item[1];
+        row.getCell(6).alignment = { horizontal: 'center' };
+    });
+
+    // --- TABELA C: IMPEDIMENTOS ---
+    const linhaInicioMotivos = 13;
+    dash.getCell(`A${linhaInicioMotivos}`).value = 'PRINCIPAIS IMPEDIMENTOS (NÃO VISTORIADOS)';
+    dash.getCell(`A${linhaInicioMotivos}`).font = { bold: true, color: { argb: AZUL_DMA } };
+
+    const motivosNaoVistoria = contarFrequencia(dataMaster, MOTIVOS_NAO_VISTORIA_OPTIONS, 'motivosNaoVistoriaResumo');
+    motivosNaoVistoria.forEach((item, i) => {
+        const row = dash.getRow(linhaInicioMotivos + 1 + i);
+        row.getCell(1).value = item[0];
+        row.getCell(2).value = item[1];
+        row.getCell(2).alignment = { horizontal: 'center' };
+    });
+
+    // Ajuste de colunas do Painel
+    dash.getColumn('A').width = 40;
+    dash.getColumn('B').width = 15;
+    dash.getColumn('E').width = 40;
+    dash.getColumn('F').width = 15;
+
+    // -------------------------------------------------------------------------
+    // 2. ABA DE DADOS BRUTOS (RELATÓRIO CONSOLIDADO)
+    // -------------------------------------------------------------------------
+    const sheet = workbook.addWorksheet('Base de Dados SQL');
+
+    sheet.columns = [
+        { header: 'DATA VISTORIA', key: 'data', width: 18 },
+        { header: 'UNIDADE', key: 'unidade', width: 25 },
+        { header: 'VISTORIA', key: 'vistoria', width: 15 },
+        { header: 'FOCO', key: 'foco', width: 15 },
+        { header: 'REMEDIAÇÃO', key: 'remediacao', width: 15 },
+        { header: 'LOCAL DO FOCO', key: 'local', width: 30 },
+        { header: 'MOTIVO (IMPEDIMENTO)', key: 'motivo', width: 35 },
+        { header: 'OBSERVAÇÕES', key: 'obs', width: 45 }
+    ];
+
+    const headerRowBase = sheet.getRow(1);
+    headerRowBase.font = { name: 'Segoe UI', bold: true, color: { argb: 'FFFFFF' } };
+    headerRowBase.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL_DMA } };
+    headerRowBase.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Inserção dos Dados
+    dataMaster.forEach((reg, index) => {
+        // CORREÇÃO DO ERRO: Definição da dataFormatada dentro do loop
+        let dataFinal = '-';
+        if (reg.data) {
+            const d = new Date(reg.data);
+            dataFinal = !isNaN(d) ? d.toLocaleDateString('pt-BR') : reg.data;
+        }
+
+        const row = sheet.addRow({
+            data: dataFinal,
+            unidade: reg.unidade || 'S/N',
+            vistoria: reg.vistoriaRealizada?.toUpperCase() || 'NÃO',
+            foco: reg.focoEncontrado?.toUpperCase() || 'NÃO',
+            remediacao: reg.focoRemediado?.toUpperCase() || '-',
+            local: reg.locaisFocoResumo || '-',
+            motivo: reg.motivosNaoRemediacaoResumo || reg.motivosNaoVistoriaResumo || '-',
+            obs: reg.observacoes || '-'
+        });
+
+        // Estilização das Colunas conforme solicitado:
+
+        // 1. Coluna VISTORIA: NÃO em destaque vermelho
+        if ((reg.vistoriaRealizada || "").toLowerCase() === 'nao' || (reg.vistoriaRealizada || "").toLowerCase() === 'não') {
+            const cellVistoria = row.getCell('vistoria');
+            cellVistoria.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } }; // Fundo vermelho claro
+            cellVistoria.font = { color: { argb: 'EF4444' }, bold: true }; // Texto vermelho vivo
+        }
+
+        // 2. Coluna FOCO: SIM em destaque vermelho
+        if ((reg.focoEncontrado || "").toLowerCase() === 'sim') {
+            const cellFoco = row.getCell('foco');
+            cellFoco.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
+            cellFoco.font = { color: { argb: 'EF4444' }, bold: true };
+        }
+
+        // 3. Coluna REMEDIAÇÃO: NÃO em destaque vermelho
+        if ((reg.focoRemediado || "").toLowerCase() === 'nao' || (reg.focoRemediado || "").toLowerCase() === 'não') {
+            // Só destaca o NÃO se houve foco (evita destacar células vazias ou com '-')
+            if ((reg.focoEncontrado || "").toLowerCase() === 'sim') {
+                const cellRemed = row.getCell('remediacao');
+                cellRemed.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
+                cellRemed.font = { color: { argb: 'EF4444' }, bold: true };
+            }
+        }
+
+        // Estilo Zebra (apenas nas linhas pares que não possuem destaques críticos)
+        if (index % 2 === 0) {
+            row.eachCell(cell => {
+                if (!cell.fill || cell.fill.fgColor.argb === 'F8FAFC') {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+                }
+            });
+        }
+        row.getCell('data').alignment = { horizontal: 'center' };
+    });
+
+    // -------------------------------------------------------------------------
+    // 3. EXPORTAÇÃO E DOWNLOAD
+    // -------------------------------------------------------------------------
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DMA_Aedes_Consolidado_${new Date().getTime()}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 }
 document.addEventListener('DOMContentLoaded', inicializarDashboardAedes);

@@ -159,7 +159,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       background: linear-gradient(100deg, var(--navy) 0%, var(--navy-mid) 55%, var(--blue) 100%);
       color: #fff;
       /* padding reduzido para não cortar a logo */
-      padding: 4mm 12mm;
+      padding: 0.5mm 12mm;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -171,20 +171,20 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       content: "";
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 3px;
+      height: 8px;
       background: linear-gradient(90deg, transparent, var(--gold-light), var(--gold), var(--gold-light), transparent);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 11px;
+      gap: 15px;
       flex-shrink: 0; /* evita que a logo seja espremida */
     }
 
     .brand-logo {
       width: 48px;
-      height: 48px;
+      height: 40px;
       object-fit: contain;
       flex-shrink: 0;
       display: block; /* remove espaço baseline */
@@ -378,7 +378,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
     /* ── Rodapé institucional ───────────────────────────────── */
     .cert-footer {
       margin-top: auto;
-      padding-top: 8px;
+      padding-top: 15px;
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
@@ -403,7 +403,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       text-align: right;
       font-size: 0.65rem;
       color: var(--muted);
-      line-height: 1.5;
+      line-height: 0.8;
     }
 
     .cert-id {
@@ -485,8 +485,8 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
           no mês de <span class="hl">${escapeHtml(mesNome)} de ${escapeHtml(String(ano))}</span>.
         </p>
         <p>
-          Este certificado reconhece a conformidade da unidade no período informado,
-          conforme a regra operacional vigente no módulo Aedes do Portal DMA.
+          Este certificado reconhece a vistoria mensal realizada pela unidade no período informado,
+          contribuindo para o monitoramento e controle do mosquito Aedes aegypti. 
         </p>
       </div>
 
@@ -505,7 +505,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
             <td>${escapeHtml(unidadeNome)}</td>
             <td>${escapeHtml(mesNome)} / ${escapeHtml(String(ano))}</td>
             <td style="text-align:center;">${escapeHtml(String(total))}</td>
-            <td><span class="badge-conforme">Conforme</span></td>
+            <td><span class="badge-conforme">UNIDADE PROTEGIDA</span></td>
           </tr>
         </tbody>
       </table>

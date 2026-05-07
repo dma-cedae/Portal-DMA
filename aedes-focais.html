@@ -92,22 +92,48 @@
       background-position: center;
     }
 
-    /* LADO DIREITO: GRID COMPACTO */
-    .col-list {
-      background-color: #f8fafc;
-      padding: 3vh 2vw;
-    }
-
-    .list-header { margin-bottom: 2vh; }
-    .list-header h2 { color: var(--dark-blue); font-size: 1.4rem; font-weight: 800; }
     
-    .focais-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 1fr;
-      gap: 10px;
-      height: 75vh;
-    }
+/* 1. Garante que a coluna da lista ocupe o espaço disponível e permita rolagem interna */
+.col-list {
+  background-color: #f8fafc;
+  padding: 3vh 2vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Evita que a coluna inteira role */
+}
+
+/* 2. O header fica fixo no topo da coluna */
+.list-header { 
+  margin-bottom: 2vh; 
+  flex-shrink: 0; 
+}
+
+/* 3. AJUSTE PRINCIPAL: O grid agora é quem controla a rolagem */
+.focais-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  
+  /* Aumente este valor para ganhar espaço vertical */
+  height: 70vh; 
+  
+  /* Garante que o scroll apareça */
+  overflow-y: auto; 
+  padding-right: 10px;
+  
+  /* Ajuste para os cards não ficarem esticados */
+  grid-auto-rows: min-content; 
+  align-content: start;
+}
+
+/* Personalização da scrollbar para Chrome/Edge/Safari */
+.focais-grid::-webkit-scrollbar {
+  width: 6px;
+}
+.focais-grid::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
 
     /* CSS DOS CARDS */
     .focal-card {

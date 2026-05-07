@@ -146,14 +146,17 @@
     }
 
     .image-container {
-      width: 70%;
-      max-width: 280px;
-      aspect-ratio: 1;
-      background-image: url('./assets/dengue_icon2.png');
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
-    }
+    width: 95%; /* Aumentado de 70% para 90% */
+    max-width: 450px; /* Aumentado de 280px para 450px para dar mais presença */
+    aspect-ratio: 1;
+    background-image: url('./assets/dengue_icon2.png');
+    background-size: contain; /* Garante que a imagem apareça inteira sem cortar */
+    background-repeat: no-repeat;
+    background-position: center;
+    
+    /* Filtro opcional para dar um leve destaque/sombra ao ícone */
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1)); 
+  }
 
     .visual-caption {
       text-align: center;
@@ -200,10 +203,12 @@
     .col-form::before {
       content: "";
       position: absolute;
-      inset: 0;
-      background-image:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.04) 0%, transparent 50%);
+      width: 80%; /* Aumentado de 60% para 80% para cercar o ícone maior */
+      aspect-ratio: 1;
+      background: radial-gradient(circle, rgba(11,61,145,0.12) 0%, transparent 70%);
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
       pointer-events: none;
     }
 
@@ -332,21 +337,46 @@
     }
 
     /* ── Status feedback ─────────────────────────────────────── */
-    .status-bar {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      padding: 11px 14px;
-      border-radius: 10px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 14px;
-    }
+    /* Animação de entrada */
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
 
-    .status-bar.show { display: flex; }
-    .status-bar.success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
-    .status-bar.error   { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; }
+      .status-bar {
+        display: none;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        animation: slideUp 0.4s ease forwards;
+        border: 1px solid transparent;
+      }
 
+      .status-bar.show { display: flex; }
+
+      /* Variação Sucesso - Elegível */
+      .status-bar.success {
+        background: rgba(34, 197, 94, 0.1);
+        border-color: rgba(34, 197, 94, 0.4);
+        color: #4ade80;
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+      }
+
+      /* Variação Erro - Não Elegível */
+      .status-bar.error {
+        background: rgba(248, 113, 113, 0.1);
+        border-color: rgba(248, 113, 113, 0.4);
+        color: #f87171;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+      }
+
+      .status-icon {
+        font-size: 1.2rem;
+      }
     /* ── Responsivo ──────────────────────────────────────────── */
     @media (max-width: 900px) {
       .aedes-content { grid-template-columns: 1fr; overflow-y: auto; }
@@ -387,21 +417,10 @@
         <!-- Esquerdo: visual -->
         <section class="split-col col-visual">
           <div class="visual-inner">
-            <div class="badge-pill">
-              <i class="fas fa-shield-virus"></i>
-              Vigilância Ambiental
-            </div>
-
+            
             <div class="image-container" role="img" aria-label="Ícone de combate à dengue"></div>
 
-            <div class="visual-caption">
-              <h2>Controle de Vetores<br />em Tempo Real</h2>
-              <p>
-                Verifique se sua unidade cumpriu o número mínimo de
-                vistorias mensais e emita o certificado de conformidade.
-              </p>
             </div>
-          </div>
         </section>
 
         <!-- Direito: formulário -->

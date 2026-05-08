@@ -241,17 +241,31 @@
         <span style="display: block; font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Profissional Selecionado</span>
         <h3 id="selectedFocalName" style="color: var(--primary-blue); font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.5px; text-transform: uppercase;">---</h3>
       </div>
-      <form id="focalLoginForm">
-        <input type="hidden" id="selectedFocalId" />
-        <input type="email" id="focalEmail" readonly style="display:none;" />
-        
-        <div style="margin-bottom: 15px;">
-          <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:5px; color:#475569;">VALIDAR MATRÍCULA</label>
-          <input type="password" id="focalMatricula" style="width:100%; padding:12px; border-radius:8px; border:2px solid #e2e8f0; font-size: 1rem;" placeholder="****" required />
-        </div>
-        <div id="loginError" style="color: #ef4444; font-size: 0.75rem; margin-bottom: 10px; text-align: center; font-weight: bold;"></div>
-        <button type="submit" style="width:100%; padding:14px; background:var(--primary-blue); color:white; border:none; border-radius:10px; font-weight:800; cursor:pointer;">INICIAR VISTORIAS</button>
-      </form>
+     <form id="focalLoginForm">
+  <input type="hidden" id="selectedFocalId" />
+  
+  <div style="margin-bottom: 15px;">
+    <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:5px; color:#475569;">
+      Senha: Número da Matrícula 
+    </label>
+    <input 
+      type="text" 
+      id="focalMatricula" 
+      style="width:100%; padding:12px; border-radius:8px; border:2px solid #e2e8f0; font-size: 1.1rem; text-align: center; letter-spacing: 2px;" 
+      placeholder="0-000000-0" 
+      required 
+    />
+    <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 8px; text-align: center;">
+      <i class="fas fa-info-circle"></i> Use o formato padrão: <strong>0-000000-0</strong>
+    </p>
+  </div>
+
+  <div id="loginError" style="color: #ef4444; font-size: 0.75rem; margin-bottom: 10px; text-align: center; font-weight: bold;"></div>
+  
+  <button type="submit" style="width:100%; padding:14px; background:var(--primary-blue); color:white; border:none; border-radius:10px; font-weight:800; cursor:pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+    <i class="fas fa-sign-in-alt"></i> ACESSAR GRADE
+  </button>
+</form>
     </div>
   </div>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "portal-dma-v17";
+const CACHE_NAME = "portal-dma-v18";
 
 const APP_ASSETS = [
   "./",
@@ -6,6 +6,7 @@ const APP_ASSETS = [
   "./aedes.html",
   "./recicla.html",
   "./manifest.json",
+  "./icon-192.png",
 
   "./css/global.css",
   "./css/home.css",

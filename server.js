@@ -27,7 +27,7 @@ async function initSchema() {
         id               SERIAL PRIMARY KEY,
         focal_nome       TEXT,
         payload_completo JSONB,
-        total_registros  INTEGER, -- ADICIONE ESTA LINHA
+        total_registros  INTEGER, 
         data_envio       TIMESTAMP DEFAULT NOW()
       );
     `);
@@ -36,14 +36,18 @@ async function initSchema() {
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
         id                     SERIAL PRIMARY KEY,
         lote_id                INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
+        id_referencia          TEXT UNIQUE,
         unidade_id             TEXT,
         unidade_nome           TEXT,
         vistoria_realizada     TEXT,
         foco_encontrado        TEXT,
         foco_remediado         TEXT,
         locais_foco            JSONB,
+        outros_local           TEXT,
         motivos_nao_vistoria   JSONB,
+        outros_motivo_nao_vistoria TEXT,
         motivos_nao_remediacao JSONB,
+        outros_motivo_nao_remediacao TEXT,
         observacoes            TEXT,
         data_registro          TIMESTAMP DEFAULT NOW()
       );
@@ -127,29 +131,28 @@ app.get("/api/aedes/base", async (req, res) => {
 
     let sql = `
       SELECT 
-        matricula, 
-        unidade, 
-        focal AS "focalNome", 
-        email 
-      FROM aedes.stg_importacao_excel
+        u.unidade_id AS id, 
+        u.nome_unidade AS unidade, 
+        stg.matricula, 
+        stg.email,
+        stg.focal AS "focalNome"
+      FROM aedes.unidades u
+      INNER JOIN aedes.stg_importacao_excel stg ON u.nome_unidade = stg.unidade
     `;
     let params = [];
 
-    // Ajustado para aceitar o e-mail que vem do front-end
     if (filtro && filtro.trim() !== "") {
-      sql += " WHERE CAST(matricula AS TEXT) = $1 OR focal ILIKE $2 OR email = $3";
-      params.push(filtro.trim(), `%${filtro.trim()}%`, filtro.trim());
+      sql += " WHERE stg.email = $1 OR CAST(stg.matricula AS TEXT) = $2";
+      params.push(filtro.trim(), filtro.trim());
     }
 
-    sql += " ORDER BY unidade ASC";
+    sql += " ORDER BY u.nome_unidade ASC";
 
     const result = await pool.query(sql, params);
-    console.log(`[API] /aedes/base — Filtro: ${filtro} | Registros: ${result.rowCount}`);
-
     res.json(result.rows);
   } catch (err) {
-    console.error("❌ Erro na rota /api/aedes/base:", err.message);
-    res.status(500).json({ error: "Erro interno ao buscar base consolidada." });
+    console.error("❌ Erro ao buscar dados consolidados:", err.message);
+    res.status(500).json({ error: "Erro interno ao buscar base." });
   }
 });
 /* =========================================================
@@ -186,35 +189,54 @@ app.post("/api/aedes/lotes", async (req, res) => {
     const { cabecalho, dados } = req.body;
     await client.query('BEGIN');
 
-    // 1. Inserir no Lote (Referência explícita ao schema aedes)
+    // 1. Inserir no Lote - AGORA COM 3 PARÂMETROS ($1, $2, $3)
     const loteRes = await client.query(
-      `INSERT INTO aedes.lotes (focal_nome, payload_completo) 
-       VALUES ($1, $2) RETURNING id`,
-      [cabecalho.focal_nome, JSON.stringify(req.body)]
+      `INSERT INTO aedes.lotes (focal_nome, payload_completo, total_registros) 
+       VALUES ($1, $2, $3) RETURNING id`,
+      [cabecalho.focal_nome, JSON.stringify(req.body), dados.length] // <-- Adicionado dados.length ($3)
     );
     const loteId = loteRes.rows[0].id;
 
-    // 2. Inserir nos Itens (Referência explícita ao schema aedes)
+    // 2. Inserir nos Itens - EXATAMENTE 14 PLACEHOLDERS ($1 até $14)
     const itemQuery = `
       INSERT INTO aedes.vistorias_itens (
-        lote_id, unidade_id, unidade_nome, vistoria_realizada, 
-        foco_encontrado, foco_remediado, locais_foco, 
-        motivos_nao_vistoria, motivos_nao_remediacao, observacoes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        lote_id, id_referencia, unidade_id, unidade_nome, 
+        vistoria_realizada, foco_encontrado, foco_remediado, 
+        locais_foco, outros_local,
+        motivos_nao_vistoria, outros_motivo_nao_vistoria,
+        motivos_nao_remediacao, outros_motivo_nao_remediacao,
+        observacoes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ON CONFLICT (id_referencia) DO UPDATE SET
+        lote_id = EXCLUDED.lote_id,
+        outros_local = EXCLUDED.outros_local,
+        outros_motivo_nao_vistoria = EXCLUDED.outros_motivo_nao_vistoria,
+        outros_motivo_nao_remediacao = EXCLUDED.outros_motivo_nao_remediacao,
+        observacoes = EXCLUDED.observacoes;
     `;
 
+    const dataHoje = new Date().toISOString().split('T')[0].replace(/-/g, '');
+
     for (const row of dados) {
+  // Gerar ID Semântico
+  const idReferencia = `${row[1].replace(/\s+/g, '')}_${dataHoje}`;
+  
+      // 3. MAPEAMENTO DE 14 VALORES CORRESPONDENTES
       await client.query(itemQuery, [
-        loteId,
-        row[0], // unidadeId
-        row[1], // unidadeNome
-        row[2], // vistoriaRealizada
-        row[3], // focoEncontrado
-        row[4], // focoRemediado
-        JSON.stringify(row[5] || []), // locaisFoco
-        JSON.stringify(row[6] || []), // motivosNaoVistoria
-        JSON.stringify(row[7] || []), // motivosNaoRemediacao
-        row[8]  // observacoes
+        loteId,         // $1
+        idReferencia,   // $2
+        row[1],         // $3 - unidade_id
+        row[2],         // $4 - unidade_nome
+        row[3],         // $5 - vistoria_realizada
+        row[4],         // $6 - foco_encontrado
+        row[5],         // $7 - foco_remediado
+        JSON.stringify(row[5] || []), // $8 - locais_foco
+        row[6],         // $9 - outros_local
+        JSON.stringify(row[7] || []), // $10 - motivos_nao_vistoria
+        row[7],         // $11 - outros_motivo_nao_vistoria
+        JSON.stringify(row[9] || []), // $12 - motivos_nao_remediacao
+        row[8],        // $13 - outros_motivo_nao_remediacao
+        row[9]         // $14 - observacoes
       ]);
     }
 
@@ -223,7 +245,7 @@ app.post("/api/aedes/lotes", async (req, res) => {
 
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error("❌ ERRO NO BANCO:", err.message); // Verifique este log no seu terminal!
+    console.error("❌ ERRO NO BANCO:", err.message);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();

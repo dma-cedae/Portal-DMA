@@ -133,7 +133,7 @@ async function buildGridRows() {
 
     gridRows = unidadesFocal.map((itemSTG) => ({
       rowId: createLocalId("row"),
-      unidadeId: itemSTG.matricula || null,
+      unidadeId: itemSTG.matricula || "S/M",
       unidade: itemSTG.unidade || "Unidade sem identificação",
       statusLinha: "Pendente",
       vistoriaRealizada: "",
@@ -293,18 +293,10 @@ function hasValidGroupSelection(values, otherText) {
 function getStatusClass(s) { return s === "Pronto" ? "status-pill--success" : (s === "Pendente" ? "status-pill--muted" : "status-pill--danger"); }
 
 /**
- * ============================================================
- * ENVIO DE DADOS (ENXUTO)
- * ============================================================
- */
-
-/**
- * ENVIO DE DADOS (AJUSTADO PARA O SERVER)
+ * ENVIO DE DADOS 
  */
 function buildBatchPayload(dataRef) {
-  // Usa a variável global currentSession que já foi definida no topo do arquivo
-  const user = currentSession; 
-
+  const user = currentSession;
   return {
     cabecalho: {
       focal_nome: user?.nome || "Não Identificado",
@@ -315,21 +307,22 @@ function buildBatchPayload(dataRef) {
       total_registros: gridRows.length,
       lote_id_cliente: createLocalId("lote")
     },
-    // Matriz de dados enviada para a rota POST /api/aedes/lotes
     dados: gridRows.map(row => [
-      row.unidade_id,                            // 0: unidade_id
-      row.unidade,                              // 1: unidade_nome
-      row.vistoriaRealizada || DASH_VALUE,      // 2: vistoria_realizada
-      row.focoEncontrado || DASH_VALUE,         // 3: foco_encontrado
-      row.focoRemediado || DASH_VALUE,          // 4: foco_remediado
-      row.locaisFoco || [],                     // 5: locais_foco (Array)
-      row.motivosNaoVistoria || [],             // 6: motivos_nao_vistoria (Array)
-      row.motivosNaoRemediacao || [],           // 7: motivos_nao_remediacao (Array)
-      safeTrim(row.observacoes) || DASH_VALUE   // 8: observacoes
+      row.unidadeId,                             // 0: unidade_id [cite: 24, 64]
+      row.unidade,                               // 1: unidade_nome [cite: 24, 64]
+      row.vistoriaRealizada || DASH_VALUE,       // 2: vistoria_realizada 
+      row.focoEncontrado || DASH_VALUE,          // 3: foco_encontrado 
+      row.focoRemediado || DASH_VALUE,           // 4: foco_remediado 
+      row.locaisFoco || [],                      // 5: locais_foco (Array) 
+      safeTrim(row.outrosLocalFoco),             // 6: outros_local (NOVO) 
+      row.motivosNaoVistoria || [],              // 7: motivos_nao_vistoria (Array) 
+      safeTrim(row.outrosMotivoNaoVistoria),     // 8: outros_motivo_nao_vistoria (NOVO) 
+      row.motivosNaoRemediacao || [],            // 9: motivos_nao_remediacao (Array) 
+      safeTrim(row.outrosMotivoNaoRemediacao),   // 10: outros_motivo_nao_remediacao (NOVO) 
+      safeTrim(row.observacoes) || DASH_VALUE    // 11: observacoes [cite: 24, 66]
     ])
   };
 }
-
 // Corrija também o listener do botão no final do arquivo para gerenciar o cursor
 document.addEventListener('DOMContentLoaded', () => {
     const chk = document.getElementById('chkResponsabilidade');

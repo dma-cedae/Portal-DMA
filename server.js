@@ -36,20 +36,20 @@ async function initSchema() {
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
         id                     SERIAL PRIMARY KEY,
         lote_id                INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
-        id_referencia          TEXT UNIQUE,
-        unidade_id             TEXT,
+        unidade_id             TEXT UNIQUE, 
         unidade_nome           TEXT,
         vistoria_realizada     TEXT,
         foco_encontrado        TEXT,
         foco_remediado         TEXT,
-        locais_foco            JSONB,
-        outros_local           TEXT,
         motivos_nao_vistoria   JSONB,
-        outros_motivo_nao_vistoria TEXT,
         motivos_nao_remediacao JSONB,
-        outros_motivo_nao_remediacao TEXT,
+        locais_foco            JSONB,
         observacoes            TEXT,
-        data_registro          TIMESTAMP DEFAULT NOW()
+        data_registro          TIMESTAMP DEFAULT NOW(),
+        outros_local           TEXT,
+        outros_motivo_nao_vistoria TEXT,
+        outros_motivo_nao_remediacao TEXT,
+        id_referencia          TEXT UNIQUE
       );
     `);
   
@@ -222,21 +222,21 @@ app.post("/api/aedes/lotes", async (req, res) => {
   const idReferencia = `${row[1].replace(/\s+/g, '')}_${dataHoje}`;
   
       // 3. MAPEAMENTO DE 14 VALORES CORRESPONDENTES
-      await client.query(itemQuery, [
+            await client.query(itemQuery, [
         loteId,         // $1
         idReferencia,   // $2
-        row[1],         // $3 - unidade_id
-        row[2],         // $4 - unidade_nome
-        row[3],         // $5 - vistoria_realizada
-        row[4],         // $6 - foco_encontrado
-        row[5],         // $7 - foco_remediado
-        JSON.stringify(row[5] || []), // $8 - locais_foco
-        row[6],         // $9 - outros_local
-        JSON.stringify(row[7] || []), // $10 - motivos_nao_vistoria
-        row[7],         // $11 - outros_motivo_nao_vistoria
-        JSON.stringify(row[9] || []), // $12 - motivos_nao_remediacao
-        row[8],        // $13 - outros_motivo_nao_remediacao
-        row[9]         // $14 - observacoes
+        row[0],         // $3 - unidade_id
+        row[1],         // $4 - unidade_nome
+        row[2],         // $5 - vistoria_realizada
+        row[3],         // $6 - foco_encontrado
+        row[4],         // $7 - foco_remediado
+        JSON.stringify(row[5] || []),  // $8 - locais_foco
+        row[6],                        // $9 - outros_local
+        JSON.stringify(row[7] || []),  // $10 - motivos_nao_vistoria
+        row[8],                        // $11 - outros_motivo_nao_vistoria
+        JSON.stringify(row[9] || []),  // $12 - motivos_nao_remediacao
+        row[10],                       // $13 - outros_motivo_nao_remediacao
+        row[11]                        // $14 - observacoes
       ]);
     }
 

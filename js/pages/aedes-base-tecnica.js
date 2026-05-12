@@ -605,11 +605,12 @@ function renderVirtualTable() {
     els.baseTableCount.textContent = `${formatNumber(total)} registros`;
   }
 
+  // Ajuste do colspan para 13 (total de colunas que você quer exibir)
   if (!total) {
     els.baseVirtualSpacer.style.height = "auto";
     els.baseTecnicaTableBody.innerHTML = `
       <tr>
-        <td colspan="11" class="base-empty">
+        <td colspan="13" class="base-empty">
           Nenhum registro encontrado com os filtros atuais.
         </td>
       </tr>
@@ -633,20 +634,28 @@ function renderVirtualTable() {
     table.style.transform = `translateY(${offsetTop}px)`;
   }
 
+  // MAPEAMENTO ALINHADO COM A ORDEM SOLICITADA
   els.baseTecnicaTableBody.innerHTML = visibleRows
     .map((row) => `
       <tr style="height:${VIRTUAL_ROW_HEIGHT}px;">
-        <td>${escapeHtml(row.data_envio ? formatDateTime(row.data_envio) : DASH_VALUE)}</td>
-        <td>${escapeHtml(row.focal_nome || DASH_VALUE)}</td>
-        <td>${escapeHtml(row.unidade_nome || DASH_VALUE)}</td>
-        <td>${escapeHtml(row.semana || DASH_VALUE)}</td>
+        <td>${escapeHtml(row.data_registro ? formatDateTime(row.data_registro) : DASH_VALUE)}</td>
+        <td>${escapeHtml(row.unidade_id || DASH_VALUE)}</td>
+        <td><strong>${escapeHtml(row.unidade_nome || DASH_VALUE)}</strong></td>
+        
         <td><span class="${getStatusPillClass(row.vistoria_realizada)}">${escapeHtml(row.vistoria_realizada || DASH_VALUE)}</span></td>
+        <td>${escapeHtml(Array.isArray(row.motivos_nao_vistoria) ? row.motivos_nao_vistoria.join(", ") : row.motivos_nao_vistoria || DASH_VALUE)}</td>
+        
         <td><span class="${getStatusPillClass(row.foco_encontrado)}">${escapeHtml(row.foco_encontrado || DASH_VALUE)}</span></td>
+        <td>${escapeHtml(Array.isArray(row.locais_foco) ? row.locais_foco.join(", ") : row.locais_foco || DASH_VALUE)}</td>
+        
         <td><span class="${getStatusPillClass(row.foco_remediado)}">${escapeHtml(row.foco_remediado || DASH_VALUE)}</span></td>
-        <td>${escapeHtml(row.locais_foco_resumo || DASH_VALUE)}</td>
-        <td>${escapeHtml(row.motivos_nao_remediacao_resumo || DASH_VALUE)}</td>
-        <td>${escapeHtml(row.motivos_nao_vistoria_resumo || DASH_VALUE)}</td>
-        <td>${escapeHtml(row.observacoes || DASH_VALUE)}</td>
+        <td>${escapeHtml(Array.isArray(row.motivos_nao_remediacao) ? row.motivos_nao_remediacao.join(", ") : row.motivos_nao_remediacao || DASH_VALUE)}</td>
+        
+        <td><small>${escapeHtml(row.outros_local || DASH_VALUE)}</small></td>
+        <td><small>${escapeHtml(row.outros_motivo_nao_vistoria || DASH_VALUE)}</small></td>
+        <td><small>${escapeHtml(row.outros_motivo_nao_remediacao || DASH_VALUE)}</small></td>
+        
+        <td><small>${escapeHtml(row.observacoes || DASH_VALUE)}</small></td>
       </tr>
     `)
     .join("");

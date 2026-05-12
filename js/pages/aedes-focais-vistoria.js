@@ -323,7 +323,7 @@ function buildBatchPayload(dataRef) {
     ])
   };
 }
-// Corrija também o listener do botão no final do arquivo para gerenciar o cursor
+// listener do botão no final do arquivo para gerenciar o cursor
 document.addEventListener('DOMContentLoaded', () => {
     const chk = document.getElementById('chkResponsabilidade');
     const btn = document.getElementById('btnEnviarRelatorio');
@@ -331,7 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chk && btn) {
         chk.addEventListener('change', () => { 
             btn.disabled = !chk.checked;
-            // Removemos o estilo inline de cursor para o CSS (que adicionamos antes) assumir
             btn.style.opacity = chk.checked ? "1" : "0.5"; 
         });
     }

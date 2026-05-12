@@ -41,22 +41,24 @@ async function inicializarDashboardAedes() {
             const registros = lote.payload_completo?.dados || [];
             const nomeDoFocal = lote.focal_nome || "Não Identificado";
 
-            registros.forEach(reg => { 
-                dataMaster.push({
-                    // ✨ CORREÇÃO: Agora pegamos a data que está FORA do json (lote.data_envio)
-                    data: dataEnvioBanco, 
-                    focal_nome: nomeDoFocal,
-                    unidadeId: reg[0],
-                    unidade: reg[1],
-                    vistoriaRealizada: reg[2],
-                    focoEncontrado: reg[3],
-                    focoRemediado: reg[4],
-                    locaisFocoResumo: Array.isArray(reg[5]) ? reg[5].join(", ") : reg[5], 
-                    motivosNaoVistoriaResumo: Array.isArray(reg[6]) ? reg[6][0] : reg[6],
-                    motivosNaoRemediacaoResumo: Array.isArray(reg[7]) ? reg[7][0] : reg[7],
-                    observacoes: reg[8]
-                }); 
+            // Dentro de inicializarDashboardAedes
+        registros.forEach(reg => { 
+            dataMaster.push({
+                data_registro: dataEnvioBanco,
+                unidade_id: reg[0],
+                unidade_nome: reg[1],
+                vistoria_realizada: reg[2],
+                motivos_nao_vistoria: reg[7],
+                foco_encontrado: reg[3],
+                locais_foco: reg[5],
+                foco_remediado: reg[4],
+                motivos_nao_remediacao: reg[9],
+                outros_local: reg[6],
+                outros_motivo_nao_vistoria: reg[8],
+                outros_motivo_nao_remediacao: reg[10],
+                observacoes: reg[11]
             });
+        });
         });
 
         // Renderiza a interface existente
@@ -119,17 +121,45 @@ function renderDados(data, listaFocais) {
             if (labelLocal && stats.locais.hasOwnProperty(labelLocal)) stats.locais[labelLocal]++;
         }
 
-        return `
-            <tr>
-                <td><strong>${reg.unidade || 'S/N'}</strong></td>
-                <td><span class="badge ${vist ? 'badge-sim' : 'badge-nao'}">${vist ? 'Sim' : '🚨Não'}</span></td>
-                <td>${vist ? (foco ? '🚨 Sim' : 'Não') : '-'}</td>
-                <td>${(vist && foco) ? (remd ? 'Sim' : '🚨Não') : '-'}</td>
-                <td>${reg.motivosNaoVistoriaResumo || '-'}</td>
-                <td>${reg.motivosNaoRemediacaoResumo || '-'}</td>
-                <td><small>${reg.observacoes || '-'}</small></td>
-            </tr>`;
-    }).join('');
+    return `
+    <tr>
+        <td>${reg.data ? new Date(reg.data).toLocaleDateString('pt-BR') : '-'}</td>
+        
+        <td>${reg.unidadeId || '-'}</td>
+        
+        <td><strong>${reg.unidade || 'S/N'}</strong></td>
+        
+        <td>
+            <span class="badge ${(reg.vistoriaRealizada || '').toLowerCase().includes('sim') ? 'badge-sim' : 'badge-nao'}">
+                ${(reg.vistoriaRealizada || '').toLowerCase().includes('sim') ? 'Sim' : '🚨Não'}
+            </span>
+        </td>
+        
+        <td>${Array.isArray(reg.motivosNaoVistoriaResumo) ? reg.motivosNaoVistoriaResumo.join(', ') : (reg.motivosNaoVistoriaResumo || '-')}</td>
+        
+        <td>
+            ${(reg.focoEncontrado || '').toLowerCase() === 'sim' ? '<span style="color:red; font-weight:bold;">🚨 Sim</span>' : 'Não'}
+        </td>
+        
+        <td>${Array.isArray(reg.locaisFocoResumo) ? reg.locaisFocoResumo.join(', ') : (reg.locaisFocoResumo || '-')}</td>
+        
+        <td>
+            ${(reg.focoEncontrado || '').toLowerCase() === 'sim' 
+                ? ((reg.focoRemediado || '').toLowerCase() === 'sim' ? 'Sim' : '<span style="color:red; font-weight:bold;">🚨Não</span>')
+                : '-'}
+        </td>
+        
+        <td>${Array.isArray(reg.motivosNaoRemediacaoResumo) ? reg.motivosNaoRemediacaoResumo.join(', ') : (reg.motivosNaoRemediacaoResumo || '-')}</td>
+        
+        <td><small>${reg.outros_local || '-'}</small></td>
+        
+        <td><small>${reg.outros_motivo_nao_vistoria || '-'}</small></td>
+        
+        <td><small>${reg.outros_motivo_nao_remediacao || '-'}</small></td>
+        
+        <td><small>${reg.observacoes || '-'}</small></td>
+    </tr>`;
+}).join('');
 
     // Renderização da tabela de Focais (Status de envio)
     if (tbodyFocais && listaFocais) {
@@ -667,16 +697,20 @@ async function exportarExcelProfissional(dataMaster) {
     const sheet = workbook.addWorksheet('Base de Dados SQL');
 
     sheet.columns = [
-        { header: 'DATA VISTORIA', key: 'data', width: 18 },
-        { header: 'UNIDADE', key: 'unidade', width: 25 },
-        { header: 'VISTORIA', key: 'vistoria', width: 15 },
-        { header: 'FOCO', key: 'foco', width: 15 },
-        { header: 'REMEDIAÇÃO', key: 'remediacao', width: 15 },
-        { header: 'LOCAL DO FOCO', key: 'local', width: 30 },
-        { header: 'MOTIVO (IMPEDIMENTO)', key: 'motivo', width: 35 },
-        { header: 'OBSERVAÇÕES', key: 'obs', width: 45 }
-    ];
-
+    { header: 'DATA REGISTRO', key: 'data_registro', width: 15 },
+    { header: 'ID UNIDADE', key: 'unidade_id', width: 12 },
+    { header: 'UNIDADE NOME', key: 'unidade_nome', width: 25 },
+    { header: 'VISTORIA', key: 'vistoria_realizada', width: 15 },
+    { header: 'MOTIVO NÃO VISTORIA', key: 'motivos_nao_vistoria', width: 30 },
+    { header: 'FOCO ENCONTRADO', key: 'foco_encontrado', width: 15 },
+    { header: 'LOCAIS FOCO', key: 'locais_foco', width: 30 },
+    { header: 'FOCO REMEDIADO', key: 'foco_remediado', width: 15 },
+    { header: 'MOTIVO NÃO REMEDIAÇÃO', key: 'motivos_nao_remediacao', width: 30 },
+    { header: 'OUTROS: LOCAL', key: 'outros_local', width: 20 },
+    { header: 'OUTROS: MOTIVO VISTORIA', key: 'outros_motivo_nao_vistoria', width: 25 },
+    { header: 'OUTROS: MOTIVO REMEDIAÇÃO', key: 'outros_motivo_nao_remediacao', width: 25 },
+    { header: 'OBSERVAÇÕES', key: 'observacoes', width: 40 }
+];
     const headerRowBase = sheet.getRow(1);
     headerRowBase.font = { name: 'Segoe UI', bold: true, color: { argb: 'FFFFFF' } };
     headerRowBase.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL_DMA } };
@@ -692,28 +726,33 @@ async function exportarExcelProfissional(dataMaster) {
         }
 
         const row = sheet.addRow({
-            data: dataFinal,
-            unidade: reg.unidade || 'S/N',
-            vistoria: reg.vistoriaRealizada?.toUpperCase() || 'NÃO',
-            foco: reg.focoEncontrado?.toUpperCase() || 'NÃO',
-            remediacao: reg.focoRemediado?.toUpperCase() || '-',
-            local: reg.locaisFocoResumo || '-',
-            motivo: reg.motivosNaoRemediacaoResumo || reg.motivosNaoVistoriaResumo || '-',
-            obs: reg.observacoes || '-'
+            data_registro: reg.data_registro ? new Date(reg.data_registro).toLocaleDateString('pt-BR') : '-',
+            unidade_id: reg.unidade_id || '-',
+            unidade_nome: reg.unidade_nome || '-',
+            vistoria_realizada: String(reg.vistoria_realizada || 'NÃO').toUpperCase(),
+            motivos_nao_vistoria: Array.isArray(reg.motivos_nao_vistoria) ? reg.motivos_nao_vistoria.join(', ') : (reg.motivos_nao_vistoria || '-'),
+            foco_encontrado: String(reg.foco_encontrado || 'NÃO').toUpperCase(),
+            locais_foco: Array.isArray(reg.locais_foco) ? reg.locais_foco.join(', ') : (reg.locais_foco || '-'),
+            foco_remediado: String(reg.foco_remediado || 'NÃO').toUpperCase(),
+            motivos_nao_remediacao: Array.isArray(reg.motivos_nao_remediacao) ? reg.motivos_nao_remediacao.join(', ') : (reg.motivos_nao_remediacao || '-'),
+            outros_local: reg.outros_local || '-',
+            outros_motivo_nao_vistoria: reg.outros_motivo_nao_vistoria || '-',
+            outros_motivo_nao_remediacao: reg.outros_motivo_nao_remediacao || '-',
+            observacoes: reg.observacoes || '-'
         });
 
         // Estilização das Colunas conforme solicitado:
 
         // 1. Coluna VISTORIA: NÃO em destaque vermelho
         if ((reg.vistoriaRealizada || "").toLowerCase() === 'nao' || (reg.vistoriaRealizada || "").toLowerCase() === 'não') {
-            const cellVistoria = row.getCell('vistoria');
+            const cellVistoria = row.getCell('vistoria_realizada');
             cellVistoria.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } }; // Fundo vermelho claro
             cellVistoria.font = { color: { argb: 'EF4444' }, bold: true }; // Texto vermelho vivo
         }
 
         // 2. Coluna FOCO: SIM em destaque vermelho
         if ((reg.focoEncontrado || "").toLowerCase() === 'sim') {
-            const cellFoco = row.getCell('foco');
+            const cellFoco = row.getCell('foco_encontrado');
             cellFoco.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
             cellFoco.font = { color: { argb: 'EF4444' }, bold: true };
         }
@@ -722,7 +761,7 @@ async function exportarExcelProfissional(dataMaster) {
         if ((reg.focoRemediado || "").toLowerCase() === 'nao' || (reg.focoRemediado || "").toLowerCase() === 'não') {
             // Só destaca o NÃO se houve foco (evita destacar células vazias ou com '-')
             if ((reg.focoEncontrado || "").toLowerCase() === 'sim') {
-                const cellRemed = row.getCell('remediacao');
+                const cellRemed = row.getCell('foco_remediado');
                 cellRemed.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
                 cellRemed.font = { color: { argb: 'EF4444' }, bold: true };
             }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "portal-dma-v18";
+const CACHE_NAME = "portal-dma-v19";
 
 const APP_ASSETS = [
   "./",
@@ -71,14 +71,20 @@ self.addEventListener("activate", (event) => {
 // ----------------------------
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-
-  // ❗ BLOQUEIO CRÍTICO: ignora chrome-extension, blob, file etc
   const url = new URL(request.url);
-  if (!["http:", "https:"].includes(url.protocol)) {
-    return;
-  }
 
-  if (request.method !== "GET") return;
+  // 1. Ignora protocolos estranhos
+  if (!["http:", "https:"].includes(url.protocol)) return;
+
+  // 2. REGRA PARA API: Network First (Tenta rede, se falhar não cacheia lixo)
+  if (url.hostname === "dma-aedes-api.onrender.com") {
+    event.respondWith(fetch(request).catch(() => {
+      return new Response(JSON.stringify({ error: "Você está offline" }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }));
+    return; 
+  }
 
   // ----------------------------
   // NAVEGAÇÃO (HTML)

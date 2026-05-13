@@ -4,6 +4,9 @@ const APP_ASSETS = [
   "./",
   "./index.html",
   "./aedes.html",
+  "./aedes-publico.html",
+  "./aedes-tecnico.html",
+  "./aedes-focais.html",
   "./recicla.html",
   "./manifest.json",
   "./icon-192.png",
@@ -20,7 +23,7 @@ const APP_ASSETS = [
   "./js/certs.js",
   "./js/aedes.js",
   "./js/aedes-publico.js",
-
+  "./js/aedes-tecnico.js",
   "./data/recicla-pagina.json",
 
   "./assets/icon.png",

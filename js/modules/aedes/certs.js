@@ -29,6 +29,11 @@ function getMonthName(mes) {
 }
 
 export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
+  // Isso pega "https://seu-dominio.com" ou o endereço do codespace
+  const baseUrl = window.location.origin; 
+  const logoUrl = `${baseUrl}/assets/icon-192.png`;
+
+
   const mesNome     = getMonthName(mes);
   const dataGeracao = formatLongDate();
   const certId      = `DMA-${String(ano).slice(-2)}${String(mes).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
@@ -97,7 +102,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
 
     .actions-bar button:hover  { filter: brightness(1.08); }
     .actions-bar button:active { transform: scale(0.97); }
-    .btn-print { background: var(--navy); color: #fff; }
+    .btn-print { background: var(--navy); color: #ffffff; }
     .btn-close { background: transparent; border: 1.5px solid var(--navy) !important; color: var(--navy); }
 
     /* ── Folha ──────────────────────────────────────────────── */
@@ -147,8 +152,8 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       height: 14mm;
       pointer-events: none;
     }
-    .corner--tl { top: 12mm;    left: 12mm;  border-top: 2px solid var(--gold); border-left:  2px solid var(--gold); }
-    .corner--tr { top: 12mm;    right: 12mm; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+    .corner--tl { top: 25mm;    left: 12mm;  border-top: 2px solid var(--gold); border-left:  2px solid var(--gold); }
+    .corner--tr { top: 25mm;    right: 12mm; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
     .corner--bl { bottom: 12mm; left: 12mm;  border-bottom: 2px solid var(--gold); border-left:  2px solid var(--gold); }
     .corner--br { bottom: 12mm; right: 12mm; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
 
@@ -156,14 +161,16 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
     .topbar {
       position: relative;
       z-index: 2;
-      background: linear-gradient(100deg, var(--navy) 0%, var(--navy-mid) 55%, var(--blue) 100%);
-      color: #fff;
-      /* padding reduzido para não cortar a logo */
-      padding: 0.5mm 12mm;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 40%, #051937 100%);
+      color: #ffffff;
+      /* Aumentamos o padding vertical para dar elegância */
+      padding: 4mm 14mm 6mm; 
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      /* Sombra para destacar do fundo cream */
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
 
     /* Faixa dourada abaixo do topo */
@@ -171,8 +178,12 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       content: "";
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 8px;
-      background: linear-gradient(90deg, transparent, var(--gold-light), var(--gold), var(--gold-light), transparent);
+      height: 4px;
+      background: linear-gradient(90deg, 
+        var(--gold) 0%, 
+        var(--gold-light) 50%, 
+        var(--gold) 100%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
     .brand {
@@ -183,11 +194,13 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
     }
 
     .brand-logo {
-      width: 48px;
-      height: 40px;
+      /* Aumentamos um pouco a logo */
+      width: 50px; 
+      height: auto;
+      filter: drop-shadow(0 0 2px rgba(255,255,255,0.2)); /* Leve brilho na logo */
       object-fit: contain;
       flex-shrink: 0;
-      display: block; /* remove espaço baseline */
+      display: block;
     }
 
     .brand-text small {
@@ -199,20 +212,12 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       margin-bottom: 2px;
     }
 
-    .brand-text strong {
-      display: block;
-      font-family: "Cinzel", serif;
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-    }
-
     .top-badge {
       text-align: right;
-      font-size: 0.7rem;
-      line-height: 1.5;
-      opacity: 0.88;
-      max-width: 85mm;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      border-left: 1px solid rgba(255,255,255,0.2); /* Divisória sutil */
+      padding-left: 15px;
     }
 
     .top-badge strong {
@@ -225,13 +230,16 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
     .body {
       position: relative;
       z-index: 2;
-      padding: 6mm 18mm 5mm;
+      padding: 25mm 18mm 5mm;
       display: flex;
       flex-direction: column;
-      /* altura = folha - topbar estimada (~22mm) */
+      
+      /* ADICIONE ESTA LINHA */
+      justify-content: center; 
+
+      /* Mantém a altura calculada */
       height: calc(var(--sheet-h) - 22mm);
     }
-
     .eyebrow {
       text-align: center;
       font-size: 0.62rem;
@@ -377,13 +385,16 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
 
     /* ── Rodapé institucional ───────────────────────────────── */
     .cert-footer {
-      margin-top: auto;
-      padding-top: 15px;
+      margin-top: auto; 
+      /* ADICIONE ESSA LINHA ABAIXO */
+      margin-bottom: 15mm; 
+      
+      padding-top: 10px;
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      gap: 12px;
+      gap: 15px;
     }
 
     .footer-institution {
@@ -454,7 +465,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
 
     <header class="topbar">
       <div class="brand">
-        <img class="brand-logo" src="../assets/icon-192.png" alt="Portal DMA" />
+        <img class="brand-logo" src="${logoUrl}" alt="Portal DMA" />
         <div class="brand-text">
           <small>Sistema de Gestão Ambiental</small>
           <strong>Portal DMA</strong>
@@ -462,7 +473,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       </div>
 
       <div class="top-badge">
-        <strong>Programa de Combate ao Aedes aegypti</strong>
+        <strong>Programa de Combate ao <i>Aedes aegypti</i></strong>
         Certificado de Conformidade Mensal — CEDAE
       </div>
     </header>
@@ -480,13 +491,13 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
         </div>
         <p>
           atendeu ao critério mínimo de vistorias estabelecido pelo
-          <span class="hl">Programa de Combate ao Aedes aegypti</span>,
+          <span class="hl">Programa de Combate ao <i>Aedes aegypti</i></span>,
           registrando <span class="hl">${escapeHtml(String(total))} vistorias</span>
           no mês de <span class="hl">${escapeHtml(mesNome)} de ${escapeHtml(String(ano))}</span>.
         </p>
         <p>
           Este certificado reconhece a vistoria mensal realizada pela unidade no período informado,
-          contribuindo para o monitoramento e controle do mosquito Aedes aegypti. 
+          contribuindo para o monitoramento e controle do mosquito <i>Aedes aegypti</i>.
         </p>
       </div>
 

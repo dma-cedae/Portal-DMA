@@ -1,4 +1,4 @@
-const CACHE_NAME = "portal-dma-v19";
+const CACHE_NAME = "portal-dma-v20";
 
 const APP_ASSETS = [
   "./",
@@ -26,7 +26,7 @@ const APP_ASSETS = [
   "./js/pages/aedes-focais.js",
   "./js/pages/aedes-focais.js",
   "./js/pages/aedes-focais-vistoria.js",
-  "./data/recicla-pagina.json",
+ 
 
   "./assets/icon.png",
   "./assets/folder-arboviroses.jpg"

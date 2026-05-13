@@ -247,6 +247,11 @@
     margin-bottom: 8px;
     letter-spacing: 0.5px;
 }
+.sublinhado-amarelo {
+  border-bottom: 2px solid #FFD700; /* Cor amarela */
+  padding-bottom: 1px;             /* Afasta a linha do texto */
+}
+
   </style>
 </head>
 
@@ -308,7 +313,7 @@
           <div class="vistoria-card__header">
             <div class="header-text">
               <h2 class="vistoria-card__title">Lançamento semanal por unidade</h2>
-              <p class="vistoria-card__text">Preencha a grade com base nas unidades vinculadas ao seu acesso. Os dados temporais são gerados automaticamente.</p>
+              <p class="vistoria-card__text">Preencha a grade das unidades vinculadas ao seu acesso.</p>
             </div>
             <span id="gridUnitCount" class="table-count badge">0 unidades</span>
           </div>
@@ -336,9 +341,15 @@
           </div>
         </section>
 
-        <section class="vistoria-submit-card">
-          <div class="submit-info">
-            <p class="submit-text"><strong>Atenção:</strong> Antes de enviar, confira todas as linhas da grade.</p>
+       <section class="vistoria-submit-card"> 
+  <div class="submit-info"> 
+    <p class="submit-text">
+      <strong>Atenção:</strong> 
+      <span class="sublinhado-amarelo">Antes de enviar, confira todas as linhas da grade.</span>
+    </p>
+  </div>
+</section>
+
             
             <div class="termo-container" style="margin-top: 15px; padding: 12px; background: #f0f4f8; border-radius: 6px; border-left: 4px solid #0056b3;">
               <label style="display: flex; align-items: flex-start; cursor: pointer; font-size: 13.5px; color: #334155; line-height: 1.4;">
@@ -347,7 +358,6 @@
               </label>
             </div>
             
-            <p class="submit-hint" style="margin-top: 10px;">O envio registra o relatório semanal completo para validação no workspace técnico.</p>
           </div>
 
           <div class="submit-actions">

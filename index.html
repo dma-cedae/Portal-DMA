@@ -183,6 +183,21 @@
 
     </div>
   </main>
+    <script src="./js/core/auth.js"></script>
 
+      <script>
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            // O caminho deve apontar exatamente para onde está o seu arquivo js do service worker
+            navigator.serviceWorker.register('./sw.js') 
+              .then((registration) => {
+                console.log('Service Worker registrado com sucesso:', registration.scope);
+              })
+              .catch((error) => {
+                console.error('Falha ao registrar o Service Worker:', error);
+              });
+          });
+        }
+      </script>
 </body>
 </html>

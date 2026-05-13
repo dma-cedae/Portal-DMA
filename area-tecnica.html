@@ -246,6 +246,12 @@
 
   <script src="./js/core/api-config.js"></script>
   <script src="./js/core/auth.js"></script>
+   
+  <script>
+  // Verifica se o usuário está logado. Se não, manda para login.html
+  requireAuth("./login.html");
+  </script>
+
   <script type="module" src="./js/pages/area-tecnica.js"></script>
   
   <script>

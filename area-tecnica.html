@@ -3,115 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Área Técnica | Hub de Gestão e Auditoria</title>
-  <link rel="icon" type="image/png" href="./assets/logo-cedae-transparente.png">
-
+  <title>Área Técnica | Hub de Gestão</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
   <style>
     :root {
       --sidebar-width: 260px;
+      --kpi-column-width: 280px;
       --primary-blue: #0b3d91;
-      --dark-blue: #001d3d; /* Azul mais profundo para o núcleo técnico */
+      --dark-blue: #001d3d;
       --accent-green: #22c55e;
       --warning-orange: #f59e0b;
       --danger-red: #ef4444;
       --bg-gray: #f4f7fa;
-      --text-main: #334155;
       --white: #ffffff;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-gray); color: var(--text-main); display: flex; min-height: 100vh; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-gray); display: flex; }
 
-    /* LOGO DMA ESTILIZADO (Substituindo a imagem da empresa) */
-    .logo-dma-estilizado {
-      width: 45px;
-      height: 45px;
-      background: linear-gradient(135deg, var(--accent-green) 0%, #16a34a 100%);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 1.2rem;
-      letter-spacing: -1px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      border: 2px solid rgba(255,255,255,0.2);
-    }
-
-    /* SIDEBAR */
+    /* --- SIDEBAR ORIGINAL --- */
     .sidebar { width: var(--sidebar-width); background: var(--dark-blue); color: white; position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 100; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
-    
-    .sidebar__header { 
-      padding: 25px 20px; 
-      background: rgba(0,0,0,0.2); 
-      display: flex; 
-      align-items: center; 
-      gap: 15px; 
-    }
-    
-    .sidebar__header .brand-name {
-      display: flex;
-      flex-direction: column;
-    }
-
+    .sidebar__header { padding: 25px 20px; background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 15px; }
+    .logo-dma-estilizado { width: 45px; height: 45px; background: linear-gradient(135deg, var(--accent-green) 0%, #16a34a 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.2rem; letter-spacing: -1px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.2); }
+    .brand-name { display: flex; flex-direction: column; }
     .brand-name b { font-size: 1.1rem; letter-spacing: 1px; color: white; }
     .brand-name span { font-size: 0.65rem; color: var(--accent-green); text-transform: uppercase; font-weight: bold; }
-
     .sidebar__nav { flex: 1; padding: 20px 0; }
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 25px; color: rgba(255,255,255,0.6); text-decoration: none; transition: 0.3s; font-size: 0.95rem; }
     .nav-item:hover, .nav-item.active { color: white; background: rgba(255,255,255,0.08); border-left: 4px solid var(--accent-green); }
-    
-    .btn-logout { margin: 20px; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger-red); color: var(--danger-red); border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-    .btn-logout:hover { background: var(--danger-red); color: white; }
 
-    /* CONTEÚDO */
-    .main-layout { margin-left: var(--sidebar-width); flex: 1; padding: 35px; display: flex; flex-direction: column; gap: 25px; }
-    
-    .content-header { 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        background: white; 
-        padding: 20px; 
-        border-radius: 12px; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    /* --- ESTRUTURA DE COLUNAS --- */
+    .main-wrapper {
+        margin-left: var(--sidebar-width);
+        display: flex;
+        width: calc(100% - var(--sidebar-width));
+        padding: 35px;
+        gap: 25px;
+        align-items: flex-start;
     }
+
+    .center-column { flex: 1; display: flex; flex-direction: column; gap: 25px; }
     
-    /* DASHBOARD GRID */
-    .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+    .kpi-column {
+        width: var(--kpi-column-width);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        position: sticky;
+        top: 35px;
+    }
 
-    /* CARDS */
-    .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); overflow: hidden; display: flex; flex-direction: column; border: 1px solid #eef2f6; }
-    .card-header { padding: 18px 20px; background: #fcfdfe; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
-    .card-header h3 { font-size: 1rem; color: var(--dark-blue); display: flex; align-items: center; gap: 10px; }
+    /* --- COMPONENTES --- */
+    .content-header { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    
+    .kpi-card:hover { transform: translateX(-5px); }
+    
 
-    /* FEED DE AUDITORIA */
-    .audit-list { padding: 10px; list-style: none; }
-    .audit-item { display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid #f8fafc; transition: 0.2s; }
-    .audit-item:hover { background: #fcfdfe; }
-    .audit-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
-    .audit-details { flex: 1; font-size: 0.9rem; line-height: 1.4; }
-    .audit-details b { color: var(--dark-blue); font-weight: 600; }
-    .audit-time { font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 5px; font-style: italic; }
+    .card { background: white; border-radius: 12px; border: 1px solid #eef2f6; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    .card-header { padding: 20px; background: #fcfdfe; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: var(--dark-blue); display: flex; align-items: center; gap: 10px; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f8fafc; padding: 15px; text-align: left; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }
+    td { padding: 15px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; }
 
-    /* STATUS FOCAIS */
-    .focal-status-list { padding: 15px; }
-    .focal-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #f8fafc; }
-    .focal-row span { font-weight: 500; color: var(--text-main); font-size: 0.9rem; }
-    .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px; }
-    .badge--success { background: #dcfce7; color: #15803d; }
-    .badge--warning { background: #fff7ed; color: #c2410c; }
+    .kpi-card {
+  background: white;
+  border: 1px solid #e8ecf0;
+  border-radius: 10px;
+  padding: 20px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.kpi-card h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+}
+.kpi-card span {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
-    /* KPI MINI CARDS */
-    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-    .kpi-card { background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border-top: 4px solid var(--primary-blue); position: relative; }
-    .kpi-card span { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
-    .kpi-card h2 { font-size: 2rem; margin: 8px 0; color: var(--dark-blue); font-weight: 800; }
-
-    @media (max-width: 1100px) { .dashboard-grid { grid-template-columns: 1fr; } .kpi-row { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
@@ -125,138 +102,58 @@
           <span>SISTEMA DE GESTÃO</span>
       </div>
     </div>
-
     <nav class="sidebar__nav">
       <a href="#" class="nav-item active"><i class="fas fa-shield-alt"></i> Auditoria & Hub</a>
       <a href="./aedes-tecnico.html" class="nav-item"><i class="fas fa-bug"></i> Módulo Aedes</a>
-      <a href="./recicla.html" class="nav-item"><i class="fas fa-recycle"></i> Módulo Recicla</a>
-     
-      <a href="#" onclick="logout('./login.html')" class="nav-item" style="margin-top: auto; color: #ff4d4d;">
-      <i class="fas fa-sign-out-alt"></i> Sair do Sistema
-      </a>
-      <div style="margin-top:auto">
-        <div style="height:1px; background:rgba(255,255,255,0.1); margin: 10px 20px;"></div>
-        <a href="./index.html" class="nav-item"><i class="fas fa-external-link-alt"></i> Ir para o Site Público</a>
-      </div>
+      <a href="./recicla-tecnico.html" class="nav-item"><i class="fas fa-recycle"></i> Módulo Recicla</a>
+      <a href="#" class="nav-item" style="margin-top: auto; color: #ff4d4d;"><i class="fas fa-sign-out-alt"></i> Sair</a>
     </nav>
   </aside>
 
-  <main class="main-layout">
-    <header class="content-header">
-      <div>
+  <div class="main-wrapper">
+    <div class="center-column">
+      <header class="content-header">
         <h1 style="color:var(--dark-blue); font-weight: 800;">Painel de Auditoria</h1>
-        <p style="color:#64748b; font-size: 0.95rem;">Monitoramento centralizado de fluxos técnicos e conformidade.</p>
-      </div>
-      <div style="text-align: right">
-        <div style="background: #f1f5f9; padding: 10px 15px; border-radius: 10px; display: inline-block;">
-            <span id="apiStatus" style="font-size: 0.85rem; color: #475569; font-weight: 600;">
-                <i class="fas fa-server" style="margin-right:5px; color:var(--accent-green)"></i> 
-                API Render: <b style="color:var(--accent-green)">ONLINE</b>
-            </span>
-        </div>
-      </div>
-    </header>
-
-    <section class="kpi-row">
-      <div class="kpi-card" style="border-top-color: #3b82f6">
-        <span>Vistorias Totais</span>
-        <h2 id="kpi-vistorias">--</h2>
-      </div>
-      <div class="kpi-card" style="border-top-color: var(--accent-green)">
-        <span>Focais Ativos</span>
-        <h2 id="kpi-focais">--</h2>
-      </div>
-      <div class="kpi-card" style="border-top-color: var(--warning-orange)">
-        <span>Relatórios Pendentes</span>
-        <h2 id="kpi-pendencias">3</h2>
-      </div>
-      <div class="kpi-card" style="border-top-color: #8b5cf6">
-        <span>Acessos (24h)</span>
-        <h2>42</h2>
-      </div>
-    </section>
-
-    <div class="dashboard-grid">
-      <section class="card">
-        <div class="card-header">
-          <h3><i class="fas fa-fingerprint" style="color:var(--primary-blue)"></i> Rastro de Atividades Recentes</h3>
-          <span style="font-size: 0.7rem; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-weight: bold;">LIVE FEED</span>
-        </div>
-        <ul class="audit-list" id="auditFeed">
-          <li class="audit-item">
-            <div class="audit-icon" style="background:#f0f9ff; color:#0ea5e9"><i class="fas fa-database"></i></div>
-            <div class="audit-details">
-              <span>A técnica <b>Thatiana</b> sincronizou a base histórica do Aedes.</span>
-              <span class="audit-time">há 12 minutos via Terminal</span>
-            </div>
-          </li>
-          <li class="audit-item">
-            <div class="audit-icon" style="background:#f0fdf4; color:#22c55e"><i class="fas fa-check-double"></i></div>
-            <div class="audit-details">
-              <span><b>Unidade Niterói</b> submeteu o relatório semanal. Status: <b style="color:var(--accent-green)">Aprovado</b>.</span>
-              <span class="audit-time">há 45 minutos via Portal Público</span>
-            </div>
-          </li>
-          <li class="audit-item">
-            <div class="audit-icon" style="background:#fff1f2; color:#f43f5e"><i class="fas fa-user-shield"></i></div>
-            <div class="audit-details">
-              <span>Tentativa de acesso bloqueada no módulo <b>Recicla</b> (IP não autorizado).</span>
-              <span class="audit-time">há 3 horas</span>
-            </div>
-          </li>
-        </ul>
-      </section>
+        <p style="color:#64748b;">Monitoramento centralizado filtrado a partir de 14/05/2026.</p>
+      </header>
 
       <section class="card">
-        <div class="card-header">
-          <h3><i class="fas fa-clipboard-list" style="color:var(--warning-orange)"></i> Entrega de Relatórios</h3>
-        </div>
-        <div class="focal-status-list">
-          <div class="focal-row">
-            <span>Unidade Laranjal</span>
-            <span class="badge badge--success">RECEBIDO</span>
-          </div>
-          <div class="focal-row">
-            <span>Unidade Eta Guandu</span>
-            <span class="badge badge--success">RECEBIDO</span>
-          </div>
-          <div class="focal-row">
-            <span>Unidade Prédio Sede</span>
-            <span class="badge badge--warning">AGUARDANDO</span>
-          </div>
-          <div class="focal-row">
-            <span>Unidade São Pedro</span>
-            <span class="badge badge--warning">AGUARDANDO</span>
-          </div>
-        </div>
-        <div style="padding:15px; background: #f8fafc; text-align:center">
-          <a href="./focais-gestao.html" style="font-size:0.85rem; color:var(--primary-blue); text-decoration:none; font-weight: bold;">Gerenciar Grade de Focais →</a>
-        </div>
+        <div class="card-header"><i class="fas fa-list-ul"></i> Últimos Registros Processados</div>
+        <div id="mainDataTable"></div>
       </section>
     </div>
 
-    <section class="card">
-      <div class="card-header">
-        <h3><i class="fas fa-list-ul"></i> Últimos Registros Processados</h3>
+    <aside class="kpi-column">
+      <div class="kpi-card" style="border-left-color: #3b82f6">
+        <span>Vistorias Realizadas</span>
+        <h2 id="kpi-vistorias-sim">--</h2>
       </div>
-      <div id="mainDataTable" style="padding:15px">
-        </div>
-    </section>
 
-  </main>
+      <div class="kpi-card" style="border-left-color: var(--danger-red)">
+        <span>Vistorias Não Realizadas</span>
+        <h2 id="kpi-vistorias-nao">--</h2>
+      </div>
+
+      <div class="kpi-card" style="border-left-color: var(--warning-orange)">
+        <span>Focos Encontrados</span>
+        <h2 id="kpi-focos">--</h2>
+      </div>
+
+      <div class="kpi-card" style="border-left-color: var(--accent-green)">
+        <span>Focos Remediados</span>
+        <h2 id="kpi-remediados">--</h2>
+      </div>
+
+      <div class="kpi-card" style="border-left-color: #8b5cf6">
+        <span>Relatórios Esperados</span>
+        <h2 id="kpi-esperados">126</h2>
+      </div>
+    </aside>
+  </div>
 
   <script src="./js/core/api-config.js"></script>
   <script src="./js/core/auth.js"></script>
-   
-  <script>
-  // Verifica se o usuário está logado. Se não, manda para login.html
-  requireAuth("./login.html");
-  </script>
-
+  <script>requireAuth("./login.html");</script>
   <script type="module" src="./js/pages/area-tecnica.js"></script>
-  
-  <script>
-    
-  </script>
 </body>
 </html>

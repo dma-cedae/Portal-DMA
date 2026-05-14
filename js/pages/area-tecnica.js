@@ -2,49 +2,53 @@ import { AedesAPI } from '../modules/aedes/aedes-api.js';
 
 async function inicializarDashboard() {
     try {
-        // 1. Busca os lotes (A API deve retornar id, focal_nome, total_registros, payload_completo)
-        const lotes = await AedesAPI.getLotes();
+        const todosLotes = await AedesAPI.getLotes();
         
-        console.log("Lotes recebidos do banco:", lotes); // Para conferir no console
+        const dataCorte = new Date('2026-05-14T00:00:00');
+        const lotes = todosLotes.filter(lote => {
+            const dataLote = new Date(lote.data_envio);
+            return dataLote >= dataCorte;
+        });
 
-        let totalVistorias = 0;
+        let vistoriasRealizadas = 0;
+        let vistoriasNaoRealizadas = 0;
         let totalFocos = 0;
-        let focaisUnicos = new Set();
+        let totalRemediados = 0;
 
         lotes.forEach(lote => {
-            // Soma o total de registros (usando o dado que veio do banco)
-            totalVistorias += (parseInt(lote.total_registros) || 0);
-            
-            // Adiciona o nome do focal ao Set para contagem única
-            if (lote.focal_nome) focaisUnicos.add(lote.focal_nome);
-            
-            // Processa o JSON do payload_completo para contar focos
-            // Verifica se o payload existe e se tem a estrutura de registros
-            const registros = lote.payload_completo?.registros || [];
+            const registros = lote.payload_completo?.dados || [];
             if (Array.isArray(registros)) {
-                const focosNoLote = registros.filter(r => 
-                    String(r.focoEncontrado).toLowerCase() === 'sim'
-                ).length;
-                totalFocos += focosNoLote;
+                registros.forEach(r => {
+                    // [2] Vistoria, [3] Foco, [4] Remediação
+                    if (r[2] && String(r[2]).toLowerCase() === 'sim') {
+                        vistoriasRealizadas++;
+                        if (r[3] && String(r[3]).toLowerCase() === 'sim') totalFocos++;
+                        if (r[4] && String(r[4]).toLowerCase() === 'sim') totalRemediados++;
+                    } else if (r[2] && String(r[2]).toLowerCase() === 'nao') {
+                        vistoriasNaoRealizadas++;
+                    }
+                });
             }
         });
 
-        // 2. Atualização Segura da UI (Evita o erro de 'null')
         const domElements = {
-            vistorias: document.getElementById('kpi-vistorias'),
+            realizadas: document.getElementById('kpi-vistorias-sim'),
+            naoRealizadas: document.getElementById('kpi-vistorias-nao'),
             focos: document.getElementById('kpi-focos'),
-            focais: document.getElementById('kpi-focais')
+            remediados: document.getElementById('kpi-remediados'),
+            esperados: document.getElementById('kpi-esperados') 
         };
 
-        if (domElements.vistorias) domElements.vistorias.innerText = totalVistorias;
+        if (domElements.realizadas) domElements.realizadas.innerText = vistoriasRealizadas;
+        if (domElements.naoRealizadas) domElements.naoRealizadas.innerText = vistoriasNaoRealizadas;
         if (domElements.focos) domElements.focos.innerText = totalFocos;
-        if (domElements.focais) domElements.focais.innerText = focaisUnicos.size;
+        if (domElements.remediados) domElements.remediados.innerText = totalRemediados;
+        if (domElements.esperados) domElements.esperados.innerText = "126";
 
-        // 3. Popula a tabela se ela existir
         renderizarTabelaRecentes(lotes);
 
     } catch (error) {
-        console.error("Erro ao processar dados do banco:", error);
+        console.error("Erro ao carregar dados:", error);
     }
 }
 
@@ -52,36 +56,33 @@ function renderizarTabelaRecentes(lotes) {
     const container = document.getElementById('mainDataTable');
     if (!container) return;
 
-    // Pega os 5 mais recentes
-    const recentes = lotes.slice(0, 5);
+    const recentes = lotes.slice(0, 10);
 
     container.innerHTML = `
-        <table style="width:100%; border-collapse:collapse; font-size:0.85rem; text-align:left">
+        <table>
             <thead>
-                <tr style="background:#f8fafc; color:#64748b; border-bottom:2px solid #f1f5f9">
-                    <th style="padding:15px">DATA ENVIO</th>
-                    <th style="padding:15px">FOCAL</th>
-                    <th style="padding:15px">VISTORIAS</th>
-                    <th style="padding:15px">STATUS</th>
+                <tr>
+                    <th>DATA ENVIO</th>
+                    <th>FOCAL</th>
+                    <th>UNIDADES NO LOTE</th>
+                    <th>STATUS</th>
                 </tr>
             </thead>
             <tbody>
-                ${recentes.map(l => `
-                    <tr style="border-bottom:1px solid #f8fafc">
-                        <td style="padding:15px; font-weight:500">
-                            ${new Date(l.data_envio).toLocaleDateString('pt-BR')}
-                        </td>
-                        <td style="padding:15px">${l.focal_nome || 'N/A'}</td>
-                        <td style="padding:15px">${l.total_registros || 0}</td>
-                        <td style="padding:15px">
-                            <span style="color:var(--accent-green)">●</span> Sincronizado
-                        </td>
+                ${recentes.map(l => {
+                    const nome = l.focal_nome || l.payload_completo?.cabecalho?.focal_nome || 'N/A';
+                    const qtd = l.payload_completo?.dados?.length || 0;
+                    return `
+                    <tr>
+                        <td style="font-weight:600">${l.data_envio ? new Date(l.data_envio).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                        <td>${nome}</td>
+                        <td>${qtd} unidades</td>
+                        <td><span style="color:var(--accent-green)">●</span> Sincronizado</td>
                     </tr>
-                `).join('')}
+                `}).join('')}
             </tbody>
         </table>
     `;
 }
 
-// Inicializa
 document.addEventListener("DOMContentLoaded", inicializarDashboard);

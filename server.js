@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3001;
 
 // ─── Middlewares ─────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: 'https://dma-cedae.github.io',
+  origin: '*',
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));

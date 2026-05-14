@@ -5,7 +5,7 @@
 // aedes-api.js
 const API_BASE = window.location.hostname === "localhost" 
     ? "http://localhost:3001" 
-    : "https://dma-aedes-api.onrender.com"; // Substitua pela sua URL do Render
+    : "https://dma-aedes-api.onrender.com/api"; // 
 
 export const AedesAPI = {
 

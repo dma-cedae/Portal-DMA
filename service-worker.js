@@ -1,10 +1,9 @@
-const CACHE_NAME = "portal-dma-v22";
+const CACHE_NAME = "portal-dma-v23";
 
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./aedes.html",
-  "./aedes-publico.html",
   "./aedes-tecnico.html",
   "./aedes-focais.html",
   "./recicla.html",

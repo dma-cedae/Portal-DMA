@@ -1,6 +1,6 @@
 // api-config.js
 const LOCAL_API = "http://localhost:3001";
-const PROD_API = "https://dma-aedes-api.onrender.com/api"; // ✅ A URL CORRETA DO RENDER
+const PROD_API = "https://dma-aedes-api.onrender.com"; // ✅ A URL CORRETA DO RENDER
 
 function resolveBaseURL() {
   const hostname = window.location.hostname;

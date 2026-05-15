@@ -55,7 +55,6 @@ async function bootstrap() {
 }
 
 /* ── Verificação ───────────────────────────────────────── */
-
 async function verificarElegibilidade() {
   const selectElement = els.certUnidade;
 
@@ -79,15 +78,24 @@ async function verificarElegibilidade() {
 
     const certificados = await response.json();
 
+    // Procura o registro da unidade para o mês/ano selecionado
     const dadosUnidade = certificados.find(c =>
       c.unidade.trim().toUpperCase() === unidadeSelecionada &&
       parseInt(c.mes) === mesFiltro &&
       parseInt(c.ano) === anoFiltro
     );
 
-    const contadorVistorias = dadosUnidade ? parseInt(dadosUnidade.total_vistorias) : 0;
+    // 1. CAPTURA DAS CONDIÇÕES DA NOVA REGRA DE NEGÓCIO
+    // (Ajuste o nome dessas chaves conforme o seu banco de dados retornar)
+    const contadorVistorias    = dadosUnidade ? parseInt(dadosUnidade.total_vistorias) : 0;
+    const cobriuTodasSemanas   = dadosUnidade ? !!dadosUnidade.cobertura_semanal_completa : false; // Deve ser true se inspecionou todas as semanas do mês
+    const possuiFocosAbertos   = dadosUnidade ? !!dadosUnidade.focos_nao_remediados : true;       // Deve ser false se não tem foco ou se todos foram controlados
 
-    if (contadorVistorias >= 4) {
+    // 2. VALIDAÇÃO LOGICA DA ELEGIBILIDADE
+    // Elegível se: Cobriu todas as semanas do mês AND NÃO possui focos em aberto (sem remediação)
+    const ehElegivel = cobriuTodasSemanas && !possuiFocosAbertos;
+
+    if (ehElegivel) {
       dadosCertificadoPendente = {
         unidadeNome: selectElement.options[selectElement.selectedIndex].text,
         ano:   anoFiltro,
@@ -95,11 +103,20 @@ async function verificarElegibilidade() {
         total: contadorVistorias,
       };
       
-      mostrarFeedback('sucesso', `🏆 Unidade Protegida! ${contadorVistorias} vistorias confirmadas.`);
+      mostrarFeedback('sucesso', `🏆 Unidade Protegida! Cobertura semanal completa e 100% dos focos tratados.`);
       ativarBotaoDownload(true);
     } else {
       dadosCertificadoPendente = null;
-      mostrarFeedback('error', `⚠️ Pendente: apenas ${contadorVistorias} de 4 vistorias realizadas.`);
+      
+      // Monta uma mensagem de erro inteligente explicando o motivo da reprovação
+      let mensagemErro = `⚠️ Unidade Inelegível: `;
+      if (!cobriuTodasSemanas) {
+        mensagemErro += `Não houve vistoria em todas as semanas do mês ou focos não foram remediados (Total: ${contadorVistorias}). `;
+      } else if (possuiFocosAbertos) {
+        mensagemErro += `Foram encontrados focos de Aedes que não constam como remediados no sistema.`;
+      }
+
+      mostrarFeedback('error', mensagemErro);
       ativarBotaoDownload(false);
     }
   } catch (err) {

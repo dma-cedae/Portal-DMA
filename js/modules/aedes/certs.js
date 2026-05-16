@@ -132,7 +132,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
 
     /* Marca d'água */
     .sheet::after {
-      content: "✦ DMA ✦";
+      content: " DMA ";
       position: absolute;
       inset: 0;
       display: flex;
@@ -333,7 +333,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
 
     .data-table thead tr {
       background: var(--navy);
-      color: #fff;
+      color: #fdfaf4;
     }
 
     .data-table thead th {
@@ -350,7 +350,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
     }
 
     .data-table tbody tr {
-      background: #fff;
+      background: #fdfaf4;
       border-bottom: 1px solid var(--border);
     }
 
@@ -370,7 +370,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      background: #e6f4ea;
+      background: #fdfaf4;
       color: #1a6e34;
       border: 1px solid #a8d5b5;
       border-radius: 4px;
@@ -483,9 +483,9 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
 
     <main class="body">
 
-      <p class="eyebrow">✦ &nbsp; Certificado Institucional &nbsp; ✦</p>
+      <p class="eyebrow"> &nbsp; Certificado Institucional &nbsp; </p>
       <h1 class="cert-title">Certificado de Conformidade</h1>
-      <div class="ornament">✦ Controle de vistorias e acompanhamento preventivo ✦</div>
+      <div class="ornament"> Controle de vistorias e acompanhamento preventivo </div>
 
       <div class="narrative">
         <p>Certificamos que a unidade</p>

@@ -58,6 +58,8 @@ function renderizarTabelaConsolidada(lotes) {
                     <th>UNIDADE</th>
                     <th>VISTORIA</th>
                     <th>FOCO</th>
+                    <th>LOCAL FOCO</th>
+                    <th>REMEDIAÇÃO</th>  
                     <th>DETALHES / OUTROS</th>
                     <th>OBSERVAÇÕES</th>
                 </tr>
@@ -66,42 +68,60 @@ function renderizarTabelaConsolidada(lotes) {
     `;
 
     lotes.forEach(lote => {
-        const registros = lote.payload_completo?.dados || [];
+        const registros = lote.payload_completo?.dados || lote.dados || []; 
         const dataEnvio = lote.data_envio ? new Date(lote.data_envio).toLocaleDateString('pt-BR') : "---";
 
         registros.forEach(r => {
-            const fezVistoria = String(r[2]).toLowerCase() === 'sim';
-            const temFoco = String(r[3]).toLowerCase() === 'sim';
+            const fezVistoria  = String(r[2]).toLowerCase() === 'sim';
+            const temFoco      = String(r[3]).toLowerCase() === 'sim';
+            const foiRemediado = String(r[4]).toLowerCase() === 'sim';
             
-            // Captura campos de "Outros" (Ajuste os índices [8], [9], [10] se necessário conforme seu form)
-            const outrosMotivoNaoVistoria = r[8] || "";
-            const outrosLocalFoco = r[9] || "";
-            const outrosMotivoNaoRemediacao = r[10] || "";
+            // Tratamento de locais
+            let localFoco = Array.isArray(r[5]) ? r[5].join(", ") : (r[5] || "");
+            
+            // Captura dos campos de texto "Outros"
+            const outrosLocalFoco           = (r[6] && !['sim', 'nao', 'não', '-'].includes(String(r[6]).toLowerCase().trim())) ? r[6] : "";
+            const outrosMotivoNaoVistoria   = (r[8] && !['sim', 'nao', 'não', '-'].includes(String(r[8]).toLowerCase().trim())) ? r[8] : "";
+            const outrosMotivoNaoRemediacao = (r[10] && !['sim', 'nao', 'não', '-'].includes(String(r[10]).toLowerCase().trim())) ? r[10] : "";
+            
+            const observacoes = r[11] || "-";
 
-       // 1. Define os símbolos com as cores solicitadas
+            // Ícone visual de Vistoria
             const iconVistoria = fezVistoria 
                 ? '<span style="color: #16a34a; font-weight: bold;">✔</span>' 
                 : '<span style="color: #000; font-weight: bold;">✖</span>';
             
-            const iconFoco = temFoco
-                ? '<span style="color: #ef4444; font-weight: bold;">✔</span>' // Vermelho para foco positivo
-                : '<span style="color: #000; font-weight: bold;">✖</span>'; // Preto para foco negativo
+            // REGRA DO FOCO: Se Vistoria = Não, Foco fica vazio (-). Se Vistoria = Sim, mostra ✔ ou ✖.
+            const displayFoco = fezVistoria
+                ? (temFoco 
+                    ? `<span class="badge badge--danger"><span style="color: #ef4444; font-weight: bold;">✔</span></span>`
+                    : '<span style="color: #000; font-weight: bold;">✖</span>')
+                : '-';
 
+            // REGRA DA REMEDIAÇÃO: Só faz sentido se houve Vistoria E se houve Foco.
+            const displayRemediacao = (fezVistoria && temFoco)
+                ? (foiRemediado 
+                    ? '<span style="color: #16a34a; font-weight: bold;">✔</span>' 
+                    : '<span style="color: #ef4444; font-weight: bold;">✖</span>')
+                : '-';
+
+            // Une as justificativas textuais
             const detalheOutros = [outrosMotivoNaoVistoria, outrosLocalFoco, outrosMotivoNaoRemediacao]
-                                  .filter(txt => txt && txt.length > 0).join(" | ");
+                                  .filter(txt => txt && txt.trim().length > 0)
+                                  .join(" | ");
 
             html += `
                 <tr>
                     <td>${dataEnvio}</td>
                     <td><b>${r[1]}</b></td>
-                    <td style="text-align:center">
-                        ${iconVistoria} ${(!fezVistoria && r[7] === 'outros') ? '<br><small>'+outrosMotivoNaoVistoria+'</small>' : ''}
+                    <td style="text-align:center">${iconVistoria}</td>
+                    <td style="text-align:center">${displayFoco}</td>
+                    <td style="text-align:center;">
+                        ${(fezVistoria && temFoco) ? `<b>${localFoco}</b>` : '-'}
                     </td>
-                    <td style="text-align:center">
-                        <span class="badge ${temFoco ? 'badge--danger' : ''}">${iconFoco}</span>
-                    </td>
-                    <td style="font-size:0.8rem; color:#1C1C1C">${detalheOutros || "-"}</td>
-                    <td style="font-size:0.8rem;">${r[11] || "-"}</td>
+                    <td style="text-align:center">${displayRemediacao}</td>
+                    <td style="font-size:0.8rem; color:#1C1C1C; text-align:center;">${detalheOutros || "-"}</td>
+                    <td style="font-size:0.8rem;">${observacoes}</td>
                 </tr>
             `;
         });
@@ -110,7 +130,6 @@ function renderizarTabelaConsolidada(lotes) {
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
-
 /**
  * Gera o ficheiro Excel consolidado (linha por unidade)
  */
@@ -123,36 +142,82 @@ async function exportarParaExcel(lotes) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Relatório Consolidado Aedes');
 
-    // Definição das Colunas
-   worksheet.columns = [
+    worksheet.columns = [
         { header: 'DATA', key: 'data', width: 12 },
         { header: 'FOCAL', key: 'focal', width: 20 },
         { header: 'UNIDADE', key: 'unidade', width: 25 },
         { header: 'VISTORIA', key: 'vistoria', width: 12 },
+        { header: 'MOTIVO NÃO VISTORIA', key: 'motivo_nao_vistoria', width: 25 }, // Nova Coluna
         { header: 'FOCO', key: 'foco', width: 12 },
-        { header: 'OUTROS: MOTIVO NÃO VISTORIA', key: 'outros_vistoria', width: 25 },
-        { header: 'OUTROS: LOCAL FOCO', key: 'outros_local', width: 25 },
-        { header: 'OUTROS: MOTIVO NÃO REMED.', key: 'outros_remed', width: 25 },
+        { header: 'LOCAL FOCO', key: 'local_foco', width: 25 },
+        { header: 'REMEDIAÇÃO', key: 'remediacao', width: 15 },
+        { header: 'MOTIVO NÃO REMEDIAÇÃO', key: 'motivo_nao_remediacao', width: 25 }, // Nova Coluna
+        { header: 'DETALHES / OUTROS', key: 'detalhes_outros', width: 35 },
         { header: 'OBSERVAÇÕES', key: 'obs', width: 30 }
     ];
 
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } };
+
     lotes.forEach(lote => {
-        const registros = lote.payload_completo?.dados || [];
-        registros.forEach(r => {
-            worksheet.addRow({
-                data: lote.data_envio ? new Date(lote.data_envio).toLocaleDateString('pt-BR') : "",
-                focal: lote.focal_nome || "N/A",
-                unidade: r[1],
-                vistoria: r[2],
-                foco: r[3],
-                outros_vistoria: r[8] || "",
-                outros_local: r[9] || "",
-                outros_remed: r[10] || "",
-                obs: r[11] || ""
-            });
-        });
-    });
+    const registros = lote.payload_completo?.dados || lote.dados || [];
+    const dataEnvio = lote.data_envio ? new Date(lote.data_envio).toLocaleDateString('pt-BR') : "";
+    const focalNome = lote.focal_nome || "N/A";
+
+    registros.forEach(r => {
+        const fezVistoria = String(r[2]).toLowerCase() === 'sim';
+        const temFoco     = String(r[3]).toLowerCase() === 'sim';
+        let localFoco     = Array.isArray(r[5]) ? r[5].join(", ") : (r[5] || "");
+
+        // --- TRATAMENTO DOS NOVOS CAMPOS (ARRAYS) ---
+        // Se não fez vistoria, extrai os motivos salvos em r[7]
+        const motivoNaoVistoria = !fezVistoria ? (Array.isArray(r[7]) ? r[7].join(", ") : (r[7] || "-")) : "-";
         
+        // Se fez vistoria e teve foco, mas não remediou, extrai os motivos salvos in r[9]
+        const motivoNaoRemediacao = (fezVistoria && temFoco && String(r[4]).toLowerCase() !== 'sim') 
+            ? (Array.isArray(r[9]) ? r[9].join(", ") : (r[9] || "-")) 
+            : "-";
+        // ---------------------------------------------
+
+        // Filtragem de dados "Outros" (Campos de texto manuais)
+        const outrosLocalFoco           = (r[6] && !['sim', 'nao', 'não', '-'].includes(String(r[6]).toLowerCase().trim())) ? r[6] : "";
+        const outrosMotivoNaoVistoria   = (r[8] && !['sim', 'nao', 'não', '-'].includes(String(r[8]).toLowerCase().trim())) ? r[8] : "";
+        const outrosMotivoNaoRemediacao = (r[10] && !['sim', 'nao', 'não', '-'].includes(String(r[10]).toLowerCase().trim())) ? r[10] : "";
+
+        const detalheOutros = [outrosMotivoNaoVistoria, outrosLocalFoco, outrosMotivoNaoRemediacao]
+                              .filter(txt => txt && txt.trim().length > 0)
+                              .join(" | ") || "-";
+
+        const excelFoco        = fezVistoria ? (r[3] || "-") : "-";
+        const excelLocalFoco   = (fezVistoria && temFoco) ? localFoco : "-";
+        const excelRemediacao  = (fezVistoria && temFoco) ? (r[4] || "-") : "-";
+
+        // Inserção dos dados alinhada com as novas chaves
+        const row = worksheet.addRow({
+            data: dataEnvio,
+            focal: focalNome,
+            unidade: r[1] || "-",
+            vistoria: r[2] || "-",
+            motivo_nao_vistoria: motivoNaoVistoria,       // Adicionado aqui
+            foco: excelFoco,
+            local_foco: excelLocalFoco,
+            remediacao: excelRemediacao,
+            motivo_nao_remediacao: motivoNaoRemediacao,   // Adicionado aqui
+            detalhes_outros: detalheOutros,
+            obs: r[11] || "-"
+        });
+
+        // Alinhamentos centrais das novas colunas de texto limpo
+        row.getCell('data').alignment = { horizontal: 'center' };
+        row.getCell('vistoria').alignment = { horizontal: 'center' };
+        row.getCell('motivo_nao_vistoria').alignment = { horizontal: 'center' };
+        row.getCell('foco').alignment = { horizontal: 'center' };
+        row.getCell('local_foco').alignment = { horizontal: 'center' };
+        row.getCell('remediacao').alignment = { horizontal: 'center' };
+        row.getCell('motivo_nao_remediacao').alignment = { horizontal: 'center' };
+    });
+});
+
     // Estilização do Cabeçalho
     worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '16A34A' } }; // Verde Aedes

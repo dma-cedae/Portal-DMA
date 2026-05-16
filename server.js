@@ -166,20 +166,21 @@ app.get("/api/aedes/base", async (req, res) => {
   try {
     const { filtro } = req.query;
 
+    // Buscando agora a partir do excel_historico e trazendo dados limpos
     let sql = `
-      SELECT 
+      SELECT DISTINCT
         u.unidade_id AS id, 
-        u.nome_unidade AS unidade, 
-        stg.matricula, 
-        stg.email,
-        stg.focal AS "focalNome"
+        u.nome_unidade AS Unidade, 
+        h.matricula, 
+        h.email,
+        h.focal AS "focalNome"
       FROM aedes.unidades u
-      INNER JOIN aedes.stg_importacao_excel stg ON u.nome_unidade = stg.unidade
+      INNER JOIN aedes.excel_historico h ON u.nome_unidade = h.unidade
     `;
     let params = [];
 
     if (filtro && filtro.trim() !== "") {
-      sql += " WHERE stg.email = $1 OR CAST(stg.matricula AS TEXT) = $2";
+      sql += " WHERE h.email = $1 OR CAST(h.matricula AS TEXT) = $2";
       params.push(filtro.trim(), filtro.trim());
     }
 
@@ -197,24 +198,49 @@ app.get("/api/aedes/base", async (req, res) => {
 ========================================================= */
 app.get("/api/aedes/certificados", async (_req, res) => {
   try {
+    // Query ajustada para comparar strings ('Sim') e usar os nomes exatos das colunas do seu banco
     const result = await pool.query(`
       SELECT 
-          unidade_nome as unidade,
-          EXTRACT(MONTH FROM data_registro) as mes,
-          EXTRACT(YEAR FROM data_registro) as ano,
-          -- Contamos IDs de lotes distintos para garantir envios em momentos diferentes
-          COUNT(DISTINCT lote_id) as total_vistorias 
-      FROM aedes.vistorias_itens
-      -- Filtramos apenas vistorias marcadas como 'sim' (ignora maiúsculas/minúsculas)
-      WHERE LOWER(vistoria_realizada) = 'sim' 
-      GROUP BY unidade_nome, ano, mes
-      -- Removido o HAVING para permitir que o front-end mostre vistorias < 4
-      ORDER BY ano DESC, mes DESC, unidade ASC;
+        "Unidade",
+        EXTRACT(MONTH FROM "Data") AS mes,
+        EXTRACT(YEAR FROM "Data") AS ano,
+        
+        -- Conta quantas vistorias foram realizadas de fato no mês
+        COUNT(CASE WHEN "UV_Sim" = 'Sim' THEN 1 END) AS total_vistorias,
+        
+        -- Regra 1: Garante que houve vistorias em pelo menos 4 semanas distintas do mês
+        CASE 
+          WHEN COUNT(DISTINCT "Semana") >= 4 THEN true 
+          ELSE false 
+        END AS cobertura_semanal_completa,
+        
+        -- Regra 2: Verifica se sobrou algum foco sem remédio (Foco = Sim e Remediação Não = Sim)
+        CASE 
+          WHEN COUNT(CASE WHEN "FE_Sim" = 'Sim' AND "RM_Não" = 'Sim' THEN 1 END) > 0 THEN true
+          ELSE false 
+        END AS focos_nao_remediados
+
+      FROM aedes.excel_historico
+      WHERE "UV_Sim" = 'Sim' -- Filtra apenas registros com vistorias concluídas
+      GROUP BY "Unidade", EXTRACT(YEAR FROM "Data"), EXTRACT(MONTH FROM "Data")
+      ORDER BY ano DESC, mes DESC, "Unidade" ASC;
     `);
-    res.json(result.rows);
+
+    // Formata o retorno mapeando as propriedades para minúsculas
+    // Isso garante compatibilidade perfeita com o seu arquivo aedes-publico.js no front-end
+    const linhasFormatadas = result.rows.map(row => ({
+      unidade: row.Unidade, 
+      mes: parseInt(row.mes),
+      ano: parseInt(row.ano),
+      total_vistorias: parseInt(row.total_vistorias || 0),
+      cobertura_semanal_completa: row.cobertura_semanal_completa,
+      focos_nao_remediados: row.focos_nao_remediados
+    }));
+
+    res.json(linhasFormatadas);
   } catch (err) {
-    console.error("❌ Erro ao calcular certificados:", err.message);
-    res.status(500).json({ error: "Erro ao calcular certificados" });
+    console.error("❌ Erro ao calcular certificados no Banco:", err.message);
+    res.status(500).json({ error: "Erro interno ao processar as regras de elegibilidade." });
   }
 });
 /* =========================================================

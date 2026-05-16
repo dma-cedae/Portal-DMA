@@ -56,11 +56,20 @@ async function initSchema() {
     // Tabela de Focais
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focais (
-        focal_pk SERIAL PRIMARY KEY,
+        focal_pk BIGSERIAL PRIMARY KEY,
         matricula TEXT,
         nome TEXT NOT NULL,
         email TEXT UNIQUE,
         ativo BOOLEAN DEFAULT true
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS aedes.focal_unidade (
+        focal_unidade_pk BIGSERIAL PRIMARY KEY,
+        focal_pk         BIGINT REFERENCES aedes.focais(focal_pk) ON DELETE CASCADE,
+        unidade_id       BIGINT, -- Relaciona com a tabela unidades externa
+        ativo            BOOLEAN DEFAULT true,
+        data_inicio      TIMESTAMP DEFAULT NOW()
       );
     `);
     console.log("✅ Tabelas aedes.lotes e aedes.focais verificadas.");
@@ -90,15 +99,25 @@ app.get("/api/aedes/focais", async (_req, res) => {
 app.get("/api/aedes/focais/lista", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT f.focal_pk, f.matricula, f.nome, f.email, s.unidade AS focal_unidades
+      SELECT 
+        f.focal_pk, 
+        f.matricula, 
+        f.nome, 
+        f.email,
+       
+        f.ativo,
+        STRING_AGG(u.nome_unidade, ', ') AS focal_unidades
       FROM aedes.focais f
-      LEFT JOIN aedes.stg_importacao_excel s ON f.email = s.email 
+      LEFT JOIN aedes.focal_unidade fu ON f.focal_pk = fu.focal_pk
+      LEFT JOIN aedes.unidades u ON fu.unidade_id = u.unidade_id
       WHERE f.ativo = true
+      GROUP BY f.focal_pk, f.matricula, f.nome, f.email, f.ativo
       ORDER BY f.nome ASC
     `);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Erro em /focais/lista:", err.message);
+    res.status(500).json({ error: "Erro ao buscar lista detalhada de focais." });
   }
 });
 
@@ -160,27 +179,27 @@ app.get("/api/aedes/base", async (req, res) => {
   }
 });
 */
-
-
 app.get("/api/aedes/base", async (req, res) => {
   try {
     const { filtro } = req.query;
 
-    // Buscando agora a partir do excel_historico e trazendo dados limpos
     let sql = `
       SELECT DISTINCT
         u.unidade_id AS id, 
-        u.nome_unidade AS Unidade, 
-        h.matricula, 
-        h.email,
-        h.focal AS "focalNome"
+        u.nome_unidade AS "Unidade", 
+        f.matricula, 
+        f.email,
+        f.nome AS "focalNome"
       FROM aedes.unidades u
-      INNER JOIN aedes.excel_historico h ON u.nome_unidade = h.unidade
+      INNER JOIN aedes.focal_unidade fu ON u.unidade_id = fu.unidade_id
+      INNER JOIN aedes.focais f ON fu.focal_pk = f.focal_pk
+      WHERE u.ativo = true AND f.ativo = true
     `;
     let params = [];
 
     if (filtro && filtro.trim() !== "") {
-      sql += " WHERE h.email = $1 OR CAST(h.matricula AS TEXT) = $2";
+      // O filtro agora busca com segurança nas colunas da tabela de focais
+      sql += " AND (f.email = $1 OR CAST(f.matricula AS TEXT) = $2)";
       params.push(filtro.trim(), filtro.trim());
     }
 
@@ -341,15 +360,29 @@ app.get("/api/aedes/lotes", async (_req, res) => {
 */
 app.get("/api/unidades", async (_req, res) => {
   try {
-    const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades ORDER BY nome_unidade ASC`);
+    const result = await pool.query(`
+      SELECT DISTINCT "Unidade" AS nome_unidade 
+      FROM aedes.excel_historico 
+      WHERE "Unidade" IS NOT NULL 
+      ORDER BY nome_unidade ASC
+    `);
     res.json(result.rows);
   } catch (err) {
-    console.error("❌ ERRO NA ROTA UNIDADES:", err.message); // <-- Adicione essa linha temporariamente
-    res.status(500).json({ error: "Erro ao buscar unidades.", detalhe: err.message }); // <-- E mude aqui para ver o erro no navegador
+    console.error("❌ Erro na rota /api/unidades:", err.message);
+    res.status(500).json({ error: "Erro ao buscar unidades." });
   }
 });
 
-app.get("/api/health", (_req, res) => res.json({ status: "ok", time: new Date() }));
+app.get("/api/health", (_req, res) => {
+  const dataBrasilia = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo"
+  });
+  
+  res.json({ 
+    status: "ok", 
+    time: dataBrasilia 
+  });
+});
 
 // Error Handlers
 app.use((_req, res) => res.status(404).json({ error: "Rota não encontrada." }));

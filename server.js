@@ -125,6 +125,43 @@ app.get("/api/aedes/focais/login", async (req, res) => {
 /* =========================================================
    BASE CONSOLIDADA
 ========================================================= */
+
+/* ------------------------------------------------
+server antigo lkasemirogit.hub
+
+app.get("/api/aedes/base", async (req, res) => {
+  try {
+    const { filtro } = req.query;
+
+    let sql = `
+      SELECT 
+        u.unidade_id AS id, 
+        u.nome_unidade AS unidade, 
+        stg.matricula, 
+        stg.email,
+        stg.focal AS "focalNome"
+      FROM aedes.unidades u
+      INNER JOIN aedes.stg_importacao_excel stg ON u.nome_unidade = stg.unidade
+    `;
+    let params = [];
+
+    if (filtro && filtro.trim() !== "") {
+      sql += " WHERE stg.email = $1 OR CAST(stg.matricula AS TEXT) = $2";
+      params.push(filtro.trim(), filtro.trim());
+    }
+
+    sql += " ORDER BY u.nome_unidade ASC";
+
+    const result = await pool.query(sql, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Erro ao buscar dados consolidados:", err.message);
+    res.status(500).json({ error: "Erro interno ao buscar base." });
+  }
+});
+*/
+
+
 app.get("/api/aedes/base", async (req, res) => {
   try {
     const { filtro } = req.query;
@@ -267,12 +304,22 @@ app.get("/api/aedes/lotes", async (_req, res) => {
    ROTAS GERAIS
 ========================================================= */
 
-app.get("/api/unidades", async (_req, res) => {
+/*app.get("/api/unidades", async (_req, res) => {
   try {
     const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades ORDER BY nome_unidade ASC`);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar unidades." });
+  }
+});
+*/
+app.get("/api/unidades", async (_req, res) => {
+  try {
+    const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades ORDER BY nome_unidade ASC`);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ ERRO NA ROTA UNIDADES:", err.message); // <-- Adicione essa linha temporariamente
+    res.status(500).json({ error: "Erro ao buscar unidades.", detalhe: err.message }); // <-- E mude aqui para ver o erro no navegador
   }
 });
 

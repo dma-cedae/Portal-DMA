@@ -133,8 +133,13 @@ async function buildGridRows() {
 
     gridRows = unidadesFocal.map((itemSTG) => ({
       rowId: createLocalId("row"),
-      unidadeId: itemSTG.matricula || "S/M",
-      unidade: itemSTG.unidade || "Unidade sem identificação",
+      
+      // CORREÇÃO 1: O ID da unidade vindo do banco (u.unidade_id AS id)
+      unidadeId: itemSTG.id || "S/M",
+      
+      // CORREÇÃO 2: Blindagem para ler o nome da unidade independente de como venha da API
+      unidade: itemSTG.unidade_nome || itemSTG.nome_unidade || itemSTG.Unidade || "Unidade sem identificação",
+      
       statusLinha: "Pendente",
       vistoriaRealizada: "",
       motivosNaoVistoria: [],
@@ -153,7 +158,6 @@ async function buildGridRows() {
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center;">Erro: ${error.message}</td></tr>`;
   }
 }
-
 function getRowVisibility(row) {
   const vSim = row.vistoriaRealizada === "sim";
   const vNao = row.vistoriaRealizada === "nao";

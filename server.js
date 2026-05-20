@@ -373,6 +373,114 @@ app.get("/api/unidades", async (_req, res) => {
   }
 });
 
+app.get("/api/aedes/painel-dados", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        EXTRACT(YEAR FROM data_registro)::int AS "Ano",
+        CASE EXTRACT(MONTH FROM data_registro)
+          WHEN 1 THEN 'Janeiro'
+          WHEN 2 THEN 'Fevereiro'
+          WHEN 3 THEN 'Março'
+          WHEN 4 THEN 'Abril'
+          WHEN 5 THEN 'Maio'
+          WHEN 6 THEN 'Junho'
+          WHEN 7 THEN 'Julho'
+          WHEN 8 THEN 'Agosto'
+          WHEN 9 THEN 'Setembro'
+          WHEN 10 THEN 'Outubro'
+          WHEN 11 THEN 'Novembro'
+          WHEN 12 THEN 'Dezembro'
+        END AS "Mes_Nome",
+        unidade_nome AS "Unidade",
+        
+        -- Mapeia se foi visitada (baseado em vistoria_realizada = 'sim')
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' THEN 1 ELSE 0 END AS visitada,
+        
+        -- Mapeia foco (apenas se foi visitada E foco_encontrado = 'sim')
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' AND LOWER(TRIM(foco_encontrado)) = 'sim' THEN 1 ELSE 0 END AS foco_encontrado,
+        
+        -- Mapeia foco remediado
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' AND LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) = 'sim' THEN 1 ELSE 0 END AS foco_remediado,
+        
+        -- Mapeia foco pendente (Teve foco mas não foi remediado)
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' AND LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) != 'sim' THEN 1 ELSE 0 END AS foco_pendente,
+        
+        -- --- TRATAMENTO DOS MOTIVOS NÃO VISTORIA (Convertendo JSONB para TEXT com ::text) ---
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%acesso%' OR LOWER(motivos_nao_vistoria::text) LIKE '%condicao%' THEN 1 ELSE 0 END AS nv_acesso,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%brigadista%' THEN 1 ELSE 0 END AS nv_brigadista,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%viatura%' THEN 1 ELSE 0 END AS nv_viatura,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%esquecimento%' THEN 1 ELSE 0 END AS nv_esquecimento,
+        
+        -- --- TRATAMENTO DOS MOTIVOS NÃO REMEDIAÇÃO (Convertendo JSONB para TEXT com ::text) ---
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%treino%' OR LOWER(motivos_nao_remediacao::text) LIKE '%capacita%' THEN 1 ELSE 0 END AS mnr_capacitacao,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%cloro%' OR LOWER(motivos_nao_remediacao::text) LIKE '%larvicida%' THEN 1 ELSE 0 END AS mnr_larvicida,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%limpeza%' THEN 1 ELSE 0 END AS mnr_limpeza,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%cobertura%' OR LOWER(motivos_nao_remediacao::text) LIKE '%tampa%' THEN 1 ELSE 0 END AS mnr_cobertura
+        
+      FROM aedes.vistorias_itens;
+    `;
+    
+    const result = await pool.query(query); 
+    const dados = result.rows || result;
+    
+    res.json(dados);
+  } catch (err) {
+    console.error("❌ Erro ao processar mapeamento analítico na rota /api/aedes/painel-dados:", err.message);
+    res.status(500).json({ 
+      error: "Erro interno ao processar e mapear as colunas do painel.",
+      details: err.message 
+    });
+  }
+});
+/* ==========================================================================
+   ROTA DO DOSSIÊ: COLOCA O FOCO EM FOCAL_UNIDADE + FOCAIS
+========================================================================== */
+app.get("/api/aedes/focal-dossie", async (req, res) => {
+  try {
+    const { unidade } = req.query;
+    if (!unidade) {
+      return res.status(400).json({ error: "Nome da unidade é obrigatório." });
+    }
+
+    const query = `
+      WITH ranking_unidades AS (
+        SELECT 
+          vi.unidade_nome,
+          DENSE_RANK() OVER (ORDER BY vi.unidade_nome ASC) as id_calculado
+        FROM aedes.vistorias_itens vi
+        WHERE vi.unidade_nome IS NOT NULL
+        GROUP BY vi.unidade_nome
+      )
+      SELECT 
+        f.nome,
+        f.matricula,
+        f.email
+      FROM aedes.focal_unidade fu
+      INNER JOIN aedes.focais f ON fu.focal_pk = f.focal_pk
+      INNER JOIN ranking_unidades ru ON fu.unidade_id = ru.id_calculado
+      WHERE LOWER(TRIM(ru.unidade_nome)) = LOWER(TRIM($1))
+        AND fu.ativo = true 
+        AND f.ativo = true
+      LIMIT 1;
+    `;
+
+    const result = await pool.query(query, [unidade.trim()]);
+
+    // Se a unidade não tiver focal mapeado no relacionamento, retorna nulo pro front tratar
+    if (result.rows.length === 0) {
+      return res.json({ nome: null, matricula: null, email: null });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em /api/aedes/focal-dossie:", err.message);
+    res.status(500).json({ error: "Erro ao buscar dados do focal técnico." });
+  }
+});
+/* ==========================================================================
+   ROTAS ADICIONAIS E MIDDLEWARES (SAÚDE E MONITORAMENTO)
+========================================================================== */
 app.get("/api/health", (_req, res) => {
   const dataBrasilia = new Date().toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo"
@@ -393,5 +501,7 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, async () => {
   console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
-  await initSchema();
+  if (typeof initSchema === "function") {
+    await initSchema();
+  }
 });

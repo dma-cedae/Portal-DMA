@@ -101,8 +101,7 @@ export const AedesAPI = {
     },
 
     /**
-     * NOVA ROTA DOSSIÊ: Busca o focal técnico responsável pela unidade direto da tabela relacional.
-     * Não faz mais filtros locais em arrays na memória do navegador.
+     * ROTA DOSSIÊ: Busca o focal técnico responsável pela unidade direto da tabela relacional.
      */
     async getFocalDossie(nomeUnidade) {
         try {
@@ -120,4 +119,4 @@ export const AedesAPI = {
             return { nome: null, matricula: null, email: null };
         }
     }
-};
+}; 

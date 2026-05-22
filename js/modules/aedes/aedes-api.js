@@ -2,15 +2,9 @@
  * Módulo de Comunicação API - AEDES
  */
 
-// aedes-api.js
-
-// Altere temporariamente no topo do aedes-api.js para forçar o teste local:
-const API_BASE = "http://localhost:3001"; 
-// const API_BASE = window.location.hostname === "localhost" ...
-
-//const API_BASE = window.location.hostname === "localhost" 
-  //  ? "http://localhost:3001" 
-  //  : "https://dma-aedes-api.onrender.com";
+const API_BASE = window.location.hostname === "localhost" 
+    ? "http://localhost:3001" 
+    : "https://dma-aedes-api.onrender.com";
 
 export const AedesAPI = {
 

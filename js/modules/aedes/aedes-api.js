@@ -70,7 +70,6 @@ export const AedesAPI = {
             
             const dados = await response.json();
             
-            // Garante o mapeamento de tipos corretos (ex: chaves numéricas dos cards e gráficos)
             return dados.map(r => ({
                 Ano: parseInt(r.Ano) || 2026,
                 Mes_Nome: r.Mes_Nome,
@@ -101,7 +100,6 @@ export const AedesAPI = {
         try {
             if (!nomeUnidade) return { nome: null, matricula: null, email: null };
 
-            // Codifica corretamente espaços e caracteres especiais na URL (ex: "ETA Guandu")
             const url = `${API_BASE}/api/aedes/focal-dossie?unidade=${encodeURIComponent(nomeUnidade.trim())}`;
             
             const response = await fetch(url);
@@ -112,5 +110,26 @@ export const AedesAPI = {
             console.error(`❌ AedesAPI.getFocalDossie para [${nomeUnidade}]:`, error);
             return { nome: null, matricula: null, email: null };
         }
+    },
+
+    /**
+     * NOVA ROTA: Consome a View unificada (vw_painel_consolidado) trazendo 
+     * a contagem de semanas sequenciais a partir da Semana 1 e os dados históricos.
+     */
+    async getConsolidadoView() {
+        try {
+            const response = await fetch(`${API_BASE}/api/aedes/consolidado`);
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
+            
+            const json = await response.json();
+            
+            if (json && json.sucesso) {
+                return json.dados;
+            }
+            return json || [];
+        } catch (error) {
+            console.error("❌ AedesAPI.getConsolidadoView:", error);
+            return [];
+        }
     }
-}; 
+}; // Chaves fechadas corretamente aqui para o export do objeto

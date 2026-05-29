@@ -6,53 +6,65 @@
 
 import { AedesAPI } from '../modules/aedes/aedes-api.js';
 
+// Mapeamento de Labels para exibição amigável na interface do site
+const LABELS_MAP = {
+    "objetos_acumulando_agua": "Objetos acumulando água",
+    "reservatorio_de_agua": "Reservatório de água",
+    "bromelias": "Bromélias",
+    "outros": "Outros",
+    "sem_condicao_acesso": "Sem acesso",
+    "sem_brigadista": "Sem brigadista",
+    "sem_viatura_disponivel": "Sem viatura disponível",
+    "esquecimento": "Esquecimento",
+    "falta_de_cloro_larvicida": "Falta de cloro/larvicida",
+    "necessidade_limpeza_terreno": "Necessidade de limpeza do terreno",
+    "reservatorio_sem_cobertura": "Reservatório sem cobertura"
+};
+
 // Estado global dos dados na página para permitir filtros dinâmicos por semana
 let DADOS_PAINEL_GLOBAL = [];
 
 async function inicializarModuloAedes() {
     try {
-        console.log("A carregar Módulo Aedes via View Consolidada do Banco...");
+        console.log("A carregar Módulo Aedes via View Consolidada...");
 
-        // 1. Busca os dados usando o método do seu arquivo centralizado de APIs
-        const dadosView = await AedesAPI.getConsolidadoView();
+        // 1. Captura os dados unificados (Histórico + Portal + Não Informados) do Backend no Render
+        // Nota: Altere a URL abaixo caso seu endpoint use outro caminho
+        const resposta = await fetch('/api/aedes/consolidado');
+        const json = await resposta.json();
 
-        if (!dadosView || dadosView.length === 0) {
-            throw new Error("Nenhum dado retornado do banco de dados ou formato inválido.");
+        if (!json.sucesso) {
+            throw new Error(json.erro || "Falha ao obter dados do servidor.");
         }
 
-        DADOS_PAINEL_GLOBAL = dadosView;
+        DADOS_PAINEL_GLOBAL = json.dados;
 
-        // 2. Renderiza os componentes na tela (Dropdown de Semanas e Tabela)
+        // 2. Renderiza os componentes na tela (Filtros e Tabela)
         configurarFiltrosSemana(DADOS_PAINEL_GLOBAL);
         renderizarTabelaConsolidada(DADOS_PAINEL_GLOBAL);
 
-        // 3. Configura a ação do botão de exportação baseado no filtro atual da tela
+        // 3. Configura os ouvintes de clique para exportação
         const btnExport = document.getElementById('btnExportExcel');
         if (btnExport) {
-            btnExport.onclick = () => {
-                const filtroAtual = document.getElementById('selectFiltroSemana').value;
-                const dadosFiltrados = filtroAtual === 'todas' 
-                    ? DADOS_PAINEL_GLOBAL 
-                    : DADOS_PAINEL_GLOBAL.filter(d => d.semana_contagem == filtroAtual);
-                exportarParaExcel(dadosFiltrados);
-            };
+            btnExport.onclick = () => exportarParaExcel(DADOS_PAINEL_GLOBAL);
         }
 
     } catch (error) {
         console.error("Erro crítico ao inicializar painel do Módulo Aedes:", error);
-        exibirMensagemErroInterface(`Não foi possível sincronizar a matriz de dados. Motivo: ${error.message}`);
+        exibirMensagemErroInterface("Não foi possível carregar os dados do painel de controle.");
     }
 }
 
 /**
- * Monta dinamicamente o dropdown de semanas com os períodos calculados pela View
+ * Monta dinamicamente um select/dropdown de semanas para que o usuário possa filtrar a tela
  */
 function configurarFiltrosSemana(dados) {
     const selectSemana = document.getElementById('selectFiltroSemana');
     if (!selectSemana) return;
 
-    // Isola as semanas existentes e ordena do maior para o menor (Mais recente primeiro)
+    // Obtém todas as semanas únicas presentes no banco (incluindo a Semana 0 de histórico)
     const semanasUnicas = [...new Set(dados.map(item => item.semana_contagem))].sort((a, b) => b - a);
+
     selectSemana.innerHTML = '<option value="todas">-- Todas as Semanas / Todo o Histórico --</option>';
     
     semanasUnicas.forEach(sem => {
@@ -65,6 +77,7 @@ function configurarFiltrosSemana(dados) {
         selectSemana.appendChild(option);
     });
 
+    // Evento de mudança no filtro
     selectSemana.onchange = (e) => {
         const valorFiltro = e.target.value;
         if (valorFiltro === 'todas') {
@@ -77,44 +90,51 @@ function configurarFiltrosSemana(dados) {
 }
 
 /**
- * Renderiza a tabela HTML na tela incluindo a coluna de Semanas
+ * Renderiza a tabela HTML na tela do Portal-DMA
  */
 function renderizarTabelaConsolidada(dados) {
     const container = document.getElementById('containerTabelaAedes');
     if (!container) return;
 
+    if (!dados || dados.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">Nenhum registro encontrado para o período selecionado.</div>';
+        return;
+    }
+
     let html = `
         <table class="tabela-aedes-dma">
             <thead>
                 <tr>
-                    <th style="text-align: center; width: 110px;">Nº Semana</th>
+                    <th>Semana</th>
                     <th>Período</th>
                     <th>Unidade CEDAE</th>
-                    <th style="text-align: center;">Vistoria</th>
-                    <th style="text-align: center;">Foco</th>
+                    <th>Vistoria</th>
+                    <th>Foco</th>
                     <th>Local do Foco</th>
-                    <th style="text-align: center;">Remediação</th>
+                    <th>Remediação</th>
                     <th>Responsável / Focal</th>
-                    <th style="text-align: center;">Data do Envio</th>
+                    <th>Data do Envio</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     dados.forEach(item => {
-        // Define classes CSS baseado nos retornos da View unificada
-        let classeLinha = item.vistoria === 'Não Informado' ? 'status-nao-informado' : '';
+        // Classes css dinâmicas para colorir o status de "Não Informado" ou Focos Detectados
+        let classeVistoria = '';
+        if (item.vistoria === 'Não Informado') classeVistoria = 'status-nao-informado';
+        else if (item.vistoria === 'sim') classeVistoria = 'status-sim';
+        else if (item.vistoria === 'nao') classeVistoria = 'status-nao';
+
         let classeFoco = item.foco === 'sim' ? 'status-foco-alerta' : '';
-        
         const dataFormatada = item.data_real_envio ? new Date(item.data_real_envio).toLocaleDateString('pt-BR') : '-';
-        const labelSemana = item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`;
 
         html += `
-            <tr class="${classeLinha}">
-                <td style="text-align: center; font-weight: bold; color: #0f766e;">${labelSemana}</td>
-                <td style="font-size: 11px; white-space: nowrap;">${item.periodo_semana}</td>
+            <tr>
+                <td style="text-align: center; font-weight: bold;">${item.semana_contagem === 0 ? 'Histórico' : item.semana_contagem}</td>
+                <td style="font-size: 11px;">${item.periodo_semana}</td>
                 <td><strong>${item.unidade}</strong></td>
-                <td style="text-align: center; font-weight: 500;">${item.vistoria}</td>
+                <td class="${classeVistoria}" style="text-align: center;">${item.vistoria}</td>
                 <td class="${classeFoco}" style="text-align: center;">${item.foco}</td>
                 <td>${item.local_foco || '-'}</td>
                 <td style="text-align: center;">${item.remediacao}</td>
@@ -133,17 +153,19 @@ function renderizarTabelaConsolidada(dados) {
  */
 async function exportarParaExcel(dadosParaExportar) {
     if (typeof ExcelJS === 'undefined') {
-        alert("Erro: A biblioteca ExcelJS não foi carregada na página.");
+        alert("Erro: A biblioteca ExcelJS não foi carregada nesta página. Verifique os scripts da página.");
         return;
     }
 
     try {
+        console.log("Iniciando exportação de " + dadosParaExportar.length + " registros...");
+        
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Painel Consolidado Aedes');
 
-        // Estrutura das Colunas do Relatório Excel (.xlsx)
+        // Configuração estrutural rígida das colunas da planilha conforme a VIEW do Neon
         worksheet.columns = [
-            { header: 'Nº SEMANA', key: 'semana_contagem', width: 14 },
+            { header: 'Nº SEMANA', key: 'semana_contagem', width: 12 },
             { header: 'PERÍODO COBERTURA', key: 'periodo_semana', width: 25 },
             { header: 'UNIDADE CEDAE', key: 'unidade', width: 32 },
             { header: 'VISTORIA REALIZADA', key: 'vistoria', width: 22 },
@@ -155,9 +177,10 @@ async function exportarParaExcel(dadosParaExportar) {
             { header: 'DATA REAL DE ENVIO', key: 'data_real_envio', width: 20 }
         ];
 
+        // Adiciona as linhas na planilha e aplica validações estilísticas
         dadosParaExportar.forEach(item => {
             const row = worksheet.addRow({
-                semana_contagem: item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`,
+                semana_contagem: item.semana_contagem === 0 ? 'Histórico' : item.semana_contagem,
                 periodo_semana: item.periodo_semana,
                 unidade: item.unidade,
                 vistoria: item.vistoria,
@@ -169,7 +192,7 @@ async function exportarParaExcel(dadosParaExportar) {
                 data_real_envio: item.data_real_envio ? new Date(item.data_real_envio).toLocaleDateString('pt-BR') : '-'
             });
 
-            // Formatação de alinhamento por célula
+            // Alinhamentos de legibilidade das células de status e datas
             row.getCell('semana_contagem').alignment = { horizontal: 'center' };
             row.getCell('periodo_semana').alignment = { horizontal: 'center' };
             row.getCell('vistoria').alignment = { horizontal: 'center' };
@@ -177,35 +200,46 @@ async function exportarParaExcel(dadosParaExportar) {
             row.getCell('remediacao').alignment = { horizontal: 'center' };
             row.getCell('data_real_envio').alignment = { horizontal: 'center' };
 
-            // Se for unidade inadimplente, aplica um background amarelo claro na linha inteira do Excel
+            // Regra visual de destaque: Se não foi informado, pinta a linha sutilmente de cinza/amarelo claro
             if (item.vistoria === 'Não Informado') {
                 row.eachCell((cell) => {
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F2' } };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFF9F2' } // Alerta suave para ausência de preenchimento
+                    };
                 });
             }
             
-            // Se for foco positivo, destaca a célula em vermelho com texto em vermelho escuro bold
+            // Se houver foco positivo de dengue/larvas, destaca a célula em vermelho claro
             if (item.foco === 'sim') {
-                row.getCell('foco').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
+                row.getCell('foco').fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FEE2E2' }
+                };
                 row.getCell('foco').font = { color: { argb: '991B1B' }, bold: true };
             }
         });
 
-        // Estiliza a linha do Cabeçalho com o verde institucional do DMA CEDAE (#0F766E)
+        // Estilização do Cabeçalho Principal (Verde CEDAE institucional)
         const headerRow = worksheet.getRow(1);
         headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } }; // Teal escuro
         headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
         headerRow.height = 28;
 
-        worksheet.autoFilter = 'A1:J1'; // Filtro nativo automático do Excel nas tabelas
-        worksheet.views = [{ state: 'frozen', ySplit: 1 }]; // Congela a primeira linha para navegação confortável
+        // Ativa os filtros automáticos nativos do Excel no topo das colunas
+        worksheet.autoFilter = 'A1:J1';
 
+        // Congela a primeira linha (cabeçalho) para que permaneça visível ao dar scroll
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+        // Dispara a geração do buffer binário e download direto no navegador
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         
-        const filtroAtual = document.getElementById('selectFiltroSemana')?.value || 'Geral';
-        const nomeArquivo = `CEDAE_Aedes_PainelConsolidado_Semana_${filtroAtual}.xlsx`;
+        const nomeArquivo = `CEDAE_Aedes_PainelConsolidado_Semana_${document.getElementById('selectFiltroSemana')?.value || 'Geral'}.xlsx`;
         
         const url = window.URL.createObjectURL(blob);
         const linkDownload = document.createElement('a');
@@ -213,11 +247,13 @@ async function exportarParaExcel(dadosParaExportar) {
         linkDownload.download = nomeArquivo;
         linkDownload.click();
         
+        // Limpa a memória lógica da URL temporária
         window.URL.revokeObjectURL(url);
+        console.log("Planilha baixada com sucesso pelo usuário.");
 
     } catch (erro) {
-        console.error("Erro na exportação para Excel:", erro);
-        alert("Erro técnico ao processar e fazer o download da planilha XLSX.");
+        console.error("Erro interno no motor do ExcelJS durante a exportação:", erro);
+        alert("Erro técnico: Não foi possível processar a planilha XLSX.");
     }
 }
 
@@ -228,5 +264,5 @@ function exibirMensagemErroInterface(mensagem) {
     }
 }
 
-// Inicializa o módulo respeitando a carga da árvore DOM
+// Inicializa automaticamente o módulo assim que o DOM do Portal-DMA estiver pronto
 document.addEventListener("DOMContentLoaded", inicializarModuloAedes);

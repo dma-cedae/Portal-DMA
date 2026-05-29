@@ -358,7 +358,7 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
 app.get("/api/aedes/consolidado", async (req, res) => {
   try {
     // Executa a busca direta na View customizada que criamos no Postgres/Neon
-    const query = 'SELECT * FROM vw_painel_consolidado ORDER BY semana_contagem DESC, unidade ASC;';
+    const query = 'SELECT * FROM aedes.vw_painel_consolidado ORDER BY semana_contagem DESC, unidade ASC;';
     const result = await pool.query(query);
 
     // Retorna no encapsulamento exato esperado pelo método getConsolidadoView() do front

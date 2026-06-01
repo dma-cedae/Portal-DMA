@@ -179,32 +179,34 @@ app.get("/api/aedes/base", async (req, res) => {
 });
 
 /* =========================================================
-   CERTIFICADOS
+   CERTIFICADOS (CONSOLIDADO: EXCEL + PORTAL) - REVISADO
 ========================================================= */
 app.get("/api/aedes/certificados", async (_req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        "Unidade",
-        EXTRACT(MONTH FROM "Data") AS mes,
-        EXTRACT(YEAR FROM "Data") AS ano,
-        COUNT(CASE WHEN "UV_Sim" = 'Sim' THEN 1 END) AS total_vistorias,
+        UPPER(TRIM(unidade)) AS unidade,
+        EXTRACT(MONTH FROM data_registro) AS mes,
+        EXTRACT(YEAR FROM data_registro) AS ano,
+        COUNT(CASE WHEN uv_sim = 'Sim' THEN 1 END) AS total_vistorias,
+        -- Elegível se houver vistorias registradas em pelo menos 4 semanas diferentes
         CASE 
-          WHEN COUNT(DISTINCT "Semana") >= 4 THEN true 
+          WHEN COUNT(DISTINCT semana) >= 4 THEN true 
           ELSE false 
         END AS cobertura_semanal_completa,
+        -- Foco em aberto: se achou foco (fe_sim = 'Sim') mas a remediação NÃO foi concluída (rm_sim != 'Sim')
         CASE 
-          WHEN COUNT(CASE WHEN "FE_Sim" = 'Sim' AND "RM_Não" = 'Sim' THEN 1 END) > 0 THEN true
+          WHEN COUNT(CASE WHEN fe_sim = 'Sim' AND rm_sim <> 'Sim' THEN 1 END) > 0 THEN true
           ELSE false 
         END AS focos_nao_remediados
-      FROM aedes.excel_historico
-      WHERE "UV_Sim" = 'Sim'
-      GROUP BY "Unidade", EXTRACT(YEAR FROM "Data"), EXTRACT(MONTH FROM "Data")
-      ORDER BY ano DESC, mes DESC, "Unidade" ASC;
+      FROM aedes.excel_portal
+      WHERE uv_sim = 'Sim'
+      GROUP BY UPPER(TRIM(unidade)), EXTRACT(YEAR FROM data_registro), EXTRACT(MONTH FROM data_registro)
+      ORDER BY ano DESC, mes DESC, unidade ASC;
     `);
 
     const linhasFormatadas = result.rows.map(row => ({
-      unidade: row.Unidade, 
+      unidade: row.unidade, // Agora garantido em formato UPPER pelo banco
       mes: parseInt(row.mes),
       ano: parseInt(row.ano),
       total_vistorias: parseInt(row.total_vistorias || 0),
@@ -214,10 +216,11 @@ app.get("/api/aedes/certificados", async (_req, res) => {
 
     res.json(linhasFormatadas);
   } catch (err) {
-    console.error("❌ Erro ao calcular certificados no Banco:", err.message);
+    console.error("❌ Erro ao calcular certificados na tabela consolidada:", err.message);
     res.status(500).json({ error: "Erro interno ao processar as regras de elegibilidade." });
   }
 });
+
 
 /* =========================================================
    ROTAS DE VISTORIAS (LOTES)
@@ -357,8 +360,8 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
 ========================================================================== */
 app.get("/api/aedes/consolidado", async (req, res) => {
   try {
-    // Executa a busca direta na View customizada que criamos no Postgres/Neon
-    const query = 'SELECT * FROM aedes.vw_painel_consolidado ORDER BY semana_contagem DESC, unidade ASC;';
+    // Consulta direta na tabela física do esquema aedes
+    const query = 'SELECT * FROM aedes.excel_portal ORDER BY semana_contagem DESC, unidade ASC;';
     const result = await pool.query(query);
 
     // Retorna no encapsulamento exato esperado pelo método getConsolidadoView() do front
@@ -370,11 +373,13 @@ app.get("/api/aedes/consolidado", async (req, res) => {
     console.error("❌ Erro crítico na rota /api/aedes/consolidado:", err.message);
     res.status(500).json({ 
       sucesso: false, 
-      error: "Erro ao consultar a view consolidada no banco.",
+      error: "Erro ao consultar a tabela excel_portal no banco.",
       details: err.message 
     });
   }
 });
+
+
 
 /* ==========================================================================
    ROTA DO DOSSIÊ

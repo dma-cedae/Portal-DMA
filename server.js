@@ -356,15 +356,34 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
 });
 
 /* ==========================================================================
-   ⭐ SOLUÇÃO DO BUG: INCLUSÃO DA ROTA CONSOLIDADA EXIGIDA PELO FRONTEND
+   ⭐ SOLUÇÃO DEFINITIVA: MAPEAMENTO SEGURO DA TABELA FÍSICA REAL
 ========================================================================== */
 app.get("/api/aedes/consolidado", async (req, res) => {
   try {
-    // Consulta direta na tabela física do esquema aedes
-    const query = 'SELECT * FROM aedes.excel_portal ORDER BY semana_contagem DESC, unidade ASC;';
+    // Mapeia os campos reais descobertos na estrutura da tabela física
+    const query = `
+      SELECT 
+        id,
+        semana AS semana_contagem,
+        semana_acumulada AS periodo_semana,
+        ano,
+        data_registro AS data_real_envio,
+        unidade,
+        uv_sim,
+        uv_nao,
+        fe_sim,
+        fe_nao,
+        rm_sim,
+        rm_nao,
+        matricula,
+        focal_nome AS focal,
+        focal_email
+      FROM aedes.excel_portal 
+      ORDER BY semana DESC, unidade ASC;
+    `;
+    
     const result = await pool.query(query);
 
-    // Retorna no encapsulamento exato esperado pelo método getConsolidadoView() do front
     res.json({
       sucesso: true,
       dados: result.rows
@@ -373,14 +392,11 @@ app.get("/api/aedes/consolidado", async (req, res) => {
     console.error("❌ Erro crítico na rota /api/aedes/consolidado:", err.message);
     res.status(500).json({ 
       sucesso: false, 
-      error: "Erro ao consultar a tabela excel_portal no banco.",
+      error: "Erro ao consultar a tabela física no banco de dados.",
       details: err.message 
     });
   }
 });
-
-
-
 /* ==========================================================================
    ROTA DO DOSSIÊ
 ========================================================================== */

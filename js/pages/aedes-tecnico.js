@@ -79,7 +79,7 @@ function configurarFiltrosSemana(dados) {
 }
 
 /**
- * Renderiza a tabela HTML na tela mapeando as propriedades diretas da sua View SQL
+ * Renderiza a tabela HTML na tela mapeando as propriedades normalizadas
  */
 function renderizarTabelaConsolidada(dados) {
     const container = document.getElementById('containerTabelaAedes');
@@ -104,30 +104,30 @@ function renderizarTabelaConsolidada(dados) {
     `;
 
     dados.forEach(item => {
-        // Normalização das strings para checagem estável de status e classes CSS
-        const vistoriaStr = String(item.vistoria || '-').trim();
+        // Coleta e limpa os valores normalizados vindos da API
+        const vistoriaStr = String(item.vistoria || 'Não Informado').trim();
         const vistoriaLower = vistoriaStr.toLowerCase();
-        const focoLower = String(item.foco || '-').toLowerCase().trim();
+        const focoLower = String(item.foco || 'Não').toLowerCase().trim();
 
         // Linha ganha cor cinza/amarelada se não houver informação ou a vistoria foi negativa
         let classeLinha = (vistoriaStr === 'Não Informado' || vistoriaLower === 'não' || vistoriaLower === 'nao' || vistoriaStr === '-') ? 'status-nao-informado' : '';
         // Célula do foco ganha cor vermelha de alerta se houver foco positivo
         let classeFoco = (focoLower === 'sim' || focoLower === 's') ? 'status-foco-alerta' : '';
         
-        // Captura a data de envio tratando variações de colunas da view (data_real_envio ou data_envio)
-        const campoData = item.data_real_envio || item.data_envio;
+        // Formata a data de registro fornecida pelo banco
+        const campoData = item.data_real_envio;
         const dataFormatada = campoData ? new Date(campoData).toLocaleDateString('pt-BR') : '-';
         
         const labelSemana = item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`;
         const periodoSemana = item.periodo_semana || '-';
         const unidadeNome = item.unidade || '-';
         const remediacao = item.remediacao || '-';
-        const focalNome = item.focal || item.focal_nome || '-';
+        const focalNome = item.focal || '-';
 
-        // Tratamento elegante para exibir justificativas caso não tenha sido vistoriado
+        // Exibição amigável com base no status da vistoria
         let localExibicao = item.local_foco || '-';
         if (vistoriaLower === 'não' || vistoriaLower === 'nao') {
-            localExibicao = item.motivo_nao_vistoria ? `Não vistoriado: ${item.motivo_nao_vistoria}` : 'Não vistoriado';
+            localExibicao = 'Não vistoriado';
         }
 
         html += `
@@ -136,7 +136,7 @@ function renderizarTabelaConsolidada(dados) {
                 <td style="font-size: 11px; white-space: nowrap;">${periodoSemana}</td>
                 <td><strong>${unidadeNome}</strong></td>
                 <td style="text-align: center; font-weight: 500;">${vistoriaStr}</td>
-                <td class="${classeFoco}" style="text-align: center;">${item.foco || '-'}</td>
+                <td class="${classeFoco}" style="text-align: center;">${item.foco || 'Não'}</td>
                 <td>${localExibicao}</td>
                 <td style="text-align: center;">${remediacao}</td>
                 <td>${focalNome}</td>

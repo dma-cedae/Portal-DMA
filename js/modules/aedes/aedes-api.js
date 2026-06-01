@@ -113,8 +113,8 @@ export const AedesAPI = {
     },
 
     /**
-     * NOVA ROTA: Consome a View unificada (vw_painel_consolidado) trazendo 
-     * a contagem de semanas sequenciais a partir da Semana 1 e os dados históricos.
+     * NOVA ROTA INTERNA: Normaliza as colunas físicas da tabela nas
+     * regras de negócio lógicas consumidas pelo painel do aedes-tecnico.js
      */
     async getConsolidadoView() {
         try {
@@ -123,13 +123,48 @@ export const AedesAPI = {
             
             const json = await response.json();
             
-            if (json && json.sucesso) {
-                return json.dados;
+            if (json && json.sucesso && Array.isArray(json.dados)) {
+                return json.dados.map(item => {
+                    const numSemana = item.semana_contagem !== undefined && item.semana_contagem !== null ? Number(item.semana_contagem) : 0;
+                    
+                    // Lógica para Vistoria Realizada
+                    let statusVistoria = "Não Informado";
+                    if (String(item.uv_sim).toLowerCase().trim() === "sim") statusVistoria = "Sim";
+                    if (String(item.uv_nao).toLowerCase().trim() === "sim") statusVistoria = "Não";
+
+                    // Lógica para Foco Detectado
+                    let statusFoco = "Não";
+                    if (String(item.fe_sim).toLowerCase().trim() === "sim") statusFoco = "Sim";
+
+                    // Lógica para Remediação do Foco
+                    let statusRemediacao = "-";
+                    if (String(item.rm_sim).toLowerCase().trim() === "sim") statusRemediacao = "Sim";
+                    if (String(item.rm_nao).toLowerCase().trim() === "sim") statusRemediacao = "Não";
+
+                    return {
+                        ...item,
+                        semana_contagem: numSemana,
+                        // Preenche período nulo com fallback descritivo legível por humanos
+                        periodo_semana: item.periodo_semana || `Semana Epidemiológica ${numSemana} / ${item.ano || 2026}`,
+                        vistoria: statusVistoria,
+                        foco: statusFoco,
+                        remediacao: statusRemediacao,
+                        // Campos de texto livre inexistentes na tabela física recebem fallback estável
+                        local_foco: statusVistoria === "Não" ? "Não vistoriado" : "-",
+                        motivo_nao_vistoria: null,
+                        observacoes: "-",
+                        focal: item.focal || "-",
+                        data_real_envio: item.data_real_envio || null
+                    };
+                });
             }
-            return json || [];
+            
+            if (json && Array.isArray(json)) return json;
+            return [];
+            
         } catch (error) {
             console.error("❌ AedesAPI.getConsolidadoView:", error);
             return [];
         }
     }
-}; // Chaves fechadas corretamente aqui para o export do objeto
+};

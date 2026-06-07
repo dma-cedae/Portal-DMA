@@ -349,7 +349,7 @@ app.get("/api/aedes/lotes", async (_req, res) => {
    ROTAS GERAIS
 ========================================================= */
 
-/*app.get("/api/unidades", async (_req, res) => {
+app.get("/api/unidades", async (_req, res) => {
   try {
     const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades ORDER BY nome_unidade ASC`);
     res.json(result.rows);
@@ -357,8 +357,8 @@ app.get("/api/aedes/lotes", async (_req, res) => {
     res.status(500).json({ error: "Erro ao buscar unidades." });
   }
 });
-*/
-app.get("/api/unidades", async (_req, res) => {
+
+/* app.get("/api/unidades", async (_req, res) => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT "Unidade" AS nome_unidade 
@@ -371,7 +371,7 @@ app.get("/api/unidades", async (_req, res) => {
     console.error("❌ Erro na rota /api/unidades:", err.message);
     res.status(500).json({ error: "Erro ao buscar unidades." });
   }
-});
+}); */
 
 app.get("/api/health", (_req, res) => {
   const dataBrasilia = new Date().toLocaleString("pt-BR", {

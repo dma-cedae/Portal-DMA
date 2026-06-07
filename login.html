@@ -127,7 +127,6 @@
     <h1>Acesso técnico</h1>
     <p class="login-card__text">
       Use o acesso temporário configurado para entrar no ambiente interno.
-      As credenciais não devem permanecer no código-fonte.
     </p>
 
     <div class="field">
@@ -147,12 +146,8 @@
 
     <div id="loginError" class="login-error" aria-live="polite"></div>
 
-    <div class="login-note">
-      Configuração esperada fora deste arquivo:
-      <strong>window.DMA_LOGIN_CONFIG</strong>.
-    </div>
   </main>
-
+// temporariamente expondo credenciais para facilitar acesso tecnico, deve ser removido em produção
   <script>
     window.DMA_LOGIN_CONFIG = {
       user: "dma_tecnico",

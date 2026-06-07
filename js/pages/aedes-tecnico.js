@@ -1,243 +1,264 @@
+/**
+ * Portal-DMA - CEDAE
+ * Módulo de Controle de Vetores (Aedes aegypti)
+ * Script de Integração da View Consolidada e Exportação Avançada com ExcelJS
+ */
+
 import { AedesAPI } from '../modules/aedes/aedes-api.js';
 
-// Mapeamento de Labels para transformar os IDs do banco em nomes legíveis
-const LABELS_MAP = {
-    // Tipos de Foco
-    "objetos_acumulando_agua": "Objetos acumulando água",
-    "reservatorio_de_agua": "Reservatório de água",
-    "bromelias": "Bromélias",
-    "outros": "Outros",
-    // Motivos de Não Vistoria
-    "sem_condicao_acesso": "Sem acesso",
-    "sem_brigadista": "Sem brigadista",
-    "sem_viatura_disponivel": "Sem viatura disponível",
-    "esquecimento": "Esquecimento",
-    // Motivos de Não Remediação
-    "falta_de_cloro_larvicida": "Falta de cloro/larvicida",
-    "necessidade_limpeza_terreno": "Necessidade de limpeza do terreno",
-    "reservatorio_sem_cobertura": "Reservatório sem cobertura"
-};
+// Estado global dos dados na página para permitir filtros dinâmicos por semana
+let DADOS_PAINEL_GLOBAL = [];
 
 async function inicializarModuloAedes() {
     try {
-        console.log("A carregar Módulo Aedes...");
-        const todosLotes = await AedesAPI.getLotes();
-        
-        // Filtro de Data (Corte em 14/05/2026 conforme regra da Área Técnica)
-        const dataCorte = new Date('2026-05-14T00:00:00');
-        const lotes = todosLotes.filter(lote => {
-            const dataLote = new Date(lote.data_envio);
-            return dataLote >= dataCorte;
-        });
+        console.log("A carregar Módulo Aedes via View Consolidada do Banco...");
 
-        renderizarTabelaConsolidada(lotes);
+        // 1. Busca os dados já unificados e processados pela View SQL
+        const dadosView = await AedesAPI.getConsolidadoView();
 
-        // Configuração do Botão de Exportação
+        if (!dadosView || dadosView.length === 0) {
+            throw new Error("Nenhum dado retornado do banco de dados ou formato inválido.");
+        }
+
+        // Armazena a resposta pura no estado global
+        DADOS_PAINEL_GLOBAL = dadosView;
+        console.log("✅ Dados carregados com sucesso! Total de registros:", DADOS_PAINEL_GLOBAL.length);
+
+        // 2. Renderiza os componentes na tela (Dropdown de Semanas e Tabela)
+        configurarFiltrosSemana(DADOS_PAINEL_GLOBAL);
+        renderizarTabelaConsolidada(DADOS_PAINEL_GLOBAL);
+
+        // 3. Configura a ação do botão de exportação baseado no filtro atual da tela
         const btnExport = document.getElementById('btnExportExcel');
         if (btnExport) {
-            btnExport.onclick = () => exportarParaExcel(lotes);
+            btnExport.onclick = () => {
+                const filtroAtual = document.getElementById('selectFiltroSemana').value;
+                const dadosFiltrados = filtroAtual === 'todas' 
+                    ? DADOS_PAINEL_GLOBAL 
+                    : DADOS_PAINEL_GLOBAL.filter(d => d.semana_contagem == filtroAtual);
+                exportarParaExcel(dadosFiltrados);
+            };
         }
 
     } catch (error) {
-        console.error("Erro crítico no Módulo Aedes:", error);
+        console.error("Erro crítico ao inicializar painel do Módulo Aedes:", error);
+        exibirMensagemErroInterface(`Não foi possível sincronizar a matriz de dados. Motivo: ${error.message}`);
     }
 }
 
 /**
- * Renderiza a tabela desmembrando os lotes em unidades individuais
+ * Monta dinamicamente o dropdown de semanas com os períodos calculados pela View
  */
-function renderizarTabelaConsolidada(lotes) {
+function configurarFiltrosSemana(dados) {
+    const selectSemana = document.getElementById('selectFiltroSemana');
+    if (!selectSemana) return;
+
+    // Isola as semanas existentes e ordena do maior para o menor (Mais recente primeiro)
+    const semanasUnicas = [...new Set(dados.map(item => item.semana_contagem))].sort((a, b) => b - a);
+    selectSemana.innerHTML = '<option value="todas">-- Todas as Semanas / Todo o Histórico --</option>';
+    
+    semanasUnicas.forEach(sem => {
+        const amostraDado = dados.find(d => d.semana_contagem === sem);
+        const labelPeriodo = amostraDado ? amostraDado.periodo_semana : '';
+        
+        const option = document.createElement('option');
+        option.value = sem;
+        option.textContent = sem === 0 ? 'Histórico (Pré-Portal)' : `Semana ${sem} (${labelPeriodo})`;
+        selectSemana.appendChild(option);
+    });
+
+    selectSemana.onchange = (e) => {
+        const valorFiltro = e.target.value;
+        if (valorFiltro === 'todas') {
+            renderizarTabelaConsolidada(DADOS_PAINEL_GLOBAL);
+        } else {
+            const dadosFiltrados = DADOS_PAINEL_GLOBAL.filter(d => d.semana_contagem == valorFiltro);
+            renderizarTabelaConsolidada(dadosFiltrados);
+        }
+    };
+}
+
+/**
+ * Renderiza a tabela HTML na tela mapeando as propriedades normalizadas
+ */
+function renderizarTabelaConsolidada(dados) {
     const container = document.getElementById('containerTabelaAedes');
     if (!container) return;
 
     let html = `
-        <table class="tabela-custom">
+        <table class="tabela-aedes-dma">
             <thead>
                 <tr>
-                    <th>DATA</th>
-                    <th>UNIDADE</th>
-                    <th>VISTORIA</th>
-                    <th>FOCO</th>
-                    <th>LOCAL FOCO</th>
-                    <th>REMEDIAÇÃO</th>  
-                    <th>DETALHES / OUTROS</th>
-                    <th>OBSERVAÇÕES</th>
+                    <th style="text-align: center; width: 110px;">Nº Semana</th>
+                    <th>Período</th>
+                    <th>Unidade CEDAE</th>
+                    <th style="text-align: center;">Vistoria</th>
+                    <th style="text-align: center;">Foco</th>
+                    <th>Local do Foco</th>
+                    <th style="text-align: center;">Remediação</th>
+                    <th>Responsável / Focal</th>
+                    <th style="text-align: center;">Data do Envio</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    lotes.forEach(lote => {
-        const registros = lote.payload_completo?.dados || lote.dados || []; 
-        const dataEnvio = lote.data_envio ? new Date(lote.data_envio).toLocaleDateString('pt-BR') : "---";
+    dados.forEach(item => {
+        // Coleta e limpa os valores normalizados vindos da API
+        const vistoriaStr = String(item.vistoria || 'Não Informado').trim();
+        const vistoriaLower = vistoriaStr.toLowerCase();
+        const focoLower = String(item.foco || 'Não').toLowerCase().trim();
 
-        registros.forEach(r => {
-            const fezVistoria  = String(r[2]).toLowerCase() === 'sim';
-            const temFoco      = String(r[3]).toLowerCase() === 'sim';
-            const foiRemediado = String(r[4]).toLowerCase() === 'sim';
-            
-            // Tratamento de locais
-            let localFoco = Array.isArray(r[5]) ? r[5].join(", ") : (r[5] || "");
-            
-            // Captura dos campos de texto "Outros"
-            const outrosLocalFoco           = (r[6] && !['sim', 'nao', 'não', '-'].includes(String(r[6]).toLowerCase().trim())) ? r[6] : "";
-            const outrosMotivoNaoVistoria   = (r[8] && !['sim', 'nao', 'não', '-'].includes(String(r[8]).toLowerCase().trim())) ? r[8] : "";
-            const outrosMotivoNaoRemediacao = (r[10] && !['sim', 'nao', 'não', '-'].includes(String(r[10]).toLowerCase().trim())) ? r[10] : "";
-            
-            const observacoes = r[11] || "-";
+        // Linha ganha cor cinza/amarelada se não houver informação ou a vistoria foi negativa
+        let classeLinha = (vistoriaStr === 'Não Informado' || vistoriaLower === 'não' || vistoriaLower === 'nao' || vistoriaStr === '-') ? 'status-nao-informado' : '';
+        // Célula do foco ganha cor vermelha de alerta se houver foco positivo
+        let classeFoco = (focoLower === 'sim' || focoLower === 's') ? 'status-foco-alerta' : '';
+        
+        // Formata a data de registro fornecida pelo banco
+        const campoData = item.data_real_envio;
+        const dataFormatada = campoData ? new Date(campoData).toLocaleDateString('pt-BR') : '-';
+        
+        const labelSemana = item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`;
+        const periodoSemana = item.periodo_semana || '-';
+        const unidadeNome = item.unidade || '-';
+        const remediacao = item.remediacao || '-';
+        const focalNome = item.focal || '-';
 
-            // Ícone visual de Vistoria
-            const iconVistoria = fezVistoria 
-                ? '<span style="color: #16a34a; font-weight: bold;">✔</span>' 
-                : '<span style="color: #000; font-weight: bold;">✖</span>';
-            
-            // REGRA DO FOCO: Se Vistoria = Não, Foco fica vazio (-). Se Vistoria = Sim, mostra ✔ ou ✖.
-            const displayFoco = fezVistoria
-                ? (temFoco 
-                    ? `<span class="badge badge--danger"><span style="color: #ef4444; font-weight: bold;">✔</span></span>`
-                    : '<span style="color: #000; font-weight: bold;">✖</span>')
-                : '-';
+        // Exibição amigável com base no status da vistoria
+        let localExibicao = item.local_foco || '-';
+        if (vistoriaLower === 'não' || vistoriaLower === 'nao') {
+            localExibicao = 'Não vistoriado';
+        }
 
-            // REGRA DA REMEDIAÇÃO: Só faz sentido se houve Vistoria E se houve Foco.
-            const displayRemediacao = (fezVistoria && temFoco)
-                ? (foiRemediado 
-                    ? '<span style="color: #16a34a; font-weight: bold;">✔</span>' 
-                    : '<span style="color: #ef4444; font-weight: bold;">✖</span>')
-                : '-';
-
-            // Une as justificativas textuais
-            const detalheOutros = [outrosMotivoNaoVistoria, outrosLocalFoco, outrosMotivoNaoRemediacao]
-                                  .filter(txt => txt && txt.trim().length > 0)
-                                  .join(" | ");
-
-            html += `
-                <tr>
-                    <td>${dataEnvio}</td>
-                    <td><b>${r[1]}</b></td>
-                    <td style="text-align:center">${iconVistoria}</td>
-                    <td style="text-align:center">${displayFoco}</td>
-                    <td style="text-align:center;">
-                        ${(fezVistoria && temFoco) ? `<b>${localFoco}</b>` : '-'}
-                    </td>
-                    <td style="text-align:center">${displayRemediacao}</td>
-                    <td style="font-size:0.8rem; color:#1C1C1C; text-align:center;">${detalheOutros || "-"}</td>
-                    <td style="font-size:0.8rem;">${observacoes}</td>
-                </tr>
-            `;
-        });
+        html += `
+            <tr class="${classeLinha}">
+                <td style="text-align: center; font-weight: bold; color: #0f766e;">${labelSemana}</td>
+                <td style="font-size: 11px; white-space: nowrap;">${periodoSemana}</td>
+                <td><strong>${unidadeNome}</strong></td>
+                <td style="text-align: center; font-weight: 500;">${vistoriaStr}</td>
+                <td class="${classeFoco}" style="text-align: center;">${item.foco || 'Não'}</td>
+                <td>${localExibicao}</td>
+                <td style="text-align: center;">${remediacao}</td>
+                <td>${focalNome}</td>
+                <td style="text-align: center;">${dataFormatada}</td>
+            </tr>
+        `;
     });
 
-    html += `</tbody></table>`;
+    html += '</tbody></table>';
     container.innerHTML = html;
 }
+
 /**
- * Gera o ficheiro Excel consolidado (linha por unidade)
+ * Motor de Exportação Avançada utilizando ExcelJS mapeando diretamente a View SQL
  */
-async function exportarParaExcel(lotes) {
+async function exportarParaExcel(dadosParaExportar) {
     if (typeof ExcelJS === 'undefined') {
-        alert("Erro: A biblioteca ExcelJS não foi carregada no HTML.");
+        alert("Erro: A biblioteca ExcelJS não foi carregada na página.");
         return;
     }
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Relatório Consolidado Aedes');
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Painel Consolidado Aedes');
 
-    worksheet.columns = [
-        { header: 'DATA', key: 'data', width: 12 },
-        { header: 'FOCAL', key: 'focal', width: 20 },
-        { header: 'UNIDADE', key: 'unidade', width: 25 },
-        { header: 'VISTORIA', key: 'vistoria', width: 12 },
-        { header: 'MOTIVO NÃO VISTORIA', key: 'motivo_nao_vistoria', width: 25 }, // Nova Coluna
-        { header: 'FOCO', key: 'foco', width: 12 },
-        { header: 'LOCAL FOCO', key: 'local_foco', width: 25 },
-        { header: 'REMEDIAÇÃO', key: 'remediacao', width: 15 },
-        { header: 'MOTIVO NÃO REMEDIAÇÃO', key: 'motivo_nao_remediacao', width: 25 }, // Nova Coluna
-        { header: 'DETALHES / OUTROS', key: 'detalhes_outros', width: 35 },
-        { header: 'OBSERVAÇÕES', key: 'obs', width: 30 }
-    ];
+        // Estrutura exata das colunas do relatório XLSX baseado na View
+        worksheet.columns = [
+            { header: 'Nº SEMANA', key: 'semana_contagem', width: 14 },
+            { header: 'PERÍODO COBERTURA', key: 'periodo_semana', width: 25 },
+            { header: 'UNIDADE CEDAE', key: 'unidade', width: 32 },
+            { header: 'VISTORIA REALIZADA', key: 'vistoria', width: 22 },
+            { header: 'FOCO DETECTADO', key: 'foco', width: 18 },
+            { header: 'LOCAL DO FOCO / MOTIVO', key: 'local_foco', width: 28 },
+            { header: 'REMEDIAÇÃO', key: 'remediacao', width: 15 },
+            { header: 'OBSERVAÇÕES TÉCNICAS', key: 'observacoes', width: 45 },
+            { header: 'FOCAL RESPONSÁVEL', key: 'focal', width: 28 },
+            { header: 'DATA REAL DE ENVIO', key: 'data_real_envio', width: 20 }
+        ];
 
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
-    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E3A8A' } };
+        dadosParaExportar.forEach(item => {
+            const vistoriaStr = String(item.vistoria || '-').trim();
+            const vistoriaLower = vistoriaStr.toLowerCase();
+            const focoLower = String(item.foco || '-').toLowerCase().trim();
+            
+            const campoData = item.data_real_envio || item.data_envio;
 
-    lotes.forEach(lote => {
-    const registros = lote.payload_completo?.dados || lote.dados || [];
-    const dataEnvio = lote.data_envio ? new Date(lote.data_envio).toLocaleDateString('pt-BR') : "";
-    const focalNome = lote.focal_nome || "N/A";
+            let localExibicao = item.local_foco || '-';
+            if (vistoriaLower === 'não' || vistoriaLower === 'nao') {
+                localExibicao = item.motivo_nao_vistoria ? `Não vistoriado: ${item.motivo_nao_vistoria}` : 'Não vistoriado';
+            }
 
-    registros.forEach(r => {
-        const fezVistoria = String(r[2]).toLowerCase() === 'sim';
-        const temFoco     = String(r[3]).toLowerCase() === 'sim';
-        let localFoco     = Array.isArray(r[5]) ? r[5].join(", ") : (r[5] || "");
+            const row = worksheet.addRow({
+                semana_contagem: item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`,
+                periodo_semana: item.periodo_semana || '-',
+                unidade: item.unidade || '-',
+                vistoria: vistoriaStr,
+                foco: item.foco || '-',
+                local_foco: localExibicao,
+                remediacao: item.remediacao || '-',
+                observacoes: item.observacoes || '-',
+                focal: item.focal || item.focal_nome || '-',
+                data_real_envio: campoData ? new Date(campoData).toLocaleDateString('pt-BR') : '-'
+            });
 
-        // --- TRATAMENTO DOS NOVOS CAMPOS (ARRAYS) ---
-        // Se não fez vistoria, extrai os motivos salvos em r[7]
-        const motivoNaoVistoria = !fezVistoria ? (Array.isArray(r[7]) ? r[7].join(", ") : (r[7] || "-")) : "-";
-        
-        // Se fez vistoria e teve foco, mas não remediou, extrai os motivos salvos in r[9]
-        const motivoNaoRemediacao = (fezVistoria && temFoco && String(r[4]).toLowerCase() !== 'sim') 
-            ? (Array.isArray(r[9]) ? r[9].join(", ") : (r[9] || "-")) 
-            : "-";
-        // ---------------------------------------------
+            // Alinhamentos visuais das células
+            row.getCell('semana_contagem').alignment = { horizontal: 'center' };
+            row.getCell('periodo_semana').alignment = { horizontal: 'center' };
+            row.getCell('vistoria').alignment = { horizontal: 'center' };
+            row.getCell('foco').alignment = { horizontal: 'center' };
+            row.getCell('remediacao').alignment = { horizontal: 'center' };
+            row.getCell('data_real_envio').alignment = { horizontal: 'center' };
 
-        // Filtragem de dados "Outros" (Campos de texto manuais)
-        const outrosLocalFoco           = (r[6] && !['sim', 'nao', 'não', '-'].includes(String(r[6]).toLowerCase().trim())) ? r[6] : "";
-        const outrosMotivoNaoVistoria   = (r[8] && !['sim', 'nao', 'não', '-'].includes(String(r[8]).toLowerCase().trim())) ? r[8] : "";
-        const outrosMotivoNaoRemediacao = (r[10] && !['sim', 'nao', 'não', '-'].includes(String(r[10]).toLowerCase().trim())) ? r[10] : "";
-
-        const detalheOutros = [outrosMotivoNaoVistoria, outrosLocalFoco, outrosMotivoNaoRemediacao]
-                              .filter(txt => txt && txt.trim().length > 0)
-                              .join(" | ") || "-";
-
-        const excelFoco        = fezVistoria ? (r[3] || "-") : "-";
-        const excelLocalFoco   = (fezVistoria && temFoco) ? localFoco : "-";
-        const excelRemediacao  = (fezVistoria && temFoco) ? (r[4] || "-") : "-";
-
-        // Inserção dos dados alinhada com as novas chaves
-        const row = worksheet.addRow({
-            data: dataEnvio,
-            focal: focalNome,
-            unidade: r[1] || "-",
-            vistoria: r[2] || "-",
-            motivo_nao_vistoria: motivoNaoVistoria,       // Adicionado aqui
-            foco: excelFoco,
-            local_foco: excelLocalFoco,
-            remediacao: excelRemediacao,
-            motivo_nao_remediacao: motivoNaoRemediacao,   // Adicionado aqui
-            detalhes_outros: detalheOutros,
-            obs: r[11] || "-"
+            // Cor de fundo para unidades inadimplentes/não informadas (Amarelo bem suave)
+            if (vistoriaStr === 'Não Informado' || vistoriaLower === 'não' || vistoriaLower === 'nao' || vistoriaStr === '-') {
+                row.eachCell((cell) => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F2' } };
+                });
+            }
+            
+            // Destaque crítico para focos positivos (Fundo vermelho claro, texto vermelho escuro e negrito)
+            if (focoLower === 'sim' || focoLower === 's') {
+                row.getCell('foco').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
+                row.getCell('foco').font = { color: { argb: '991B1B' }, bold: true };
+            }
         });
 
-        // Alinhamentos centrais das novas colunas de texto limpo
-        row.getCell('data').alignment = { horizontal: 'center' };
-        row.getCell('vistoria').alignment = { horizontal: 'center' };
-        row.getCell('motivo_nao_vistoria').alignment = { horizontal: 'center' };
-        row.getCell('foco').alignment = { horizontal: 'center' };
-        row.getCell('local_foco').alignment = { horizontal: 'center' };
-        row.getCell('remediacao').alignment = { horizontal: 'center' };
-        row.getCell('motivo_nao_remediacao').alignment = { horizontal: 'center' };
-    });
-});
+        // Estilização do cabeçalho oficial DMA (#0F766E - Verde institucional)
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        headerRow.height = 28;
 
-    // Estilização do Cabeçalho
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
-    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '16A34A' } }; // Verde Aedes
-    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        worksheet.autoFilter = 'A1:J1'; // Ativa as setas de filtro nativas do Excel
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }]; // Mantém o topo fixo ao rolar para baixo
 
-    // Download do ficheiro
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    
-    // Utiliza FileSaver se disponível, senão fallback para link
-    if (window.saveAs) {
-        window.saveAs(blob, `Relatorio_Aedes_DMA_${new Date().getTime()}.xlsx`);
-    } else {
+        // Executa o download binário do arquivo .xlsx
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const filtroAtual = document.getElementById('selectFiltroSemana')?.value || 'Geral';
+        const nomeArquivo = `CEDAE_Aedes_PainelConsolidado_Semana_${filtroAtual}.xlsx`;
+        
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `DMA_Aedes_Consolidado_${new Date().getTime()}.xlsx`;
-        a.click();
+        const linkDownload = document.createElement('a');
+        linkDownload.href = url;
+        linkDownload.download = nomeArquivo;
+        linkDownload.click();
+        
+        window.URL.revokeObjectURL(url);
+    } catch (erro) {
+        console.error("Erro na exportação para Excel:", erro);
+        alert("Erro técnico ao processar e fazer o download da planilha XLSX.");
     }
 }
 
-// Inicialização
+function exibirMensagemErroInterface(mensagem) {
+    const container = document.getElementById('containerTabelaAedes');
+    if (container) {
+        container.innerHTML = `<div class="alert alert-danger">${mensagem}</div>`;
+    }
+}
+
+// Escuta o carregamento seguro da árvore DOM antes de rodar
 document.addEventListener("DOMContentLoaded", inicializarModuloAedes);

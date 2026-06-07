@@ -34,22 +34,22 @@ async function initSchema() {
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
-        id                     SERIAL PRIMARY KEY,
-        lote_id                INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
-        unidade_id             TEXT UNIQUE, 
-        unidade_nome           TEXT,
-        vistoria_realizada     TEXT,
-        foco_encontrado        TEXT,
-        foco_remediado         TEXT,
-        motivos_nao_vistoria   JSONB,
-        motivos_nao_remediacao JSONB,
-        locais_foco            JSONB,
-        observacoes            TEXT,
-        data_registro          TIMESTAMP DEFAULT NOW(),
-        outros_local           TEXT,
-        outros_motivo_nao_vistoria TEXT,
+        id                           SERIAL PRIMARY KEY,
+        lote_id                      INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
+        unidade_id                   TEXT UNIQUE, 
+        unidade_nome                 TEXT,
+        vistoria_realizada           TEXT,
+        foco_encontrado              TEXT,
+        foco_remediado               TEXT,
+        motivos_nao_vistoria         JSONB,
+        motivos_nao_remediacao       JSONB,
+        locais_foco                  JSONB,
+        observacoes                  TEXT,
+        data_registro                TIMESTAMP DEFAULT NOW(),
+        outros_local                 TEXT,
+        outros_motivo_nao_vistoria   TEXT,
         outros_motivo_nao_remediacao TEXT,
-        id_referencia          TEXT UNIQUE
+        id_referencia                TEXT UNIQUE
       );
     `);
   
@@ -63,6 +63,7 @@ async function initSchema() {
         ativo BOOLEAN DEFAULT true
       );
     `);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focal_unidade (
         focal_unidade_pk BIGSERIAL PRIMARY KEY,
@@ -104,7 +105,6 @@ app.get("/api/aedes/focais/lista", async (req, res) => {
         f.matricula, 
         f.nome, 
         f.email,
-       
         f.ativo,
         STRING_AGG(u.nome_unidade, ', ') AS focal_unidades
       FROM aedes.focais f
@@ -141,44 +141,10 @@ app.get("/api/aedes/focais/login", async (req, res) => {
     res.status(500).json({ ok: false, error: "Erro no servidor." });
   }
 });
+
 /* =========================================================
    BASE CONSOLIDADA
 ========================================================= */
-
-/* ------------------------------------------------
-server antigo lkasemirogit.hub
-
-app.get("/api/aedes/base", async (req, res) => {
-  try {
-    const { filtro } = req.query;
-
-    let sql = `
-      SELECT 
-        u.unidade_id AS id, 
-        u.nome_unidade AS unidade, 
-        stg.matricula, 
-        stg.email,
-        stg.focal AS "focalNome"
-      FROM aedes.unidades u
-      INNER JOIN aedes.stg_importacao_excel stg ON u.nome_unidade = stg.unidade
-    `;
-    let params = [];
-
-    if (filtro && filtro.trim() !== "") {
-      sql += " WHERE stg.email = $1 OR CAST(stg.matricula AS TEXT) = $2";
-      params.push(filtro.trim(), filtro.trim());
-    }
-
-    sql += " ORDER BY u.nome_unidade ASC";
-
-    const result = await pool.query(sql, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Erro ao buscar dados consolidados:", err.message);
-    res.status(500).json({ error: "Erro interno ao buscar base." });
-  }
-});
-*/
 app.get("/api/aedes/base", async (req, res) => {
   try {
     const { filtro } = req.query;
@@ -198,7 +164,6 @@ app.get("/api/aedes/base", async (req, res) => {
     let params = [];
 
     if (filtro && filtro.trim() !== "") {
-      // O filtro agora busca com segurança nas colunas da tabela de focais
       sql += " AND (f.email = $1 OR CAST(f.matricula AS TEXT) = $2)";
       params.push(filtro.trim(), filtro.trim());
     }
@@ -212,43 +177,36 @@ app.get("/api/aedes/base", async (req, res) => {
     res.status(500).json({ error: "Erro interno ao buscar base." });
   }
 });
+
 /* =========================================================
-   CERTIFICADOS
+   CERTIFICADOS (CONSOLIDADO: EXCEL + PORTAL) - REVISADO
 ========================================================= */
 app.get("/api/aedes/certificados", async (_req, res) => {
   try {
-    // Query ajustada para comparar strings ('Sim') e usar os nomes exatos das colunas do seu banco
     const result = await pool.query(`
       SELECT 
-        "Unidade",
-        EXTRACT(MONTH FROM "Data") AS mes,
-        EXTRACT(YEAR FROM "Data") AS ano,
-        
-        -- Conta quantas vistorias foram realizadas de fato no mês
-        COUNT(CASE WHEN "UV_Sim" = 'Sim' THEN 1 END) AS total_vistorias,
-        
-        -- Regra 1: Garante que houve vistorias em pelo menos 4 semanas distintas do mês
+        UPPER(TRIM(unidade)) AS unidade,
+        EXTRACT(MONTH FROM data_registro) AS mes,
+        EXTRACT(YEAR FROM data_registro) AS ano,
+        COUNT(CASE WHEN uv_sim = 'Sim' THEN 1 END) AS total_vistorias,
+        -- Elegível se houver vistorias registradas em pelo menos 4 semanas diferentes
         CASE 
-          WHEN COUNT(DISTINCT "Semana") >= 4 THEN true 
+          WHEN COUNT(DISTINCT semana) >= 4 THEN true 
           ELSE false 
         END AS cobertura_semanal_completa,
-        
-        -- Regra 2: Verifica se sobrou algum foco sem remédio (Foco = Sim e Remediação Não = Sim)
+        -- Foco em aberto: se achou foco (fe_sim = 'Sim') mas a remediação NÃO foi concluída (rm_sim != 'Sim')
         CASE 
-          WHEN COUNT(CASE WHEN "FE_Sim" = 'Sim' AND "RM_Não" = 'Sim' THEN 1 END) > 0 THEN true
+          WHEN COUNT(CASE WHEN fe_sim = 'Sim' AND rm_sim <> 'Sim' THEN 1 END) > 0 THEN true
           ELSE false 
         END AS focos_nao_remediados
-
-      FROM aedes.excel_historico
-      WHERE "UV_Sim" = 'Sim' -- Filtra apenas registros com vistorias concluídas
-      GROUP BY "Unidade", EXTRACT(YEAR FROM "Data"), EXTRACT(MONTH FROM "Data")
-      ORDER BY ano DESC, mes DESC, "Unidade" ASC;
+      FROM aedes.excel_portal
+      WHERE uv_sim = 'Sim'
+      GROUP BY UPPER(TRIM(unidade)), EXTRACT(YEAR FROM data_registro), EXTRACT(MONTH FROM data_registro)
+      ORDER BY ano DESC, mes DESC, unidade ASC;
     `);
 
-    // Formata o retorno mapeando as propriedades para minúsculas
-    // Isso garante compatibilidade perfeita com o seu arquivo aedes-publico.js no front-end
     const linhasFormatadas = result.rows.map(row => ({
-      unidade: row.Unidade, 
+      unidade: row.unidade, // Agora garantido em formato UPPER pelo banco
       mes: parseInt(row.mes),
       ano: parseInt(row.ano),
       total_vistorias: parseInt(row.total_vistorias || 0),
@@ -258,10 +216,12 @@ app.get("/api/aedes/certificados", async (_req, res) => {
 
     res.json(linhasFormatadas);
   } catch (err) {
-    console.error("❌ Erro ao calcular certificados no Banco:", err.message);
+    console.error("❌ Erro ao calcular certificados na tabela consolidada:", err.message);
     res.status(500).json({ error: "Erro interno ao processar as regras de elegibilidade." });
   }
 });
+
+
 /* =========================================================
    ROTAS DE VISTORIAS (LOTES)
 ========================================================= */
@@ -271,15 +231,13 @@ app.post("/api/aedes/lotes", async (req, res) => {
     const { cabecalho, dados } = req.body;
     await client.query('BEGIN');
 
-    // 1. Inserir no Lote - AGORA COM 3 PARÂMETROS ($1, $2, $3)
     const loteRes = await client.query(
       `INSERT INTO aedes.lotes (focal_nome, payload_completo, total_registros) 
        VALUES ($1, $2, $3) RETURNING id`,
-      [cabecalho.focal_nome, JSON.stringify(req.body), dados.length] // <-- Adicionado dados.length ($3)
+      [cabecalho.focal_nome, JSON.stringify(req.body), dados.length]
     );
     const loteId = loteRes.rows[0].id;
 
-    // 2. Inserir nos Itens - EXATAMENTE 14 PLACEHOLDERS ($1 até $14)
     const itemQuery = `
       INSERT INTO aedes.vistorias_itens (
         lote_id, id_referencia, unidade_id, unidade_nome, 
@@ -300,11 +258,9 @@ app.post("/api/aedes/lotes", async (req, res) => {
     const dataHoje = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
     for (const row of dados) {
-  // Gerar ID Semântico
-  const idReferencia = `${row[1].replace(/\s+/g, '')}_${dataHoje}`;
+      const idReferencia = `${row[1].replace(/\s+/g, '')}_${dataHoje}`;
   
-      // 3. MAPEAMENTO DE 14 VALORES CORRESPONDENTES
-            await client.query(itemQuery, [
+      await client.query(itemQuery, [
         loteId,         // $1
         idReferencia,   // $2
         row[0],         // $3 - unidade_id
@@ -345,11 +301,12 @@ app.get("/api/aedes/lotes", async (_req, res) => {
     res.status(500).json({ error: "Erro ao buscar lotes." });
   }
 });
+
 /* =========================================================
-   ROTAS GERAIS
+   ROTAS GERAIS E RELATÓRIO DO PAINEL ANALÍTICO
 ========================================================= */
 
-app.get("/api/unidades", async (_req, res) => {
+/*app.get("/api/unidades", async (_req, res) => {
   try {
     const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades ORDER BY nome_unidade ASC`);
     res.json(result.rows);
@@ -357,8 +314,8 @@ app.get("/api/unidades", async (_req, res) => {
     res.status(500).json({ error: "Erro ao buscar unidades." });
   }
 });
-
-/* app.get("/api/unidades", async (_req, res) => {
+*/
+app.get("/api/unidades", async (_req, res) => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT "Unidade" AS nome_unidade 
@@ -373,22 +330,133 @@ app.get("/api/unidades", async (_req, res) => {
   }
 }); */
 
-app.get("/api/health", (_req, res) => {
-  const dataBrasilia = new Date().toLocaleString("pt-BR", {
-    timeZone: "America/Sao_Paulo"
-  });
-  
-  res.json({ 
-    status: "ok", 
-    time: dataBrasilia 
-  });
+app.get("/api/aedes/painel-dados", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        EXTRACT(YEAR FROM data_registro)::int AS "Ano",
+        CASE EXTRACT(MONTH FROM data_registro)
+          WHEN 1 THEN 'Janeiro' WHEN 2 THEN 'Fevereiro' WHEN 3 THEN 'Março'
+          WHEN 4 THEN 'Abril' WHEN 5 THEN 'Maio' WHEN 6 THEN 'Junho'
+          WHEN 7 THEN 'Julho' WHEN 8 THEN 'Agosto' WHEN 9 THEN 'Setembro'
+          WHEN 10 THEN 'Outubro' WHEN 11 THEN 'Novembro' WHEN 12 THEN 'Dezembro'
+        END AS "Mes_Nome",
+        unidade_nome AS "Unidade",
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' THEN 1 ELSE 0 END AS visitada,
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' AND LOWER(TRIM(foco_encontrado)) = 'sim' THEN 1 ELSE 0 END AS foco_encontrado,
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' AND LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) = 'sim' THEN 1 ELSE 0 END AS foco_remediado,
+        CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' AND LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) != 'sim' THEN 1 ELSE 0 END AS foco_pendente,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%acesso%' OR LOWER(motivos_nao_vistoria::text) LIKE '%condicao%' THEN 1 ELSE 0 END AS nv_acesso,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%brigadista%' THEN 1 ELSE 0 END AS nv_brigadista,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%viatura%' THEN 1 ELSE 0 END AS nv_viatura,
+        CASE WHEN LOWER(motivos_nao_vistoria::text) LIKE '%esquecimento%' THEN 1 ELSE 0 END AS nv_esquecimento,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%treino%' OR LOWER(motivos_nao_remediacao::text) LIKE '%capacita%' THEN 1 ELSE 0 END AS mnr_capacitacao,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%cloro%' OR LOWER(motivos_nao_remediacao::text) LIKE '%larvicida%' THEN 1 ELSE 0 END AS mnr_larvicida,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%limpeza%' THEN 1 ELSE 0 END AS mnr_limpeza,
+        CASE WHEN LOWER(motivos_nao_remediacao::text) LIKE '%cobertura%' OR LOWER(motivos_nao_remediacao::text) LIKE '%tampa%' THEN 1 ELSE 0 END AS mnr_cobertura
+      FROM aedes.vistorias_itens;
+    `;
+    
+    const result = await pool.query(query); 
+    res.json(result.rows || result);
+  } catch (err) {
+    console.error("❌ Erro no painel-dados:", err.message);
+    res.status(500).json({ error: "Erro interno ao processar o painel analítico." });
+  }
 });
 
-// Error Handlers
-app.use((_req, res) => res.status(404).json({ error: "Rota não encontrada." }));
+/* ==========================================================================
+   ⭐ SOLUÇÃO DEFINITIVA: MAPEAMENTO SEGURO DA TABELA FÍSICA REAL
+========================================================================== */
+app.get("/api/aedes/consolidado", async (req, res) => {
+  try {
+    // Mapeia os campos reais descobertos na estrutura da tabela física
+    const query = `
+      SELECT 
+        id,
+        semana AS semana_contagem,
+        semana_acumulada AS periodo_semana,
+        ano,
+        data_registro AS data_real_envio,
+        unidade,
+        uv_sim,
+        uv_nao,
+        fe_sim,
+        fe_nao,
+        rm_sim,
+        rm_nao,
+        matricula,
+        focal_nome AS focal,
+        focal_email
+      FROM aedes.excel_portal 
+      ORDER BY semana DESC, unidade ASC;
+    `;
+    
+    const result = await pool.query(query);
+
+    res.json({
+      sucesso: true,
+      dados: result.rows
+    });
+  } catch (err) {
+    console.error("❌ Erro crítico na rota /api/aedes/consolidado:", err.message);
+    res.status(500).json({ 
+      sucesso: false, 
+      error: "Erro ao consultar a tabela física no banco de dados.",
+      details: err.message 
+    });
+  }
+});
+/* ==========================================================================
+   ROTA DO DOSSIÊ
+========================================================================== */
+app.get("/api/aedes/focal-dossie", async (req, res) => {
+  try {
+    const { unidade } = req.query;
+    if (!unidade) return res.status(400).json({ error: "Nome da unidade é obrigatório." });
+
+    const query = `
+      WITH ranking_unidades AS (
+        SELECT 
+          vi.unidade_nome,
+          DENSE_RANK() OVER (ORDER BY vi.unidade_nome ASC) as id_calculado
+        FROM aedes.vistorias_itens vi
+        WHERE vi.unidade_nome IS NOT NULL
+        GROUP BY vi.unidade_nome
+      )
+      SELECT f.nome, f.matricula, f.email
+      FROM aedes.focal_unidade fu
+      INNER JOIN aedes.focais f ON fu.focal_pk = f.focal_pk
+      INNER JOIN ranking_unidades ru ON fu.unidade_id = ru.id_calculado
+      WHERE LOWER(TRIM(ru.unidade_nome)) = LOWER(TRIM($1))
+        AND fu.ativo = true AND f.ativo = true
+      LIMIT 1;
+    `;
+
+    const result = await pool.query(query, [unidade.trim()]);
+    if (result.rows.length === 0) {
+      return res.json({ nome: null, matricula: null, email: null });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em /api/aedes/focal-dossie:", err.message);
+    res.status(500).json({ error: "Erro ao buscar dados do focal técnico." });
+  }
+});
+
+/* ==========================================================================
+   SAÚDE DO SISTEMA
+========================================================================== */
+app.get("/api/health", (_req, res) => {
+  const dataBrasilia = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  res.json({ status: "ok", time: dataBrasilia });
+});
+
+// Tratadores Globais de Erro e Rotas Inexistentes
+app.use((_req, res) => res.status(404).json({ error: "Rota não encontrada no servidor." }));
 app.use((err, _req, res, _next) => {
   console.error(err.stack);
-  res.status(500).json({ error: "Erro interno no servidor." });
+  res.status(500).json({ error: "Erro crítico interno no servidor." });
 });
 
 app.listen(PORT, async () => {

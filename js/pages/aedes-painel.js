@@ -90,7 +90,7 @@ function construirEstruturaHTML() {
                 <div class="kpi-card card-blue"><div class="kpi-label">Vistorias Efetuadas</div><div id="kpi_vistorias" class="kpi-valor">0</div></div>
                 <div class="kpi-card card-amber"><div class="kpi-label">Focos Identificados</div><div id="kpi_focos" class="kpi-valor">0</div></div>
                 <div class="kpi-card card-green"><div class="kpi-label">Casos Remediados</div><div id="kpi_remediados" class="kpi-valor">0</div></div>
-                <div class="kpi-card card-red"><div class="kpi-label">Demandas Pendentes</div><div id="kpi_pendentes" class="kpi-valor">0</div></div>
+                <div class="kpi-card card-red"><div class="kpi-label">Não Remediados</div><div id="kpi_pendentes" class="kpi-valor">0</div></div>
             </div>
 
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
@@ -276,7 +276,7 @@ function renderizarGraficoBarrasAgrupadas(dados) {
 function renderizarGraficoDonutRisco(totais) {
     Plotly.newPlot('chart_donuts_risco', [{
         values: [totais.pendentes, totais.remediados, Math.max(0, totais.vistorias - totais.focos)],
-        labels: ['Crítico', 'Remediado', 'Sem Focos'],
+        labels: ['Não Remediados', 'Remediados', 'Sem Focos'],
         type: 'pie', hole: 0.55, marker: { colors: ['#ef4444', '#10b981', '#cbd5e1'] }
     }], { margin: { l: 20, r: 20, t: 15, b: 20 }, legend: { orientation: 'h', x: 0, y: -0.1 } }, { displayModeBar: false, responsive: true });
 }

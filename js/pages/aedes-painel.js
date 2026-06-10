@@ -1,416 +1,472 @@
 // js/pages/aedes-painel.js
-import { AedesAPI } from '../modules/aedes/aedes-api.js';
 
-let df_completo = [];
-let lista_unidades_original = [];
+const ENDPOINT_API = "http://localhost:3001/api/aedes";
 
-const fmtInt = (num) => new Intl.NumberFormat('pt-BR').format(num);
+// Objeto global para gerenciar as instâncias do Chart.js e evitar bugs de sobreposição
+let graficosAtivos = {};
 
-function injetarEstilosCSS() {
-    if (document.getElementById('css-modulo-aedes-painel')) return;
+// Inicialização automática ao carregar o DOM
+document.addEventListener("DOMContentLoaded", async () => {
+  await inicializarFiltrosDoTopo();
+  processarFiltrosETelas(); // Carga inicial (Padrão: TODOS)
+});
 
-    const style = document.createElement('style');
-    style.id = 'css-modulo-aedes-painel';
-    style.innerHTML = `
-        .painel-filtros-topo { display: flex; gap: 20px; margin-bottom: 20px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
-        .filtro-campo { flex: 1; }
-        .filtro-campo label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
-        .filtro-campo select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 6px; background-color: #f8fafc; font-weight: 500; color: #1e293b; }
-        
-        .btn-dashboard-voltar { background: white; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 6px; font-weight: 600; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
-        .btn-dashboard-voltar:hover { background: #f8fafc; border-color: #94a3b8; }
-
-        .sub-tabs-container { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; }
-        .sub-tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; font-weight: 600; color: #64748b; cursor: pointer; font-size: 14px; margin-bottom: -2px; transition: all 0.2s; }
-        .sub-tab-btn.active { font-weight: 700; color: #2563eb; border-bottom-color: #2563eb; }
-
-        .grid-kpi-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 28px; }
-        .kpi-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-        .kpi-label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-        .kpi-valor { font-size: 32px; font-weight: 800; color: #0f172a; margin-top: 8px; }
-        .card-blue { border-left: 5px solid #2563eb; }
-        .card-amber { border-left: 5px solid #f59e0b; }
-        .card-green { border-left: 5px solid #10b981; }
-        .card-red { border-left: 5px solid #ef4444; }
-
-        .panel-grafico-box { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-        .panel-grafico-titulo { font-size: 15px; font-weight: 700; margin-top: 0; margin-bottom: 20px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
-
-        .grid-unidades-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
-        .card-unidade-clicavel { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-        .card-unidade-clicavel:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); border-color: #cbd5e1; }
-
-        .modal-backdrop-blur { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px; }
-        .modal-container-box { background: white; width: 100%; max-width: 750px; max-height: 85vh; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; animation: modalFadeInAedes 0.2s ease-out; }
-        .modal-header-container { padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
-        .modal-header-container h3 { margin: 0; color: #0f172a; font-size: 1.3rem; font-weight: 800; }
-        .modal-header-container p { margin: 4px 0 0 0; color: #64748b; font-size: 0.85rem; }
-        #modal-fechar-btn { background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; padding: 5px; }
-        .modal-corpo-scroll { padding: 24px; overflow-y: auto; flex: 1; font-family: sans-serif; }
-        .focal-container-alert { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px; background: #f0fdf4; border-left: 5px solid #10b981; }
-        .focal-container-alert h4 { margin: 0 0 10px 0; color: #14532d; font-size: 13px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
-        .tabela-scroll-wrapper { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
-        .tabela-analitica-modal { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-        .tabela-analitica-modal thead { background: #f1f5f9; color: #475569; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
-        .tabela-analitica-modal th, .tabela-analitica-modal td { padding: 12px 14px; }
-        .modal-footer-container { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; background: #f8fafc; }
-        .btn-modal-primario { background: #2563eb; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
-        .btn-modal-secundario { background: white; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; font-weight: 600; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
-        
-        @keyframes modalFadeInAedes { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-    `;
-    document.head.appendChild(style);
-}
-
-function construirEstruturaHTML() {
-    return `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0;">
-          <div>
-            <h1 style="color: #0f172a; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em; margin: 0;">Aedes · Painel de Controle</h1>
-            <p style="color: #64748b; margin: 5px 0 0 0; font-size: 0.95rem;">Análise analítica de performance operacional em tempo real.</p>
-          </div>
-          <div>
-            <button id="btn-sair-painel" class="btn-dashboard-voltar"><i class="fas fa-arrow-left"></i> Voltar aos Registros</button>
-          </div>
-        </div>
-
-        <div class="painel-filtros-topo">
-            <div class="filtro-campo"><label>Ano de Exercício</label><select id="p_filtro_ano"></select></div>
-            <div class="filtro-campo"><label>Unidade Avançada</label><select id="p_filtro_unidade"></select></div>
-            <div class="filtro-campo"><label>Janela Mensal</label><select id="p_filtro_mes"></select></div>
-        </div>
-
-        <div class="sub-tabs-container">
-            <button id="sub-tab-graficos" class="sub-tab-btn active"><i class="fas fa-chart-pie"></i> Visão Gráfica Global</button>
-            <button id="sub-tab-unidades" class="sub-tab-btn"><i class="fas fa-th-large"></i> Desempenho por Unidade</button>
-        </div>
-
-        <div id="wrapper-sub-visao-grafica" style="display: block;">
-            <div class="grid-kpi-cards">
-                <div class="kpi-card card-blue"><div class="kpi-label">Vistorias Efetuadas</div><div id="kpi_vistorias" class="kpi-valor">0</div></div>
-                <div class="kpi-card card-amber"><div class="kpi-label">Focos Identificados</div><div id="kpi_focos" class="kpi-valor">0</div></div>
-                <div class="kpi-card card-green"><div class="kpi-label">Casos Remediados</div><div id="kpi_remediados" class="kpi-valor">0</div></div>
-                <div class="kpi-card card-red"><div class="kpi-label">Não Remediados</div><div id="kpi_pendentes" class="kpi-valor">0</div></div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
-                <div class="panel-grafico-box">
-                    <h3 class="panel-grafico-titulo"><i class="fas fa-chart-line" style="color:#2563eb;"></i> Evolução Temporal de Focos vs Remediação</h3>
-                    <div id="chart_focos_remediados" style="width:100%; height: 320px;"></div>
-                </div>
-                <div class="panel-grafico-box">
-                    <h3 class="panel-grafico-titulo"><i class="fas fa-chart-pie" style="color:#10b981;"></i> Índice de Vulnerabilidade</h3>
-                    <div id="chart_donuts_risco" style="width:100%; height: 320px;"></div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
-                <div class="panel-grafico-box">
-                    <h3 class="panel-grafico-titulo" style="color:#b45309;"><i class="fas fa-exclamation-triangle"></i> Motivos de Não Vistoria</h3>
-                    <div id="chart_impedimentos_nv" style="width:100%; height: 280px;"></div>
-                </div>
-                <div class="panel-grafico-box">
-                    <h3 class="panel-grafico-titulo" style="color:#1e3a8a;"><i class="fas fa-tools"></i> Motivos de Não Remediação</h3>
-                    <div id="chart_impedimentos_mnr" style="width:100%; height: 280px;"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="wrapper-sub-visao-unidades" style="display: none;">
-            <div id="grid-caixas-unidades" class="grid-unidades-layout"></div>
-        </div>
-
-        <div id="modal-detalhe-unidade" class="modal-backdrop-blur">
-            <div class="modal-container-box">
-                <div class="modal-header-container">
-                    <div><h3 id="modal-titulo-unidade">Nome da Unidade</h3><p>Dossiê Operacional</p></div>
-                    <button id="modal-fechar-btn"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="modal-corpo-scroll">
-                    <div class="focal-container-alert"><h4><i class="fas fa-user-shield"></i> Focal Técnico Responsável</h4><div id="modal-corpo-focal"></div></div>
-                    <h4><i class="fas fa-history"></i> Histórico Sequencial de Vistorias</h4>
-                    <div class="tabela-scroll-wrapper">
-                        <table class="tabela-analitica-modal">
-                            <thead><tr><th>Janela/Mês</th><th style="text-align:center;">Vistorias</th><th style="text-align:center;">Focos</th><th style="text-align:center;">Remediados</th><th style="text-align:center;">Pendentes</th></tr></thead>
-                            <tbody id="modal-tabela-linhas"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-container-box" style="display:none;"></div>
-                <div class="modal-footer-container">
-                    <button id="modal-btn-copiar" class="btn-modal-secundario"><i class="fas fa-copy"></i> Copiar Resumo</button>
-                    <button id="modal-btn-baixar" class="btn-modal-primario"><i class="fas fa-download"></i> Baixar CSV</button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-export async function inicializarPainelAedes() {
-    const container = document.getElementById('secao-painel-dashboard');
-    if (!container) return;
-
-    try {
-        injetarEstilosCSS();
-        container.innerHTML = construirEstruturaHTML();
-
-        // Puxa os dados consolidados e unificados da vistorias_itens
-        df_completo = await AedesAPI.getDadosPainel();
-
-        if (!df_completo || df_completo.length === 0) {
-            container.innerHTML = `
-                <div style="padding:50px; text-align:center; color:#eab308;">
-                    <i class="fas fa-exclamation-circle fa-2x"></i>
-                    <p style="margin-top:15px; font-weight:600;">Nenhum registro encontrado a partir da data de corte.</p>
-                </div>`;
-            return;
-        }
-
-        const anos = [...new Set(df_completo.map(d => d.Ano))].sort((a, b) => b - a);
-        lista_unidades_original = [...new Set(df_completo.map(d => d.Unidade))].sort();
-
-        const ordemMesesRef = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-        const meses = [...new Set(df_completo.map(d => d.Mes_Nome))].sort((a, b) => ordemMesesRef.indexOf(a) - ordemMesesRef.indexOf(b));
-
-        popularSeletores(anos, meses);
-        configurarListeners();
-        atualizarPainelGeral();
-
-    } catch (err) {
-        console.error("Erro crítico na inicialização do painel:", err);
-        container.innerHTML = `
-            <div style="padding:50px; text-align:center; color:#ef4444;">
-                <i class="fas fa-times-circle fa-2x"></i>
-                <h3 style="margin:10px 0;">Falha ao carregar Painel Analítico</h3>
-                <p style="color:#64748b;">${err.message}</p>
-            </div>`;
-    }
-}
-
-function popularSeletores(anos, meses) {
-    document.getElementById('p_filtro_ano').innerHTML = `<option value="Todos">Todos os Anos</option>` + anos.map(a => `<option value="${a}">${a}</option>`).join('');
-    document.getElementById('p_filtro_unidade').innerHTML = `<option value="Todas">Todas as Unidades</option>` + lista_unidades_original.map(u => `<option value="${u}">${u}</option>`).join('');
-    document.getElementById('p_filtro_mes').innerHTML = `<option value="Todos">Todos os Meses</option>` + meses.map(m => `<option value="${m}">${m}</option>`).join('');
-}
-
-function configurarListeners() {
-    ['p_filtro_ano', 'p_filtro_unidade', 'p_filtro_mes'].forEach(id => {
-        document.getElementById(id).addEventListener('change', atualizarPainelGeral);
-    });
-
-    const btnSair = document.getElementById('btn-sair-painel');
-    if (btnSair) btnSair.onclick = () => window.location.href = './aedes-tecnico.html';
-
-    const tabGraficos = document.getElementById('sub-tab-graficos');
-    const tabUnidades = document.getElementById('sub-tab-unidades');
-    const visaoGrafica = document.getElementById('wrapper-sub-visao-grafica');
-    const visaoUnidades = document.getElementById('wrapper-sub-visao-unidades');
-
-    if (tabGraficos && tabUnidades) {
-        tabGraficos.onclick = () => {
-            tabUnidades.classList.remove('active'); tabGraficos.classList.add('active');
-            visaoUnidades.style.display = 'none'; visaoGrafica.style.display = 'block';
-            window.dispatchEvent(new Event('resize'));
-        };
-        tabUnidades.onclick = () => {
-            tabGraficos.classList.remove('active'); tabUnidades.classList.add('active');
-            visaoGrafica.style.display = 'none'; visaoUnidades.style.display = 'block';
-        };
-    }
-
-    const modal = document.getElementById('modal-detalhe-unidade');
-    const btnFechar = document.getElementById('modal-fechar-btn');
-    if (modal && btnFechar) {
-        btnFechar.onclick = () => modal.style.display = 'none';
-        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
-    }
-}
-
-function atualizarPainelGeral() {
-    const anoSel = document.getElementById('p_filtro_ano').value;
-    const unidadeSel = document.getElementById('p_filtro_unidade').value;
-    const mesSel = document.getElementById('p_filtro_mes').value;
-
-    let dadosFiltrados = df_completo.filter(d => {
-        if (anoSel !== "Todos" && d.Ano !== parseInt(anoSel)) return false;
-        if (unidadeSel !== "Todas" && d.Unidade !== unidadeSel) return false;
-        if (mesSel !== "Todos" && d.Mes_Nome !== mesSel) return false;
-        return true;
-    });
-
-    let totais = dadosFiltrados.reduce((acc, curr) => {
-        acc.vistorias += curr.visitada; 
-        acc.focos += curr.foco_encontrado;
-        acc.remediados += curr.foco_remediado; 
-        acc.pendentes += curr.foco_pendente;
-        return acc;
-    }, { vistorias: 0, focos: 0, remediados: 0, pendentes: 0 });
-
-    document.getElementById('kpi_vistorias').innerText = fmtInt(totais.vistorias);
-    document.getElementById('kpi_focos').innerText = fmtInt(totais.focos);
-    document.getElementById('kpi_remediados').innerText = fmtInt(totais.remediados);
-    document.getElementById('kpi_pendentes').innerText = fmtInt(totais.pendentes);
-
-    renderizarGraficoBarrasAgrupadas(dadosFiltrados);
-    renderizarGraficoDonutRisco(totais);
-    renderizarGraficosImpedimentos(dadosFiltrados);
-    renderizarBoxesPorUnidade(dadosFiltrados);
-}
-
-function renderizarGraficoBarrasAgrupadas(dados) {
-    let mesesMap = {};
-    dados.forEach(d => {
-        if (!mesesMap[d.Mes_Nome]) mesesMap[d.Mes_Nome] = { focos: 0, remediados: 0 };
-        mesesMap[d.Mes_Nome].focos += d.foco_encontrado;
-        mesesMap[d.Mes_Nome].remediados += d.foco_remediado;
-    });
-    const ordemMesesRef = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    let eixosX = Object.keys(mesesMap).sort((a, b) => ordemMesesRef.indexOf(a) - ordemMesesRef.indexOf(b));
+/**
+ * 1. POPULA OS SELETORES DINÂMICOS DO CABEÇALHO
+ * Consome a base unificada para extrair os filtros reais de Unidades, Anos e Semanas
+ */
+async function inicializarFiltrosDoTopo() {
+  try {
+    const response = await fetch(`${ENDPOINT_API}/painel-dados`);
+    if (!response.ok) throw new Error("Não foi possível carregar os dados de parametrização dos filtros.");
     
-    Plotly.newPlot('chart_focos_remediados', [
-        { x: eixosX, y: eixosX.map(m => mesesMap[m].focos), name: 'Focos', type: 'bar', marker: { color: '#ef4444' } },
-        { x: eixosX, y: eixosX.map(m => mesesMap[m].remediados), name: 'Remediados', type: 'bar', marker: { color: '#10b981' } }
-    ], { barmode: 'group', margin: { l: 40, r: 20, t: 15, b: 40 }, legend: { orientation: 'h', x: 0, y: 1.15 } }, { displayModeBar: false, responsive: true });
+    const payload = await response.json();
+    const registros = payload.registros || [];
+
+    const selectUnidade = document.getElementById("filtroUnidade");
+    const selectAno = document.getElementById("filtroAno");
+    const selectSemana = document.getElementById("filtroSemana");
+
+    // Limpa duplicados e nulos das colunas oficiais
+    const listaUnidades = [...new Set(registros.map(item => item.Unidade || item.unidade_nome).filter(Boolean))].sort();
+    const listaAnos = [...new Set(registros.map(item => item.Ano || item.ano).filter(Boolean))].sort((a, b) => b - a);
+    const listaSemanas = [...new Set(registros.map(item => item.Semana || item.semana).filter(Boolean))].sort((a, b) => a - b);
+
+    // Injeta nos selects do HTML
+    listaUnidades.forEach(uni => selectUnidade.options.add(new Option(uni, uni)));
+    listaAnos.forEach(ano => selectAno.options.add(new Option(ano, ano)));
+    listaSemanas.forEach(sem => selectSemana.options.add(new Option(`Semana ${sem}`, sem)));
+
+  } catch (err) {
+    console.error("❌ Erro ao preencher filtros estruturais:", err.message);
+  }
 }
 
-function renderizarGraficoDonutRisco(totais) {
-    Plotly.newPlot('chart_donuts_risco', [{
-        values: [totais.pendentes, totais.remediados, Math.max(0, totais.vistorias - totais.focos)],
-        labels: ['Não Remediados', 'Remediados', 'Sem Focos'],
-        type: 'pie', hole: 0.55, marker: { colors: ['#ef4444', '#10b981', '#cbd5e1'] }
-    }], { margin: { l: 20, r: 20, t: 15, b: 20 }, legend: { orientation: 'h', x: 0, y: -0.1 } }, { displayModeBar: false, responsive: true });
+/**
+ * 2. MOTOR DE REQUISIÇÃO REATIVO
+ * Captura os filtros e dispara as requisições para as rotas da API em paralelo
+ */
+async function processarFiltrosETelas() {
+  const unity = document.getElementById("filtroUnidade").value;
+  const year = document.getElementById("filtroAno").value;
+  const month = document.getElementById("filtroMes").value;
+  const week = document.getElementById("filtroSemana").value;
+
+  // Monta a Query String esperada pelo seu Express no server.js
+  const queryParams = new URLSearchParams({
+    unidade: unity === "TODAS" ? "" : unity,
+    ano: year === "TODOS" ? "" : year,
+    mes: month === "TODOS" ? "" : month,
+    semana: week === "TODAS" ? "" : week
+  }).toString();
+
+  try {
+    // Executa as chamadas em paralelo para otimizar a velocidade
+    await Promise.all([
+      carregarKpisERankingGlobal(queryParams),
+      carregarSerieTemporal(queryParams),
+      carregarGraficosSetorEMineracaoTexto(queryParams)
+    ]);
+  } catch (error) {
+    console.error("❌ Falha crítica na sincronização dos componentes analíticos:", error);
+  }
 }
 
-function renderizarGraficosImpedimentos(dados) {
-    let imp = dados.reduce((acc, c) => {
-        acc.nv_acesso += c.nv_acesso; 
-        acc.nv_brigadista += c.nv_brigadista;
-        acc.nv_viatura += c.nv_viatura; 
-        acc.nv_esquecimento += c.nv_esquecimento;
-        acc.mnr_capacitacao += c.mnr_capacitacao; 
-        acc.mnr_larvicida += c.mnr_larvicida;
-        acc.mnr_limpeza += c.mnr_limpeza; 
-        acc.mnr_cobertura += c.mnr_cobertura;
-        return acc;
-    }, { nv_acesso:0, nv_brigadista:0, nv_viatura:0, nv_esquecimento:0, mnr_capacitacao:0, mnr_larvicida:0, mnr_limpeza:0, mnr_cobertura:0 });
+/**
+ * MÓDULO A: KPIs PRINCIPAIS E MATRIZ DE RANKING
+ * Rota consumida: GET /api/aedes/painel-dados
+ */
+async function carregarKpisERankingGlobal(queryParams) {
+  const res = await fetch(`${ENDPOINT_API}/painel-dados?${queryParams}`);
+  const payload = await res.json();
+  const dados = payload.registros || [];
 
-    Plotly.newPlot('chart_impedimentos_nv', [{ x: ['Acesso', 'Brigadista', 'Viatura', 'Esquecimento'], y: [imp.nv_acesso, imp.nv_brigadista, imp.nv_viatura, imp.nv_esquecimento], type: 'bar', marker: { color: '#f59e0b' } }], { margin: { l:40, r:20, t:15, b:40 } }, { displayModeBar: false, responsive: true });
-    Plotly.newPlot('chart_impedimentos_mnr', [{ x: ['Treino/Cap.', 'Larvicida', 'Limpeza', 'Cobertura'], y: [imp.mnr_capacitacao, imp.mnr_larvicida, imp.mnr_limpeza, imp.mnr_cobertura], type: 'bar', marker: { color: '#2563eb' } }], { margin: { l:40, r:20, t:15, b:40 } }, { displayModeBar: false, responsive: true });
+  const total = dados.length;
+  
+  // Normalização de chaves lendo estritamente o layout validado da tabela fato_vistorias
+  const vistorias = dados.filter(d => {
+    const v = d.vistoria_realizada || d.Vistoria_Realizada || '';
+    return String(v).toLowerCase() === 'sim';
+  }).length;
+
+  const focos = dados.filter(d => {
+    const v = d.vistoria_realizada || d.Vistoria_Realizada || '';
+    const f = d.foco_encontrado || d.Foco_Encontrado || '';
+    return String(v).toLowerCase() === 'sim' && String(f).toLowerCase() === 'sim';
+  }).length;
+
+  const remediados = dados.filter(d => {
+    const r = d.foco_remediado || d.Foco_Remediado || '';
+    return String(r).toLowerCase() === 'sim';
+  }).length;
+
+  document.getElementById("kpiRegistros").innerText = total.toLocaleString('pt-BR');
+  document.getElementById("kpiVistorias").innerText = vistorias.toLocaleString('pt-BR');
+  document.getElementById("kpiFocos").innerText = focos.toLocaleString('pt-BR');
+  document.getElementById("kpiRemediados").innerText = remediados.toLocaleString('pt-BR');
+
+  // Renderização da tabela de Ranking das Unidades
+  const tbody = document.getElementById("tabelaRankingUnidades");
+  tbody.innerHTML = "";
+
+  const agrupamentoUnidades = {};
+  dados.forEach(item => {
+    const nome = item.unidade_nome || item.Unidade || "Não Identificada";
+    if (!agrupamentoUnidades[nome]) {
+      agrupamentoUnidades[nome] = { nome, registros: 0, vistorias: 0, focos: 0, remediados: 0 };
+    }
+    
+    agrupamentoUnidades[nome].registros++;
+    const v = item.vistoria_realizada || item.Vistoria_Realizada || '';
+    const f = item.foco_encontrado || item.Foco_Encontrado || '';
+    const r = item.foco_remediado || item.Foco_Remediado || '';
+
+    if (String(v).toLowerCase() === 'sim') agrupamentoUnidades[nome].vistorias++;
+    if (String(v).toLowerCase() === 'sim' && String(f).toLowerCase() === 'sim') agrupamentoUnidades[nome].focos++;
+    if (String(r).toLowerCase() === 'sim') agrupamentoUnidades[nome].remediados++;
+  });
+
+  Object.values(agrupamentoUnidades)
+    .sort((a, b) => b.vistorias - a.vistorias)
+    .forEach(uni => {
+      const taxaRemediacao = uni.focos > 0 ? ((uni.remediados / uni.focos) * 100).toFixed(1) + "%" : "100.0%";
+      const badgeClasse = (uni.focos > 0 && (uni.remediados / uni.focos) < 0.8) 
+        ? 'bg-red-50 text-red-600 border border-red-200' 
+        : 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors text-sm text-gray-700">
+          <td class="p-3 font-semibold text-gray-900">${uni.nome}</td>
+          <td class="p-3 text-center text-gray-500">${uni.registros}</td>
+          <td class="p-3 text-center font-bold text-[#0056b3]">${uni.vistorias}</td>
+          <td class="p-3 text-center text-[#ef4444]">${uni.focos}</td>
+          <td class="p-3 text-center text-[#22c55e]">${uni.remediados}</td>
+          <td class="p-3 text-center">
+            <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${badgeClasse}">${taxaRemediacao}</span>
+          </td>
+        </tr>`;
+    });
 }
+/**
+ * MÓDULO B: SÉRIE TEMPORAL — EVOLUÇÃO POR ANO (REGISTROS VS VISTORIAS)
+ * 100% REATIVO AOS FILTROS E BASEADO EXCLUSIVAMENTE EM 'ANO', 'REGISTROS' E 'VISTORIAS'
+ */
+async function carregarSerieTemporal(queryParams) {
+  try {
+    // 1. Faz a requisição enviando os filtros de Unidade, Ano, etc. para o backend
+    const res = await fetch(`${ENDPOINT_API}/cobertura-semanal?${queryParams}`);
+    if (!res.ok) throw new Error("Erro ao requisitar dados de cobertura semanal filtrada.");
+    
+    const dados = await res.json();
 
-function renderizarBoxesPorUnidade(dados) {
-    const gridContainer = document.getElementById('grid-caixas-unidades');
-    if (!gridContainer) return;
+    // Dicionários para consolidar os totais agrupados por ano
+    const consolidadoRegistros = {};
+    const consolidadoVistorias = {};
 
-    let agrupado = {};
+    // 2. Processa as linhas da view vw_cobertura_semanal retornadas pelo banco
     dados.forEach(d => {
-        if (!agrupado[d.Unidade]) agrupado[d.Unidade] = { vistorias: 0, focos: 0, remediados: 0, pendentes: 0 };
-        agrupado[d.Unidade].vistorias += d.visitada; 
-        agrupado[d.Unidade].focos += d.foco_encontrado;
-        agrupado[d.Unidade].remediados += d.foco_remediado; 
-        agrupado[d.Unidade].pendentes += d.foco_pendente;
+      const ano = d.ano || d.Ano;
+      
+      if (ano) {
+        const totalRegistros = parseInt(d.registros || d.Registros || 0);
+        const totalVistorias = parseInt(d.vistorias || d.Vistorias || 0);
+
+        if (!consolidadoRegistros[ano]) consolidadoRegistros[ano] = 0;
+        if (!consolidadoVistorias[ano]) consolidadoVistorias[ano] = 0;
+
+        // Acumula os valores correspondentes ao ano corrente da linha
+        consolidadoRegistros[ano] += totalRegistros;
+        consolidadoVistorias[ano] += totalVistorias;
+      }
     });
 
-    const chavesUnidades = Object.keys(agrupado).sort();
-    if (chavesUnidades.length === 0) { 
-        gridContainer.innerHTML = `<div style="grid-column:1/-1; padding:30px; text-align:center; color:#64748b;">Sem registros para os filtros selecionados.</div>`; 
-        return; 
+    // 3. Ordena os anos de forma crescente (ex: 2023, 2024, 2025, 2026...)
+    const anosLabels = Object.keys(consolidadoRegistros).sort((a, b) => parseInt(a) - parseInt(b));
+    const dadosRegistros = anosLabels.map(ano => consolidadoRegistros[ano]);
+    const dadosVistorias = anosLabels.map(ano => consolidadoVistorias[ano]);
+
+    // Trata o cenário caso a tabela venha completamente filtrada/vazia
+    if (anosLabels.length === 0) {
+      destruirInstanciaGrafico('timeline');
+      const canvas = document.getElementById("chartTimeline");
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "14px Segoe UI";
+        ctx.fillStyle = "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.fillText("Nenhum dado histórico encontrado para o filtro selecionado.", canvas.width / 2, canvas.height / 2);
+      }
+      return;
     }
 
-    gridContainer.innerHTML = chavesUnidades.map(unidade => {
-        const info = agrupado[unidade];
-        const taxa = info.focos > 0 ? Math.round((info.remediados / info.focos) * 100) : 100;
-        let cor = taxa >= 80 ? '#10b981' : (taxa >= 50 ? '#f59e0b' : '#ef4444');
+    // 4. Destrói o gráfico anterior para evitar sobreposição ou congelamento de tela
+    destruirInstanciaGrafico('timeline');
 
-        return `
-        <div class="card-unidade-clicavel" data-unidade="${unidade}">
-            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                <h4 style="margin:0; font-size:14px;"><i class="fas fa-building"></i> ${unidade}</h4>
-                <span style="background:${cor}15; color:${cor}; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700;">${taxa}% Eficácia</span>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#f8fafc; padding:12px; border-radius:8px; font-size:13px;">
-                <div>Vistorias: <b>${fmtInt(info.vistorias)}</b></div><div>Focos: <b style="color:#f59e0b">${fmtInt(info.focos)}</b></div>
-                <div>Remediados: <b style="color:#10b981">${fmtInt(info.remediados)}</b></div><div>Pendentes: <b style="color:#ef4444">${fmtInt(info.pendentes)}</b></div>
-            </div>
-            <div style="font-size:11px; color:#3b82f6; text-align:right; margin-top:10px;">Ver dossiê completo →</div>
-        </div>`;
-    }).join('');
+    const canvas = document.getElementById("chartTimeline");
+    if (!canvas) return;
 
-    document.querySelectorAll('.card-unidade-clicavel').forEach(card => {
-        card.onclick = () => abrirDossieModal(card.getAttribute('data-unidade'), dados);
+    const ctx = canvas.getContext('2d');
+
+    // 5. Instanciação do Gráfico com as Duas Linhas Analíticas Comparativas
+    graficosAtivos.timeline = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: anosLabels, // Ex: ['2023', '2024', '2025', '2026']
+        datasets: [
+          {
+            label: 'Quantidade de Envios (Registros)',
+            data: dadosRegistros,
+            borderColor: '#0056b3', // Azul Identidade CEDAE
+            backgroundColor: 'rgba(0, 86, 179, 0.03)',
+            borderWidth: 3,
+            tension: 0.2, // Curvatura suave profissional
+            fill: true,
+            pointBackgroundColor: '#0056b3',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          },
+          {
+            label: 'Vistorias Realizadas',
+            data: dadosVistorias,
+            borderColor: '#22c55e', // Verde Sucesso / Cobertura Eficaz
+            backgroundColor: 'transparent',
+            borderWidth: 3,
+            tension: 0.2,
+            fill: false,
+            pointBackgroundColor: '#22c55e',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { 
+          legend: { 
+            display: true, // Habilitado para o usuário diferenciar Envios vs Vistorias
+            position: 'top',
+            labels: {
+              boxWidth: 15,
+              font: { size: 11, weight: '500' },
+              color: '#334155'
+            }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
+            padding: 10,
+            callbacks: {
+              label: function(context) {
+                return ` ${context.dataset.label}: ${context.parsed.y.toLocaleString('pt-BR')}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            grid: { display: false }, 
+            ticks: { color: '#64748b', font: { size: 12, weight: 'bold' } } 
+          },
+          y: { 
+            grid: { color: '#f1f5f9' }, 
+            ticks: { 
+              color: '#64748b', 
+              font: { size: 11 },
+              callback: value => value.toLocaleString('pt-BR')
+            },
+            beginAtZero: true
+          }
+        }
+      }
     });
+  } catch (error) {
+    console.error("❌ Erro ao renderizar evolução anual reativa:", error);
+  }
+}
+/**
+ * MÓDULO C: GRÁFICOS DE PIZZA/ROSCA E MINERAÇÃO TEXTUAL (LÓGICA DO RMD)
+ * Ajustado estritamente para as colunas plurais da sua tabela 'fato_vistorias'
+ */
+async function carregarGraficosSetorEMineracaoTexto(queryParams) {
+  const res = await fetch(`${ENDPOINT_API}/painel-dados?${queryParams}`);
+  const payload = await res.json();
+  const registros = payload.registros || [];
+
+  const locaisMap = {};
+  const naoVistoriaMap = {};
+  const naoRemediacaoMap = {};
+
+  // Dicionários Regex para processar os campos livres "Outros" mapeados no Rmd
+  const mineracaoLocais = { "Bromélias (Paisagismo)": 0, "Lajes / Calhas Obstruídas": 0, "Bandejas de Ar Condicionado": 0, "Estruturas Operacionais": 0 };
+  const mineracaoFalhas = { "Recusa Operacional": 0, "Local Fechado / Sem Chave": 0, "Fatores Climáticos Extremos": 0 };
+
+  registros.forEach(d => {
+    // CORREÇÃO CRÍTICA: Leitura das colunas corretas em plural mapeadas na fato_vistorias
+    const local = d.locais_foco || d.Locais_Foco;
+    const mNoVistoria = d.motivos_nao_vistoria || d.Motivos_Nao_Vistoria;
+    const mNoRemediacao = d.motivos_nao_remediacao || d.Motivos_Nao_Remediacao;
+    
+    // Mapeamento dos campos de texto livre do Excel ("outros_locais_foco", etc.)
+    const campoOutroLocal = d.outros_locais_foco || d.Outros_Locais_Foco || '';
+    const campoOutroMotivo = d.outros_motivos_nao_vistoria || d.outros_motivos_nao_remediacao || '';
+
+    // 1. Agrupamento das opções estruturadas padrão
+    if (local && local !== "[]") locaisMap[local] = (locaisMap[local] || 0) + 1;
+    if (mNoVistoria && mNoVistoria !== "[]") naoVistoriaMap[mNoVistoria] = (naoVistoriaMap[mNoVistoria] || 0) + 1;
+    if (mNoRemediacao && mNoRemediacao !== "[]") naoRemediacaoMap[mNoRemediacao] = (naoRemediacaoMap[mNoRemediacao] || 0) + 1;
+
+    // 2. Execução das Regex do script RMD sobre os campos livres reais da Fato
+    const txtLocalLimpo = String(campoOutroLocal).toLowerCase();
+    if (txtLocalLimpo.trim() && txtLocalLimpo !== 'null') {
+      if (/bromelia|planta|vaso/i.test(txtLocalLimpo)) mineracaoLocais["Bromélias (Paisagismo)"]++;
+      else if (/laje|calha|telhado|rufo/i.test(txtLocalLimpo)) mineracaoLocais["Lajes / Calhas Obstruídas"]++;
+      else if (/ar condicionado|condensadora|split/i.test(txtLocalLimpo)) mineracaoLocais["Bandejas de Ar Condicionado"]++;
+      else if (/sapata|decantador|maquina|bomba/i.test(txtLocalLimpo)) mineracaoLocais["Estruturas Operacionais"]++;
+    }
+
+    const txtMotivoLimpo = String(campoOutroMotivo).toLowerCase();
+    if (txtMotivoLimpo.trim() && txtMotivoLimpo !== 'null') {
+      if (/recusa|nao permitiu|nao quis/i.test(txtMotivoLimpo)) mineracaoFalhas["Recusa Operacional"]++;
+      else if (/fechado|trancado|vazio|ausente/i.test(txtMotivoLimpo)) mineracaoFalhas["Local Fechado / Sem Chave"]++;
+      else if (/chuva|acesso dificil|temporal|clima/i.test(txtMotivoLimpo)) mineracaoFalhas["Fatores Climáticos Extremos"]++;
+    }
+  });
+
+  // Renderização das Pizzas e Roscas (Paleta: Vermelho, Amarelo, Azul CEDAE e Cinza)
+  gerarEstruturaGraficaSetor('locais', 'chartLocais', Object.keys(locaisMap), Object.values(locaisMap), ['#ef4444', '#eab308', '#0056b3', '#cbd5e1'], 'pie');
+  gerarEstruturaGraficaSetor('naoVistoria', 'chartNaoVistoria', Object.keys(naoVistoriaMap), Object.values(naoVistoriaMap), ['#ef4444', '#eab308', '#64748b'], 'doughnut');
+  gerarEstruturaGraficaSetor('naoRemediacao', 'chartNaoRemediacao', Object.keys(naoRemediacaoMap), Object.values(naoRemediacaoMap), ['#ef4444', '#eab308', '#001d3d'], 'doughnut');
+
+  // Popula os quadros laterais de texto minerado via Regex
+  renderizarListasDeTextoLivre("listaOutrosLocais", mineracaoLocais);
+  renderizarListasDeTextoLivre("listaOutrosMotivos", mineracaoFalhas);
 }
 
-async function abrirDossieModal(nomeUnidade, dadosGlobaisFiltrados) {
-    const modal = document.getElementById('modal-detalhe-unidade');
-    if (!modal) return;
+/**
+ * UTILITÁRIO: ABSTRAÇÃO PARA RENDERIZAÇÃO DO CHART.JS
+ */
+function gerarEstruturaGraficaSetor(idChave, canvasId, labels, data, cores, tipo) {
+  destruirInstanciaGrafico(idChave);
+  const canvasElement = document.getElementById(canvasId);
+  if (!canvasElement) return;
 
-    document.getElementById('modal-titulo-unidade').innerText = nomeUnidade;
-
-    const containerFocal = document.getElementById('modal-corpo-focal');
-    containerFocal.innerHTML = `<span><i class="fas fa-spinner fa-spin"></i> Buscando informações de contato do focal técnico...</span>`;
-
-    let focalEncontrado = null;
-
-    // Faz a requisição dedicada para buscar o focal via relacionamento focal_unidade + focais
-    try {
-        focalEncontrado = await AedesAPI.getFocalDossie(nomeUnidade);
-    } catch (err) {
-        console.error("Erro ao carregar dados relacionais do focal:", err);
+  graficosAtivos[idChave] = new Chart(canvasElement.getContext('2d'), {
+    type: tipo,
+    data: {
+      labels: labels.length ? labels : ['Sem ocorrências'],
+      datasets: [{
+        data: data.length ? data : [0],
+        backgroundColor: cores,
+        borderColor: '#ffffff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#334155', font: { size: 9 }, boxWidth: 10 }
+        }
+      }
     }
-
-    if (focalEncontrado && focalEncontrado.nome) {
-        containerFocal.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px; color: #334155;">
-                <div><i class="fas fa-user" style="color: #16a34a; width: 18px;"></i> <strong>Nome:</strong> ${focalEncontrado.nome}</div>
-                <div><i class="fas fa-id-card" style="color: #16a34a; width: 18px;"></i> <strong>Matrícula:</strong> ${focalEncontrado.matricula || 'Não informada'}</div>
-                <div style="grid-column: 1 / -1;"><i class="fas fa-envelope" style="color: #16a34a; width: 18px;"></i> <strong>E-mail:</strong> <a href="mailto:${focalEncontrado.email || ''}" style="color: #2563eb; text-decoration: none;">${focalEncontrado.email || 'Não informado'}</a></div>
-            </div>
-        `;
-    } else {
-        containerFocal.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 13px;">
-                <i class="fas fa-info-circle" style="color: #b45309;"></i>
-                <span>Nenhum focal técnico ou responsável ativo vinculado a esta unidade.</span>
-            </div>
-        `;
-    }
-
-    // Processamento do histórico analítico
-    const dadosDaUnidade = dadosGlobaisFiltrados.filter(d => d.Unidade === nomeUnidade);
-    let hist = {};
-    dadosDaUnidade.forEach(d => {
-        if (!hist[d.Mes_Nome]) hist[d.Mes_Nome] = { vistorias: 0, focos: 0, remediados: 0, pendentes: 0 };
-        hist[d.Mes_Nome].vistorias += d.visitada; 
-        hist[d.Mes_Nome].focos += d.foco_encontrado;
-        hist[d.Mes_Nome].remediados += d.foco_remediado; 
-        hist[d.Mes_Nome].pendentes += d.foco_pendente;
-    });
-
-    const ordemMesesRef = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    const chavesMeses = Object.keys(hist).sort((a, b) => ordemMesesRef.indexOf(a) - ordemMesesRef.indexOf(b));
-
-    document.getElementById('modal-tabela-linhas').innerHTML = chavesMeses.map(mes => {
-        const m = hist[mes];
-        return `<tr><td><b>${mes}</b></td><td style="text-align:center">${m.vistorias}</td><td style="text-align:center; color:#f59e0b">${m.focos}</td><td style="text-align:center; color:#10b981">${m.remediados}</td><td style="text-align:center; color:#ef4444">${m.pendentes}</td></tr>`;
-    }).join('');
-
-    // Ações dos botões do Modal
-    document.getElementById('modal-btn-copiar').onclick = () => {
-        let txt = `📊 DOSSIÊ DE CONTROLE - ${nomeUnidade}\n`;
-        chavesMeses.forEach(m => { txt += `- ${m}: ${hist[m].vistorias} Vistorias | ${hist[m].focos} Focos Detectados\n`; });
-        navigator.clipboard.writeText(txt).then(() => alert('Resumo copiado para a área de transferência!'));
-    };
-
-    document.getElementById('modal-btn-baixar').onclick = () => {
-        let csv = "Unidade;Mes;Vistorias;Focos;Remediados;Pendentes\n";
-        chavesMeses.forEach(m => { csv += `${nomeUnidade};${m};${hist[m].vistorias};${hist[m].focos};${hist[m].remediados};${hist[m].pendentes}\n`; });
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.setAttribute("download", `Dossie_Aedes_${nomeUnidade.replace(/\s+/g, '_')}.csv`);
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    };
-
-    modal.style.display = 'flex';
+  });
 }
+
+/**
+ * UTILITÁRIO: ATUALIZA AS TABELAS DE AUDITORIA DE TEXTO LIVRE ("OUTROS")
+ */
+function renderizarListasDeTextoLivre(domId, dicionarioContagem) {
+  const container = document.getElementById(domId);
+  container.innerHTML = "";
+
+  const itensOrdenados = Object.entries(dicionarioContagem).sort((a, b) => b[1] - a[1]);
+  const somaTotal = itensOrdenados.reduce((acc, c) => acc + c[1], 0);
+
+  if (somaTotal === 0) {
+    container.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-gray-400 italic text-xs">Nenhum texto livre detectado para este filtro.</td></tr>`;
+    return;
+  }
+
+  itensOrdenados.forEach(([chave, ocorrencias]) => {
+    if (ocorrencias > 0) {
+      container.innerHTML += `
+        <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors text-xs text-gray-600">
+          <td class="p-2.5 font-medium text-gray-700">${chave}</td>
+          <td class="p-2.5 text-center font-bold text-gray-500">${ocorrencias}</td>
+        </tr>`;
+    }
+  });
+}
+
+/**
+ * DESTRUTOR DE INSTÂNCIAS DO CHART.JS
+ */
+function destruirInstanciaGrafico(idChave) {
+  if (graficosAtivos[idChave]) {
+    graficosAtivos[idChave].destroy();
+    delete graficosAtivos[idChave];
+  }
+}
+
+/**
+ * EXPORTADOR DE RELATÓRIOS ACOPLADO AOS FILTROS
+ */
+function exportarRelatorio(tipo) {
+  const unity = document.getElementById("filtroUnidade").value;
+  const year = document.getElementById("filtroAno").value;
+  const month = document.getElementById("filtroMes").value;
+  const week = document.getElementById("filtroSemana").value;
+
+  const params = new URLSearchParams({
+    unidade: unity === "TODAS" ? "" : unity,
+    ano: year === "TODOS" ? "" : year,
+    mes: month === "TODOS" ? "" : month,
+    semana: week === "TODAS" ? "" : week
+  }).toString();
+
+  window.open(`${ENDPOINT_API}/export/${tipo}?${params}`, '_blank');
+}
+
+// Substitua o bloco final do seu js/pages/aedes-painel.js por este:
+document.addEventListener("DOMContentLoaded", () => {
+  
+  const btnPdf = document.getElementById("btnGerarPdf");
+
+  if (btnPdf) {
+    btnPdf.addEventListener("click", () => {
+      // 1. Captura os seletores exatamente como estão mapeados no seu HTML
+      const filtroUnidade = document.getElementById("filtroUnidade")?.value || "TODOS";
+      const filtroAno = document.getElementById("filtroAno")?.value || "TODOS";
+
+      // 2. Estado de carregamento visual no botão
+      const textoOriginal = btnPdf.innerHTML;
+      btnPdf.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando PDF...`;
+      btnPdf.disabled = true;
+
+      // 3. 🟢 CHAMADA CORRETA: Usa o módulo central que injeta o host e o prefixo /api automaticamente!
+      if (typeof AedesAPI !== "undefined" && typeof AedesAPI.downloadRelatorioPDF === "function") {
+          AedesAPI.downloadRelatorioPDF(filtroUnidade, filtroAno);
+      } else {
+          // Fallback de segurança caso o módulo não tenha sido exposto globalmente
+          const API_BASE = window.location.hostname === "localhost" ? "http://localhost:3001" : "https://dma-aedes-api.onrender.com";
+          const urlRelatorio = `${API_BASE}/api/aedes/relatorio-pdf?unidade=${encodeURIComponent(filtroUnidade)}&ano=${encodeURIComponent(filtroAno)}`;
+          window.open(urlRelatorio, '_blank');
+      }
+
+      // 4. Devolve o botão ao estado original após o disparo do download
+      setTimeout(() => {
+        btnPdf.innerHTML = textoOriginal;
+        btnPdf.disabled = false;
+      }, 2000);
+    });
+  }
+});

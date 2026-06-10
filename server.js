@@ -823,8 +823,6 @@ app.use((err, _req, res, _next) => {
 // =========================================================================
 // MÓDULO EXTRA: GERAÇÃO DE RELATÓRIO EXECUTIVO EM PDF (ESTILO RMARKDOWN)
 // =========================================================================
-
-// Configuração das fontes padrão nativas do sistema (não exige arquivos físicos adicionais)
 const fonts = {
   Roboto: {
     normal: 'Helvetica',
@@ -834,28 +832,27 @@ const fonts = {
   }
 };
 
-// Instanciação estável do Printer após o seu downgrade bem-sucedido
 const printer = new PdfPrinter(fonts);
 
 app.get("/api/aedes/relatorio-pdf", async (req, res) => {
   try {
     const { unidade, ano } = req.query;
 
-    // 1. Consulta SQL na tabela analítica unificada (Excel + API)
+    // 1. Injeta a mesma lógica exata e precisa do seu endpoint "painel-dados"
     let sql = `
       SELECT 
         COUNT(*) as total_registros,
-        SUM(CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' THEN 1 ELSE 0 END) as total_vistorias,
-        SUM(CASE WHEN foco_encontrado = 1 THEN 1 ELSE 0 END) as total_focos,
-        SUM(CASE WHEN foco_remediado = 1 THEN 1 ELSE 0 END) as total_remediados
+        SUM(CASE WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim' THEN 1 ELSE 0 END) as total_vistorias,
+        SUM(CASE WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim' AND LOWER(COALESCE(foco_encontrado,'')) = 'sim' THEN 1 ELSE 0 END) as total_focos,
+        SUM(CASE WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim' AND LOWER(COALESCE(foco_encontrado,'')) = 'sim' AND LOWER(COALESCE(foco_remediado,'')) = 'sim' THEN 1 ELSE 0 END) as total_remediados
       FROM aedes.fato_vistorias
       WHERE 1=1
     `;
     const params = [];
     let pIndex = 1;
 
-    // Aplicação dos filtros reativos exatamente iguais aos seus outros painéis
-    if (unidade && unidade.trim() !== "" && unidade !== "TODOS" && unidade !== "Todas as Unidades Operacionais") {
+    // Filtros reativos baseados nos nomes de colunas que seu banco usa ('unidade_nome' e 'ano')
+    if (unidade && unidade.trim() !== "" && unidade !== "TODOS" && unidade !== "Todas as Unidades Operacionais" && unidade !== "TODAS") {
       sql += ` AND LOWER(unidade_nome) = LOWER($${pIndex})`;
       params.push(unidade.trim());
       pIndex++;
@@ -869,20 +866,20 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
     const result = await pool.query(sql, params);
     const dados = result.rows[0];
 
-    // Parser seguro das métricas coletadas
+    // Converte os resultados com segurança
     const totalReg = parseInt(dados.total_registros || 0);
     const totalVis = parseInt(dados.total_vistorias || 0);
     const totalFoc = parseInt(dados.total_focos || 0);
     const totalRem = parseInt(dados.total_remediados || 0);
     
-    // Indicadores e taxas operacionais geradas dinamicamente
+    // Cálculo das taxas reais do programa
     const txVistoria = totalReg > 0 ? ((totalVis / totalReg) * 100).toFixed(1) : "0.0";
     const txRemediacao = totalFoc > 0 ? ((totalRem / totalFoc) * 100).toFixed(1) : "0.0";
 
     const labelUnidade = params[0] ? unidade : 'Todas as Unidades';
     const labelAno = ano && ano !== "TODOS" ? ano : 'Histórico Consolidado';
 
-    // 2. Definição do Documento (Design Limpo e Executivo focado no seu relatório Rmd)
+    // 2. Definição do documento estruturado em PDF (Estilo RMarkdown/Flatly)
     const docDefinition = {
       pageSize: 'A4',
       pageMargins: [40, 60, 40, 60],
@@ -899,7 +896,7 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
         },
         { text: '\n' },
 
-        // Tabela Estilizada (Estilo ggplot2/Flatly)
+        // Tabela de Métricas Alinhada
         {
           style: 'tableExample',
           table: {
@@ -910,9 +907,9 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
                 { text: 'Métrica Quantitativa', style: 'tableHeader' }
               ],
               ['Total de Registros Avaliados (Base Histórica + API)', `${totalReg.toLocaleString('pt-BR')} formulários`],
-              ['Vistorias Efetivadas com Sucesso (UV_Sim)', `${totalVis.toLocaleString('pt-BR')} locais`],
+              ['Vistorias Efetivadas com Sucesso (visitada)', `${totalVis.toLocaleString('pt-BR')} locais`],
               ['Focos de Vetores Detectados em Inspeção', { text: `${totalFoc.toLocaleString('pt-BR')} ocorrências`, color: '#ef4444', bold: true }],
-              ['Focos Remediados/Tratados pelas Equipes', `${totalRem.toLocaleString('pt-BR')} ações`],
+              ['Focos Remediados pelas Equipes de Campo', `${totalRem.toLocaleString('pt-BR')} ações`],
               ['Taxa de Eficácia de Remediação Preventiva', `${txRemediacao}% das ocorrências`]
             ]
           },
@@ -928,15 +925,15 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
         {
           text: [
             { text: 'Análise Crítica: ', bold: true },
-            `A relação de dados consolidados reflete diretamente o comportamento estatístico mapeado no relatório original da equipe de BI. `,
-            totalFoc > 0 ? `Com um volume de ${totalFoc} focos identificados pelas inspeções operacionais, a equipe de saneamento conseguiu realizar ações de bloqueio e remediação imediata em ${totalRem} desses pontos. ` : 'Nenhum foco crítico latente foi retido sob os critérios do escopo selecionado. ',
-            `Historicamente, os gargalos operacionais e reincidências de focos não remediados concentram-se em fatores estruturais complexos que fogem da alçada simples de aplicação de larvicidas, tais como calhas obstruídas de difícil acesso, reservatórios operacionais elevados sem cobertura adequada ou focos naturais volumosos em áreas de bromélias.`
+            `A relação de dados consolidados reflete diretamente o comportamento estatístico mapeado no painel de controle. `,
+            totalFoc > 0 ? `Com um volume de ${totalFoc} focos identificados pelas inspeções operacionais, a equipe conseguiu realizar ações de bloqueio e remediação imediata em ${totalRem} desses pontos. ` : 'Nenhum foco crítico latente foi retido sob os critérios do escopo selecionado. ',
+            `Historicamente, os gargalos operacionais e reincidências de focos não remediados concentram-se em fatores estruturais complexos, tais como calhas obstruídas de difícil acesso, reservatórios operacionais elevados sem cobertura adequada ou focos naturais volumosos em áreas de vegetação.`
           ],
           style: 'bodyText'
         },
         { text: '\n' },
 
-        { text: '3. Recomendações e Próximos Passos', style: 'sectionHeader' },
+        { text: '3. Recomendações Técnicas', style: 'sectionHeader' },
         {
           ul: [
             'Reforçar campanhas de limpeza em calhas e coberturas nos períodos que antecedem as semanas epidemiológicas críticas;',
@@ -956,7 +953,7 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
       }
     };
 
-    // 3. Transforma a definição estruturada em fluxo de bytes binários (Stream PDF)
+    // 3. Transforma a estrutura e responde via Stream binário para download imediato
     const pdfDoc = printer.createPdfKitDocument(docDefinition);
     
     res.setHeader('Content-Type', 'application/pdf');

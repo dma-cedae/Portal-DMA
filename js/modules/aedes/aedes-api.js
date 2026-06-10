@@ -1,5 +1,5 @@
 /**
- * Módulo de Comunicação API - AEDES
+ * Módulo de Comunicação API - AEDES-api.js
  */
 
 const API_BASE = window.location.hostname === "localhost" 
@@ -60,8 +60,7 @@ export const AedesAPI = {
     },
 
     /**
-     * NOVA ROTA: Consome diretamente a tabela 'vistorias_itens' otimizada e unificada do banco.
-     * Substitui o processamento local pesado por leitura direta de performance.
+     * ROTA ATIVA: Consome diretamente a tabela 'fato_vistorias' do banco.
      */
     async getDadosPainel() {
         try {
@@ -70,6 +69,8 @@ export const AedesAPI = {
             
             const dados = await response.json();
             
+            if (!dados || !Array.isArray(dados)) return [];
+
             return dados.map(r => ({
                 Ano: parseInt(r.Ano) || 2026,
                 Mes_Nome: r.Mes_Nome,
@@ -94,7 +95,7 @@ export const AedesAPI = {
     },
 
     /**
-     * ROTA DOSSIÊ: Busca o focal técnico responsável pela unidade direto da tabela relacional.
+     * ROTA DOSSIÊ: Busca o focal técnico responsável pela unidade
      */
     async getFocalDossie(nomeUnidade) {
         try {
@@ -113,58 +114,27 @@ export const AedesAPI = {
     },
 
     /**
-     * NOVA ROTA INTERNA: Normaliza as colunas físicas da tabela nas
-     * regras de negócio lógicas consumidas pelo painel do aedes-tecnico.js
+     * ⛔ ROTA DESLIGADA / LEGADA (Mantida apenas como stub seguro para evitar quebras)
      */
     async getConsolidadoView() {
+        // Retorna um array vazio estável imediatamente sem gastar processamento de rede
+        return [];
+    },
+
+    /**
+     * 🟢 GERAÇÃO DE PDF: Conecta à nova rota do RMarkdown em formato PDF
+     */
+    downloadRelatorioPDF(unidade, ano) {
         try {
-            const response = await fetch(`${API_BASE}/api/aedes/consolidado`);
-            if (!response.ok) throw new Error(`Status: ${response.status}`);
-            
-            const json = await response.json();
-            
-            if (json && json.sucesso && Array.isArray(json.dados)) {
-                return json.dados.map(item => {
-                    const numSemana = item.semana_contagem !== undefined && item.semana_contagem !== null ? Number(item.semana_contagem) : 0;
-                    
-                    // Lógica para Vistoria Realizada
-                    let statusVistoria = "Não Informado";
-                    if (String(item.uv_sim).toLowerCase().trim() === "sim") statusVistoria = "Sim";
-                    if (String(item.uv_nao).toLowerCase().trim() === "sim") statusVistoria = "Não";
+            const filtroUnidade = unidade || "TODOS";
+            const filtroAno = ano || "TODOS";
 
-                    // Lógica para Foco Detectado
-                    let statusFoco = "Não";
-                    if (String(item.fe_sim).toLowerCase().trim() === "sim") statusFoco = "Sim";
-
-                    // Lógica para Remediação do Foco
-                    let statusRemediacao = "-";
-                    if (String(item.rm_sim).toLowerCase().trim() === "sim") statusRemediacao = "Sim";
-                    if (String(item.rm_nao).toLowerCase().trim() === "sim") statusRemediacao = "Não";
-
-                    return {
-                        ...item,
-                        semana_contagem: numSemana,
-                        // Preenche período nulo com fallback descritivo legível por humanos
-                        periodo_semana: item.periodo_semana || `Semana Epidemiológica ${numSemana} / ${item.ano || 2026}`,
-                        vistoria: statusVistoria,
-                        foco: statusFoco,
-                        remediacao: statusRemediacao,
-                        // Campos de texto livre inexistentes na tabela física recebem fallback estável
-                        local_foco: statusVistoria === "Não" ? "Não vistoriado" : "-",
-                        motivo_nao_vistoria: null,
-                        observacoes: "-",
-                        focal: item.focal || "-",
-                        data_real_envio: item.data_real_envio || null
-                    };
-                });
-            }
+            // Montagem inteligente baseada no ambiente ativo (Local vs Produção Render)
+            const url = `${API_BASE}/api/aedes/relatorio-pdf?unidade=${encodeURIComponent(filtroUnidade)}&ano=${encodeURIComponent(filtroAno)}`;
             
-            if (json && Array.isArray(json)) return json;
-            return [];
-            
+            window.open(url, '_blank');
         } catch (error) {
-            console.error("❌ AedesAPI.getConsolidadoView:", error);
-            return [];
+            console.error("❌ AedesAPI.downloadRelatorioPDF:", error);
         }
     }
 };

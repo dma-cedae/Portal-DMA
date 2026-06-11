@@ -1,415 +1,429 @@
 // js/pages/aedes-painel.js
+// Versão corrigida — lê array direto da API, desagrega campos JSON array,
+// filtra locais de foco e motivos corretamente.
 
-const ENDPOINT_API = "http://localhost:3001/api/aedes";
+const ENDPOINT_API = window.location.hostname === "localhost"
+  ? "http://localhost:3001/api/aedes"
+  : "https://dma-aedes-api.onrender.com/api/aedes";
 
-// Objeto global para gerenciar as instâncias do Chart.js e evitar bugs de sobreposição
+// Instâncias ativas do Chart.js — evita sobreposição/freeze
 let graficosAtivos = {};
 
-// Inicialização automática ao carregar o DOM
+// Cache do payload completo para filtragem client-side
+let _dadosCompletos = [];
+
+// ─── INICIALIZAÇÃO ────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
-  await inicializarFiltrosDoTopo();
-  processarFiltrosETelas(); // Carga inicial (Padrão: TODOS)
+  await carregarDadosEInicializar();
+
+  // Botão PDF
+  const btnPdf = document.getElementById("btnGerarPdf");
+  if (btnPdf) {
+    btnPdf.addEventListener("click", () => {
+      const filtroUnidade = document.getElementById("filtroUnidade")?.value || "TODOS";
+      const filtroAno     = document.getElementById("filtroAno")?.value     || "TODOS";
+      const textoOriginal = btnPdf.innerHTML;
+      btnPdf.innerHTML = `⏳ Processando PDF...`;
+      btnPdf.disabled  = true;
+
+      const base = window.location.hostname === "localhost"
+        ? "http://localhost:3001"
+        : "https://dma-aedes-api.onrender.com";
+      window.open(`${base}/api/aedes/relatorio-pdf?unidade=${encodeURIComponent(filtroUnidade)}&ano=${encodeURIComponent(filtroAno)}`, "_blank");
+
+      setTimeout(() => { btnPdf.innerHTML = textoOriginal; btnPdf.disabled = false; }, 2000);
+    });
+  }
 });
 
-/**
- * 1. POPULA OS SELETORES DINÂMICOS DO CABEÇALHO
- * Consome a base unificada para extrair os filtros reais de Unidades, Anos e Semanas
- */
-async function inicializarFiltrosDoTopo() {
+// ─── 1. CARGA INICIAL E FILTROS ───────────────────────────────────────────────
+async function carregarDadosEInicializar() {
   try {
-    const response = await fetch(`${ENDPOINT_API}/painel-dados`);
-    if (!response.ok) throw new Error("Não foi possível carregar os dados de parametrização dos filtros.");
-    
-    const payload = await response.json();
-    const registros = payload.registros || [];
+    const res = await fetch(`${ENDPOINT_API}/painel-dados`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const selectUnidade = document.getElementById("filtroUnidade");
-    const selectAno = document.getElementById("filtroAno");
-    const selectSemana = document.getElementById("filtroSemana");
+    // A rota retorna um array direto (não { registros: [] })
+    const payload = await res.json();
+    _dadosCompletos = Array.isArray(payload) ? payload : (payload.registros || []);
 
-    // Limpa duplicados e nulos das colunas oficiais
-    const listaUnidades = [...new Set(registros.map(item => item.Unidade || item.unidade_nome).filter(Boolean))].sort();
-    const listaAnos = [...new Set(registros.map(item => item.Ano || item.ano).filter(Boolean))].sort((a, b) => b - a);
-    const listaSemanas = [...new Set(registros.map(item => item.Semana || item.semana).filter(Boolean))].sort((a, b) => a - b);
-
-    // Injeta nos selects do HTML
-    listaUnidades.forEach(uni => selectUnidade.options.add(new Option(uni, uni)));
-    listaAnos.forEach(ano => selectAno.options.add(new Option(ano, ano)));
-    listaSemanas.forEach(sem => selectSemana.options.add(new Option(`Semana ${sem}`, sem)));
+    popularFiltros(_dadosCompletos);
+    renderizarTudo(_dadosCompletos);
 
   } catch (err) {
-    console.error("❌ Erro ao preencher filtros estruturais:", err.message);
+    console.error("❌ Erro ao carregar dados iniciais:", err.message);
+    mostrarErroGlobal("Não foi possível carregar os dados do painel. Verifique a conexão com a API.");
   }
 }
 
-/**
- * 2. MOTOR DE REQUISIÇÃO REATIVO
- * Captura os filtros e dispara as requisições para as rotas da API em paralelo
- */
-async function processarFiltrosETelas() {
-  const unity = document.getElementById("filtroUnidade").value;
-  const year = document.getElementById("filtroAno").value;
-  const month = document.getElementById("filtroMes").value;
-  const week = document.getElementById("filtroSemana").value;
+function popularFiltros(dados) {
+  const selectUnidade = document.getElementById("filtroUnidade");
+  const selectAno     = document.getElementById("filtroAno");
+  const selectSemana  = document.getElementById("filtroSemana");
 
-  // Monta a Query String esperada pelo seu Express no server.js
-  const queryParams = new URLSearchParams({
-    unidade: unity === "TODAS" ? "" : unity,
-    ano: year === "TODOS" ? "" : year,
-    mes: month === "TODOS" ? "" : month,
-    semana: week === "TODAS" ? "" : week
-  }).toString();
+  // Limpa opções anteriores (exceto o placeholder)
+  [selectUnidade, selectAno, selectSemana].forEach(sel => {
+    while (sel.options.length > 1) sel.remove(1);
+  });
 
-  try {
-    // Executa as chamadas em paralelo para otimizar a velocidade
-    await Promise.all([
-      carregarKpisERankingGlobal(queryParams),
-      carregarSerieTemporal(queryParams),
-      carregarGraficosSetorEMineracaoTexto(queryParams)
-    ]);
-  } catch (error) {
-    console.error("❌ Falha crítica na sincronização dos componentes analíticos:", error);
-  }
+  const unidades = [...new Set(dados.map(d => d.Unidade).filter(Boolean))].sort();
+  const anos     = [...new Set(dados.map(d => d.Ano).filter(Boolean))].sort((a, b) => b - a);
+  const semanas  = [...new Set(dados.map(d => d.semana || d.Semana).filter(Boolean))].sort((a, b) => a - b);
+
+  unidades.forEach(u => selectUnidade.add(new Option(u, u)));
+  anos.forEach(a    => selectAno.add(new Option(a, a)));
+  semanas.forEach(s => selectSemana.add(new Option(`Semana ${s}`, s)));
 }
 
-/**
- * MÓDULO A: KPIs PRINCIPAIS E MATRIZ DE RANKING
- * Rota consumida: GET /api/aedes/painel-dados
- */
-async function carregarKpisERankingGlobal(queryParams) {
-  const res = await fetch(`${ENDPOINT_API}/painel-dados?${queryParams}`);
-  const payload = await res.json();
-  const dados = payload.registros || [];
+// ─── 2. MOTOR DE FILTRO (CLIENT-SIDE — sem chamada extra à API) ───────────────
+function processarFiltrosETelas() {
+  const unidade = document.getElementById("filtroUnidade").value;
+  const ano     = document.getElementById("filtroAno").value;
+  const mes     = document.getElementById("filtroMes").value;
+  const semana  = document.getElementById("filtroSemana").value;
 
-  const total = dados.length;
-  
-  // Normalização de chaves lendo estritamente o layout validado da tabela fato_vistorias
-  const vistorias = dados.filter(d => {
-    const v = d.vistoria_realizada || d.Vistoria_Realizada || '';
-    return String(v).toLowerCase() === 'sim';
-  }).length;
+  let dados = _dadosCompletos;
 
-  const focos = dados.filter(d => {
-    const v = d.vistoria_realizada || d.Vistoria_Realizada || '';
-    const f = d.foco_encontrado || d.Foco_Encontrado || '';
-    return String(v).toLowerCase() === 'sim' && String(f).toLowerCase() === 'sim';
-  }).length;
+  if (unidade !== "TODAS") dados = dados.filter(d => d.Unidade === unidade);
+  if (ano     !== "TODOS") dados = dados.filter(d => String(d.Ano) === String(ano));
+  if (mes     !== "TODOS") dados = dados.filter(d => {
+    // Mes_Nome vem como string "Janeiro", "Fevereiro" etc.
+    const mesesMap = {
+      "1":"Janeiro","2":"Fevereiro","3":"Março","4":"Abril",
+      "5":"Maio","6":"Junho","7":"Julho","8":"Agosto",
+      "9":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"
+    };
+    return d.Mes_Nome === mesesMap[mes];
+  });
+  if (semana  !== "TODAS") dados = dados.filter(d => String(d.semana || d.Semana) === String(semana));
 
-  const remediados = dados.filter(d => {
-    const r = d.foco_remediado || d.Foco_Remediado || '';
-    return String(r).toLowerCase() === 'sim';
-  }).length;
+  renderizarTudo(dados);
+}
 
-  document.getElementById("kpiRegistros").innerText = total.toLocaleString('pt-BR');
-  document.getElementById("kpiVistorias").innerText = vistorias.toLocaleString('pt-BR');
-  document.getElementById("kpiFocos").innerText = focos.toLocaleString('pt-BR');
-  document.getElementById("kpiRemediados").innerText = remediados.toLocaleString('pt-BR');
+// ─── 3. ORQUESTRADOR DE RENDERIZAÇÃO ─────────────────────────────────────────
+function renderizarTudo(dados) {
+  renderizarKpis(dados);
+  renderizarRankingUnidades(dados);
+  renderizarSerieAnual(dados);
+  renderizarGraficosLocaisFoco(dados);
+  renderizarGraficosMotivos(dados);
+}
 
-  // Renderização da tabela de Ranking das Unidades
+// ─── 4. KPIs ─────────────────────────────────────────────────────────────────
+// A rota já retorna colunas binárias calculadas no SQL:
+//   visitada | foco_encontrado | foco_remediado | foco_pendente
+function renderizarKpis(dados) {
+  const total       = dados.length;
+  const visitadas   = dados.reduce((s, d) => s + (Number(d.visitada)        || 0), 0);
+  const focos       = dados.reduce((s, d) => s + (Number(d.foco_encontrado) || 0), 0);
+  const remediados  = dados.reduce((s, d) => s + (Number(d.foco_remediado)  || 0), 0);
+
+  document.getElementById("kpiRegistros").innerText  = total.toLocaleString("pt-BR");
+  document.getElementById("kpiVistorias").innerText  = visitadas.toLocaleString("pt-BR");
+  document.getElementById("kpiFocos").innerText      = focos.toLocaleString("pt-BR");
+  document.getElementById("kpiRemediados").innerText = remediados.toLocaleString("pt-BR");
+}
+
+// ─── 5. RANKING DE UNIDADES ───────────────────────────────────────────────────
+function renderizarRankingUnidades(dados) {
   const tbody = document.getElementById("tabelaRankingUnidades");
   tbody.innerHTML = "";
 
-  const agrupamentoUnidades = {};
-  dados.forEach(item => {
-    const nome = item.unidade_nome || item.Unidade || "Não Identificada";
-    if (!agrupamentoUnidades[nome]) {
-      agrupamentoUnidades[nome] = { nome, registros: 0, vistorias: 0, focos: 0, remediados: 0 };
-    }
-    
-    agrupamentoUnidades[nome].registros++;
-    const v = item.vistoria_realizada || item.Vistoria_Realizada || '';
-    const f = item.foco_encontrado || item.Foco_Encontrado || '';
-    const r = item.foco_remediado || item.Foco_Remediado || '';
-
-    if (String(v).toLowerCase() === 'sim') agrupamentoUnidades[nome].vistorias++;
-    if (String(v).toLowerCase() === 'sim' && String(f).toLowerCase() === 'sim') agrupamentoUnidades[nome].focos++;
-    if (String(r).toLowerCase() === 'sim') agrupamentoUnidades[nome].remediados++;
+  const grupos = {};
+  dados.forEach(d => {
+    const nome = d.Unidade || "Não Identificada";
+    if (!grupos[nome]) grupos[nome] = { nome, total: 0, visitadas: 0, focos: 0, remediados: 0 };
+    grupos[nome].total++;
+    grupos[nome].visitadas  += Number(d.visitada)        || 0;
+    grupos[nome].focos      += Number(d.foco_encontrado) || 0;
+    grupos[nome].remediados += Number(d.foco_remediado)  || 0;
   });
 
-  Object.values(agrupamentoUnidades)
-    .sort((a, b) => b.vistorias - a.vistorias)
-    .forEach(uni => {
-      const taxaRemediacao = uni.focos > 0 ? ((uni.remediados / uni.focos) * 100).toFixed(1) + "%" : "100.0%";
-      const badgeClasse = (uni.focos > 0 && (uni.remediados / uni.focos) < 0.8) 
-        ? 'bg-red-50 text-red-600 border border-red-200' 
-        : 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+  Object.values(grupos)
+    .sort((a, b) => b.visitadas - a.visitadas)
+    .forEach(u => {
+      const taxa = u.focos > 0 ? ((u.remediados / u.focos) * 100).toFixed(1) + "%" : "—";
+      const badge = u.focos > 0 && (u.remediados / u.focos) < 0.8
+        ? "bg-red-50 text-red-600 border border-red-200"
+        : "bg-emerald-50 text-emerald-600 border border-emerald-200";
 
       tbody.innerHTML += `
         <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors text-sm text-gray-700">
-          <td class="p-3 font-semibold text-gray-900">${uni.nome}</td>
-          <td class="p-3 text-center text-gray-500">${uni.registros}</td>
-          <td class="p-3 text-center font-bold text-[#0056b3]">${uni.vistorias}</td>
-          <td class="p-3 text-center text-[#ef4444]">${uni.focos}</td>
-          <td class="p-3 text-center text-[#22c55e]">${uni.remediados}</td>
+          <td class="p-3 font-semibold text-gray-900">${u.nome}</td>
+          <td class="p-3 text-center text-gray-500">${u.total}</td>
+          <td class="p-3 text-center font-bold text-[#0056b3]">${u.visitadas}</td>
+          <td class="p-3 text-center text-[#ef4444]">${u.focos}</td>
+          <td class="p-3 text-center text-[#22c55e]">${u.remediados}</td>
           <td class="p-3 text-center">
-            <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${badgeClasse}">${taxaRemediacao}</span>
+            <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${badge}">${taxa}</span>
           </td>
         </tr>`;
     });
-}
-/**
- * MÓDULO B: SÉRIE TEMPORAL — EVOLUÇÃO POR ANO (REGISTROS VS VISTORIAS)
- * 100% REATIVO AOS FILTROS E BASEADO EXCLUSIVAMENTE EM 'ANO', 'REGISTROS' E 'VISTORIAS'
- */
-async function carregarSerieTemporal(queryParams) {
-  try {
-    // 1. Faz a requisição enviando os filtros de Unidade, Ano, etc. para o backend
-    const res = await fetch(`${ENDPOINT_API}/cobertura-semanal?${queryParams}`);
-    if (!res.ok) throw new Error("Erro ao requisitar dados de cobertura semanal filtrada.");
-    
-    const dados = await res.json();
 
-    // Dicionários para consolidar os totais agrupados por ano
-    const consolidadoRegistros = {};
-    const consolidadoVistorias = {};
-
-    // 2. Processa as linhas da view vw_cobertura_semanal retornadas pelo banco
-    dados.forEach(d => {
-      const ano = d.ano || d.Ano;
-      
-      if (ano) {
-        const totalRegistros = parseInt(d.registros || d.Registros || 0);
-        const totalVistorias = parseInt(d.vistorias || d.Vistorias || 0);
-
-        if (!consolidadoRegistros[ano]) consolidadoRegistros[ano] = 0;
-        if (!consolidadoVistorias[ano]) consolidadoVistorias[ano] = 0;
-
-        // Acumula os valores correspondentes ao ano corrente da linha
-        consolidadoRegistros[ano] += totalRegistros;
-        consolidadoVistorias[ano] += totalVistorias;
-      }
-    });
-
-    // 3. Ordena os anos de forma crescente (ex: 2023, 2024, 2025, 2026...)
-    const anosLabels = Object.keys(consolidadoRegistros).sort((a, b) => parseInt(a) - parseInt(b));
-    const dadosRegistros = anosLabels.map(ano => consolidadoRegistros[ano]);
-    const dadosVistorias = anosLabels.map(ano => consolidadoVistorias[ano]);
-
-    // Trata o cenário caso a tabela venha completamente filtrada/vazia
-    if (anosLabels.length === 0) {
-      destruirInstanciaGrafico('timeline');
-      const canvas = document.getElementById("chartTimeline");
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "14px Segoe UI";
-        ctx.fillStyle = "#94a3b8";
-        ctx.textAlign = "center";
-        ctx.fillText("Nenhum dado histórico encontrado para o filtro selecionado.", canvas.width / 2, canvas.height / 2);
-      }
-      return;
-    }
-
-    // 4. Destrói o gráfico anterior para evitar sobreposição ou congelamento de tela
-    destruirInstanciaGrafico('timeline');
-
-    const canvas = document.getElementById("chartTimeline");
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-
-    // 5. Instanciação do Gráfico com as Duas Linhas Analíticas Comparativas
-    graficosAtivos.timeline = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: anosLabels, // Ex: ['2023', '2024', '2025', '2026']
-        datasets: [
-          {
-            label: 'Quantidade de Envios (Registros)',
-            data: dadosRegistros,
-            borderColor: '#0056b3', // Azul Identidade CEDAE
-            backgroundColor: 'rgba(0, 86, 179, 0.03)',
-            borderWidth: 3,
-            tension: 0.2, // Curvatura suave profissional
-            fill: true,
-            pointBackgroundColor: '#0056b3',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2,
-            pointRadius: 5,
-            pointHoverRadius: 7
-          },
-          {
-            label: 'Vistorias Realizadas',
-            data: dadosVistorias,
-            borderColor: '#22c55e', // Verde Sucesso / Cobertura Eficaz
-            backgroundColor: 'transparent',
-            borderWidth: 3,
-            tension: 0.2,
-            fill: false,
-            pointBackgroundColor: '#22c55e',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2,
-            pointRadius: 5,
-            pointHoverRadius: 7
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { 
-          legend: { 
-            display: true, // Habilitado para o usuário diferenciar Envios vs Vistorias
-            position: 'top',
-            labels: {
-              boxWidth: 15,
-              font: { size: 11, weight: '500' },
-              color: '#334155'
-            }
-          },
-          tooltip: {
-            backgroundColor: '#0f172a',
-            titleColor: '#ffffff',
-            bodyColor: '#ffffff',
-            padding: 10,
-            callbacks: {
-              label: function(context) {
-                return ` ${context.dataset.label}: ${context.parsed.y.toLocaleString('pt-BR')}`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: { 
-            grid: { display: false }, 
-            ticks: { color: '#64748b', font: { size: 12, weight: 'bold' } } 
-          },
-          y: { 
-            grid: { color: '#f1f5f9' }, 
-            ticks: { 
-              color: '#64748b', 
-              font: { size: 11 },
-              callback: value => value.toLocaleString('pt-BR')
-            },
-            beginAtZero: true
-          }
-        }
-      }
-    });
-  } catch (error) {
-    console.error("❌ Erro ao renderizar evolução anual reativa:", error);
+  if (!Object.keys(grupos).length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 italic">Nenhum dado para o filtro selecionado.</td></tr>`;
   }
 }
-/**
- * MÓDULO C: GRÁFICOS DE PIZZA/ROSCA E MINERAÇÃO TEXTUAL (LÓGICA DO RMD)
- * Ajustado estritamente para as colunas plurais da sua tabela 'fato_vistorias'
- */
-async function carregarGraficosSetorEMineracaoTexto(queryParams) {
-  const res = await fetch(`${ENDPOINT_API}/painel-dados?${queryParams}`);
-  const payload = await res.json();
-  const registros = payload.registros || [];
 
-  const locaisMap = {};
-  const naoVistoriaMap = {};
-  const naoRemediacaoMap = {};
+// ─── 6. SÉRIE TEMPORAL (por Ano, agrupado client-side) ───────────────────────
+function renderizarSerieAnual(dados) {
+  const porAno = {};
+  dados.forEach(d => {
+    const ano = String(d.Ano || "").trim();
+    if (!ano) return;
+    if (!porAno[ano]) porAno[ano] = { registros: 0, vistorias: 0 };
+    porAno[ano].registros++;
+    porAno[ano].vistorias += Number(d.visitada) || 0;
+  });
 
-  // Dicionários Regex para processar os campos livres "Outros" mapeados no Rmd
-  const mineracaoLocais = { "Bromélias (Paisagismo)": 0, "Lajes / Calhas Obstruídas": 0, "Bandejas de Ar Condicionado": 0, "Estruturas Operacionais": 0 };
-  const mineracaoFalhas = { "Recusa Operacional": 0, "Local Fechado / Sem Chave": 0, "Fatores Climáticos Extremos": 0 };
+  const anos   = Object.keys(porAno).sort((a, b) => parseInt(a) - parseInt(b));
+  const regs   = anos.map(a => porAno[a].registros);
+  const visits = anos.map(a => porAno[a].vistorias);
 
-  registros.forEach(d => {
-    // CORREÇÃO CRÍTICA: Leitura das colunas corretas em plural mapeadas na fato_vistorias
-    const local = d.locais_foco || d.Locais_Foco;
-    const mNoVistoria = d.motivos_nao_vistoria || d.Motivos_Nao_Vistoria;
-    const mNoRemediacao = d.motivos_nao_remediacao || d.Motivos_Nao_Remediacao;
-    
-    // Mapeamento dos campos de texto livre do Excel ("outros_locais_foco", etc.)
-    const campoOutroLocal = d.outros_locais_foco || d.Outros_Locais_Foco || '';
-    const campoOutroMotivo = d.outros_motivos_nao_vistoria || d.outros_motivos_nao_remediacao || '';
+  destruirInstanciaGrafico("timeline");
+  const canvas = document.getElementById("chartTimeline");
+  if (!canvas) return;
 
-    // 1. Agrupamento das opções estruturadas padrão
-    if (local && local !== "[]") locaisMap[local] = (locaisMap[local] || 0) + 1;
-    if (mNoVistoria && mNoVistoria !== "[]") naoVistoriaMap[mNoVistoria] = (naoVistoriaMap[mNoVistoria] || 0) + 1;
-    if (mNoRemediacao && mNoRemediacao !== "[]") naoRemediacaoMap[mNoRemediacao] = (naoRemediacaoMap[mNoRemediacao] || 0) + 1;
+  if (!anos.length) {
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "13px Segoe UI"; ctx.fillStyle = "#94a3b8"; ctx.textAlign = "center";
+    ctx.fillText("Nenhum dado para o filtro selecionado.", canvas.width / 2, canvas.height / 2);
+    return;
+  }
 
-    // 2. Execução das Regex do script RMD sobre os campos livres reais da Fato
-    const txtLocalLimpo = String(campoOutroLocal).toLowerCase();
-    if (txtLocalLimpo.trim() && txtLocalLimpo !== 'null') {
-      if (/bromelia|planta|vaso/i.test(txtLocalLimpo)) mineracaoLocais["Bromélias (Paisagismo)"]++;
-      else if (/laje|calha|telhado|rufo/i.test(txtLocalLimpo)) mineracaoLocais["Lajes / Calhas Obstruídas"]++;
-      else if (/ar condicionado|condensadora|split/i.test(txtLocalLimpo)) mineracaoLocais["Bandejas de Ar Condicionado"]++;
-      else if (/sapata|decantador|maquina|bomba/i.test(txtLocalLimpo)) mineracaoLocais["Estruturas Operacionais"]++;
+  graficosAtivos.timeline = new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels: anos,
+      datasets: [
+        {
+          label: "Registros",
+          data: regs,
+          borderColor: "#0056b3", backgroundColor: "rgba(0,86,179,0.05)",
+          borderWidth: 3, tension: 0.2, fill: true,
+          pointBackgroundColor: "#0056b3", pointBorderColor: "#fff", pointBorderWidth: 2, pointRadius: 5
+        },
+        {
+          label: "Vistorias",
+          data: visits,
+          borderColor: "#22c55e", backgroundColor: "transparent",
+          borderWidth: 3, tension: 0.2, fill: false,
+          pointBackgroundColor: "#22c55e", pointBorderColor: "#fff", pointBorderWidth: 2, pointRadius: 5
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top", labels: { boxWidth: 14, font: { size: 11 }, color: "#334155" } },
+        tooltip: {
+          backgroundColor: "#0f172a", titleColor: "#fff", bodyColor: "#fff", padding: 10,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString("pt-BR")}` }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#64748b", font: { size: 12, weight: "bold" } } },
+        y: { grid: { color: "#f1f5f9" }, beginAtZero: true,
+             ticks: { color: "#64748b", font: { size: 11 }, callback: v => v.toLocaleString("pt-BR") } }
+      }
     }
+  });
+}
 
-    const txtMotivoLimpo = String(campoOutroMotivo).toLowerCase();
-    if (txtMotivoLimpo.trim() && txtMotivoLimpo !== 'null') {
-      if (/recusa|nao permitiu|nao quis/i.test(txtMotivoLimpo)) mineracaoFalhas["Recusa Operacional"]++;
-      else if (/fechado|trancado|vazio|ausente/i.test(txtMotivoLimpo)) mineracaoFalhas["Local Fechado / Sem Chave"]++;
-      else if (/chuva|acesso dificil|temporal|clima/i.test(txtMotivoLimpo)) mineracaoFalhas["Fatores Climáticos Extremos"]++;
+// ─── 7. GRÁFICOS DE LOCAIS DE FOCO ────────────────────────────────────────────
+// As colunas nv_acesso, nv_brigadista etc. são binárias (0/1) vindas do SQL.
+// Para locais de foco, o campo "locais_foco" pode ser JSON array — desagregamos.
+function renderizarGraficosLocaisFoco(dados) {
+  // Locais estruturados — desagrega arrays JSON
+  const locaisMap = {};
+  const outrosLocaisMap = {};
+
+  dados.forEach(d => {
+    // locais_foco pode vir como string JSON, array ou string simples
+    const raw = d.locais_foco || d.Locais_Foco || "[]";
+    const lista = parseArrayOuString(raw);
+    lista.forEach(item => {
+      if (!item || item === "Outro") return;
+      locaisMap[item] = (locaisMap[item] || 0) + 1;
+    });
+
+    // Campo livre "outros_locais_foco" — mineração por regex
+    const outro = String(d.outros_locais_foco || d.Outros_Locais_Foco || "").toLowerCase().trim();
+    if (outro && outro !== "null" && outro !== "") {
+      const cat = categorizarLocalLivre(outro);
+      outrosLocaisMap[cat] = (outrosLocaisMap[cat] || 0) + 1;
     }
   });
 
-  // Renderização das Pizzas e Roscas (Paleta: Vermelho, Amarelo, Azul CEDAE e Cinza)
-  gerarEstruturaGraficaSetor('locais', 'chartLocais', Object.keys(locaisMap), Object.values(locaisMap), ['#ef4444', '#eab308', '#0056b3', '#cbd5e1'], 'pie');
-  gerarEstruturaGraficaSetor('naoVistoria', 'chartNaoVistoria', Object.keys(naoVistoriaMap), Object.values(naoVistoriaMap), ['#ef4444', '#eab308', '#64748b'], 'doughnut');
-  gerarEstruturaGraficaSetor('naoRemediacao', 'chartNaoRemediacao', Object.keys(naoRemediacaoMap), Object.values(naoRemediacaoMap), ['#ef4444', '#eab308', '#001d3d'], 'doughnut');
+  const cores = ["#ef4444","#eab308","#0056b3","#22c55e","#a855f7","#f97316","#cbd5e1"];
+  gerarGraficoSetor("locais", "chartLocais", locaisMap, cores, "pie");
 
-  // Popula os quadros laterais de texto minerado via Regex
-  renderizarListasDeTextoLivre("listaOutrosLocais", mineracaoLocais);
-  renderizarListasDeTextoLivre("listaOutrosMotivos", mineracaoFalhas);
+  renderizarListaLivre("listaOutrosLocais", outrosLocaisMap);
 }
 
-/**
- * UTILITÁRIO: ABSTRAÇÃO PARA RENDERIZAÇÃO DO CHART.JS
- */
-function gerarEstruturaGraficaSetor(idChave, canvasId, labels, data, cores, tipo) {
-  destruirInstanciaGrafico(idChave);
-  const canvasElement = document.getElementById(canvasId);
-  if (!canvasElement) return;
+// ─── 8. GRÁFICOS DE MOTIVOS (NÃO VISTORIA / NÃO REMEDIAÇÃO) ──────────────────
+// Usa as colunas binárias do SQL para os motivos categorizados
+// e desagrega arrays nos campos originais para os demais.
+function renderizarGraficosMotivos(dados) {
+  // ── Motivos de NÃO vistoria ──
+  const nvMap = {
+    "Sem Acesso":         dados.reduce((s,d) => s + (Number(d.nv_acesso)      || 0), 0),
+    "Falta de Brigadista":dados.reduce((s,d) => s + (Number(d.nv_brigadista)  || 0), 0),
+    "Viatura":            dados.reduce((s,d) => s + (Number(d.nv_viatura)     || 0), 0),
+    "Esquecimento":       dados.reduce((s,d) => s + (Number(d.nv_esquecimento)|| 0), 0),
+  };
+  // Remove zerados
+  Object.keys(nvMap).forEach(k => { if (!nvMap[k]) delete nvMap[k]; });
 
-  graficosAtivos[idChave] = new Chart(canvasElement.getContext('2d'), {
+  // Outros motivos de não vistoria — texto livre
+  const outrosNVMap = {};
+  dados.forEach(d => {
+    const outro = String(d.outros_motivos_nao_vistoria || "").toLowerCase().trim();
+    if (!outro || outro === "null") return;
+    // Evita contar o que já está nas colunas estruturadas
+    if (!/acesso|brigadista|viatura|esquecimento/.test(outro)) {
+      const cat = categorizarMotivoLivre(outro);
+      outrosNVMap[cat] = (outrosNVMap[cat] || 0) + 1;
+    }
+  });
+
+  gerarGraficoSetor("naoVistoria", "chartNaoVistoria", nvMap, ["#ef4444","#eab308","#64748b","#0056b3"], "doughnut");
+
+  // ── Motivos de NÃO remediação ──
+  const mnrMap = {
+    "Capacitação/Treinamento": dados.reduce((s,d) => s + (Number(d.mnr_capacitacao) || 0), 0),
+    "Falta de Larvicida/Cloro": dados.reduce((s,d) => s + (Number(d.mnr_larvicida)  || 0), 0),
+    "Limpeza":                  dados.reduce((s,d) => s + (Number(d.mnr_limpeza)    || 0), 0),
+    "Cobertura/Tampa":          dados.reduce((s,d) => s + (Number(d.mnr_cobertura)  || 0), 0),
+  };
+  Object.keys(mnrMap).forEach(k => { if (!mnrMap[k]) delete mnrMap[k]; });
+
+  // Outros motivos de não remediação — texto livre
+  const outrosMNRMap = {};
+  dados.forEach(d => {
+    const outro = String(d.outros_motivos_nao_remediacao || "").toLowerCase().trim();
+    if (!outro || outro === "null") return;
+    if (!/treinamento|capacitacao|cloro|larvicida|limpeza|cobertura|tampa/.test(outro)) {
+      const cat = categorizarMotivoLivre(outro);
+      outrosMNRMap[cat] = (outrosMNRMap[cat] || 0) + 1;
+    }
+  });
+
+  gerarGraficoSetor("naoRemediacao", "chartNaoRemediacao", mnrMap, ["#ef4444","#eab308","#001d3d","#22c55e"], "doughnut");
+
+  // Junta "outros" dos dois tipos de motivo em uma tabela só
+  const outrosCombinados = {};
+  [outrosNVMap, outrosMNRMap].forEach(m => {
+    Object.entries(m).forEach(([k,v]) => { outrosCombinados[k] = (outrosCombinados[k] || 0) + v; });
+  });
+  renderizarListaLivre("listaOutrosMotivos", outrosCombinados);
+}
+
+// ─── UTILITÁRIOS ──────────────────────────────────────────────────────────────
+
+/**
+ * Tenta parsear campo que pode vir como:
+ *   - Array JS já parseado
+ *   - String JSON: '["Caixa d'água","Calha"]'
+ *   - String simples: 'Caixa d'água'
+ *   - String com múltiplos itens separados por vírgula
+ */
+function parseArrayOuString(valor) {
+  if (!valor || valor === "[]" || valor === "null") return [];
+  if (Array.isArray(valor)) return valor.map(v => String(v).trim()).filter(Boolean);
+  const str = String(valor).trim();
+  if (str.startsWith("[")) {
+    try {
+      const arr = JSON.parse(str);
+      return Array.isArray(arr) ? arr.map(v => String(v).trim()).filter(Boolean) : [str];
+    } catch { /* não é JSON válido, trata como string */ }
+  }
+  // Múltiplos itens separados por vírgula (ex: vindo de CSV)
+  return str.split(",").map(v => v.trim()).filter(Boolean);
+}
+
+function categorizarLocalLivre(txt) {
+  if (/bromelia|planta|vaso|jardim/i.test(txt))          return "Bromélias / Paisagismo";
+  if (/laje|calha|telhado|rufo/i.test(txt))              return "Lajes / Calhas Obstruídas";
+  if (/ar condicionado|condensadora|split/i.test(txt))   return "Bandeja de Ar Condicionado";
+  if (/sapata|decantador|maquina|bomba|cisterna/i.test(txt)) return "Estruturas Operacionais";
+  if (/piscina|caixa|reservatorio/i.test(txt))           return "Piscinas / Reservatórios";
+  return "Outros Locais";
+}
+
+function categorizarMotivoLivre(txt) {
+  if (/recusa|nao permitiu|nao quis|proibiu/i.test(txt))       return "Recusa Operacional";
+  if (/fechado|trancado|vazio|ausente|sem chave/i.test(txt))   return "Local Fechado / Sem Acesso";
+  if (/chuva|temporal|clima|enchente/i.test(txt))              return "Fatores Climáticos";
+  if (/equipamento|ferramenta|material/i.test(txt))            return "Falta de Equipamento";
+  return "Outros Motivos";
+}
+
+function gerarGraficoSetor(idChave, canvasId, mapaContagem, cores, tipo) {
+  destruirInstanciaGrafico(idChave);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const labels = Object.keys(mapaContagem);
+  const data   = Object.values(mapaContagem);
+  const total  = data.reduce((s, v) => s + v, 0);
+
+  if (total === 0) {
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "12px Segoe UI"; ctx.fillStyle = "#94a3b8"; ctx.textAlign = "center";
+    ctx.fillText("Nenhuma ocorrência para este filtro.", canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  graficosAtivos[idChave] = new Chart(canvas.getContext("2d"), {
     type: tipo,
     data: {
-      labels: labels.length ? labels : ['Sem ocorrências'],
+      labels,
       datasets: [{
-        data: data.length ? data : [0],
-        backgroundColor: cores,
-        borderColor: '#ffffff',
+        data,
+        backgroundColor: cores.slice(0, labels.length),
+        borderColor: "#ffffff",
         borderWidth: 2
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#334155', font: { size: 9 }, boxWidth: 10 }
+        legend: { position: "bottom", labels: { color: "#334155", font: { size: 9 }, boxWidth: 10 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pct = ((ctx.raw / total) * 100).toFixed(1);
+              return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+            }
+          }
         }
       }
     }
   });
 }
 
-/**
- * UTILITÁRIO: ATUALIZA AS TABELAS DE AUDITORIA DE TEXTO LIVRE ("OUTROS")
- */
-function renderizarListasDeTextoLivre(domId, dicionarioContagem) {
+function renderizarListaLivre(domId, mapa) {
   const container = document.getElementById(domId);
+  if (!container) return;
   container.innerHTML = "";
 
-  const itensOrdenados = Object.entries(dicionarioContagem).sort((a, b) => b[1] - a[1]);
-  const somaTotal = itensOrdenados.reduce((acc, c) => acc + c[1], 0);
-
-  if (somaTotal === 0) {
-    container.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-gray-400 italic text-xs">Nenhum texto livre detectado para este filtro.</td></tr>`;
+  const itens = Object.entries(mapa).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (!itens.length) {
+    container.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-gray-400 italic text-xs">Nenhum registro livre detectado para este filtro.</td></tr>`;
     return;
   }
 
-  itensOrdenados.forEach(([chave, ocorrencias]) => {
-    if (ocorrencias > 0) {
-      container.innerHTML += `
-        <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors text-xs text-gray-600">
-          <td class="p-2.5 font-medium text-gray-700">${chave}</td>
-          <td class="p-2.5 text-center font-bold text-gray-500">${ocorrencias}</td>
-        </tr>`;
-    }
+  itens.forEach(([chave, qtd]) => {
+    container.innerHTML += `
+      <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors text-xs text-gray-600">
+        <td class="p-2.5 font-medium text-gray-700">${chave}</td>
+        <td class="p-2.5 text-center font-bold text-gray-500">${qtd}</td>
+      </tr>`;
   });
 }
 
-/**
- * DESTRUTOR DE INSTÂNCIAS DO CHART.JS
- */
 function destruirInstanciaGrafico(idChave) {
   if (graficosAtivos[idChave]) {
     graficosAtivos[idChave].destroy();
@@ -417,56 +431,18 @@ function destruirInstanciaGrafico(idChave) {
   }
 }
 
-/**
- * EXPORTADOR DE RELATÓRIOS ACOPLADO AOS FILTROS
- */
 function exportarRelatorio(tipo) {
-  const unity = document.getElementById("filtroUnidade").value;
-  const year = document.getElementById("filtroAno").value;
-  const month = document.getElementById("filtroMes").value;
-  const week = document.getElementById("filtroSemana").value;
-
   const params = new URLSearchParams({
-    unidade: unity === "TODAS" ? "" : unity,
-    ano: year === "TODOS" ? "" : year,
-    mes: month === "TODOS" ? "" : month,
-    semana: week === "TODAS" ? "" : week
+    unidade: (document.getElementById("filtroUnidade").value === "TODAS" ? "" : document.getElementById("filtroUnidade").value),
+    ano:     (document.getElementById("filtroAno").value     === "TODOS" ? "" : document.getElementById("filtroAno").value),
+    mes:     (document.getElementById("filtroMes").value     === "TODOS" ? "" : document.getElementById("filtroMes").value),
+    semana:  (document.getElementById("filtroSemana").value  === "TODAS" ? "" : document.getElementById("filtroSemana").value),
   }).toString();
-
-  window.open(`${ENDPOINT_API}/export/${tipo}?${params}`, '_blank');
+  window.open(`${ENDPOINT_API}/export/${tipo}?${params}`, "_blank");
 }
 
-// Substitua o bloco final do seu js/pages/aedes-painel.js por este:
-document.addEventListener("DOMContentLoaded", () => {
-  
-  const btnPdf = document.getElementById("btnGerarPdf");
-
-  if (btnPdf) {
-    btnPdf.addEventListener("click", () => {
-      // 1. Captura os seletores exatamente como estão mapeados no seu HTML
-      const filtroUnidade = document.getElementById("filtroUnidade")?.value || "TODOS";
-      const filtroAno = document.getElementById("filtroAno")?.value || "TODOS";
-
-      // 2. Estado de carregamento visual no botão
-      const textoOriginal = btnPdf.innerHTML;
-      btnPdf.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando PDF...`;
-      btnPdf.disabled = true;
-
-      // 3. 🟢 CHAMADA CORRETA: Usa o módulo central que injeta o host e o prefixo /api automaticamente!
-      if (typeof AedesAPI !== "undefined" && typeof AedesAPI.downloadRelatorioPDF === "function") {
-          AedesAPI.downloadRelatorioPDF(filtroUnidade, filtroAno);
-      } else {
-          // Fallback de segurança caso o módulo não tenha sido exposto globalmente
-          const API_BASE = window.location.hostname === "localhost" ? "http://localhost:3001" : "https://dma-aedes-api.onrender.com";
-          const urlRelatorio = `${API_BASE}/api/aedes/relatorio-pdf?unidade=${encodeURIComponent(filtroUnidade)}&ano=${encodeURIComponent(filtroAno)}`;
-          window.open(urlRelatorio, '_blank');
-      }
-
-      // 4. Devolve o botão ao estado original após o disparo do download
-      setTimeout(() => {
-        btnPdf.innerHTML = textoOriginal;
-        btnPdf.disabled = false;
-      }, 2000);
-    });
-  }
-});
+function mostrarErroGlobal(msg) {
+  document.querySelectorAll("[id^='kpi']").forEach(el => el.innerText = "—");
+  const tbody = document.getElementById("tabelaRankingUnidades");
+  if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400 italic">${msg}</td></tr>`;
+}

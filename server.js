@@ -624,14 +624,10 @@ app.get("/api/unidades", async (_req, res) => {
 }); */
 
 app.get("/api/aedes/painel-dados", async (req, res) => {
-
   try {
-
     const query = `
       SELECT
-
         ano AS "Ano",
-
         CASE mes
           WHEN 1 THEN 'Janeiro'
           WHEN 2 THEN 'Fevereiro'
@@ -646,58 +642,63 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
           WHEN 11 THEN 'Novembro'
           WHEN 12 THEN 'Dezembro'
         END AS "Mes_Nome",
-
         unidade_nome AS "Unidade",
 
+        -- Correção: Se veio do Excel e o status geral aponta foco ou motivo, consideramos visitada
+        -- ou se o campo estiver explicitamente como 'sim'
         CASE
-          WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim'
+          WHEN LOWER(COALESCE(vistoria_realizada::text,'')) = 'sim'
+               OR foco_encontrado IS NOT NULL 
+               OR (motivos_nao_vistoria::text <> '[]' AND motivos_nao_vistoria IS NOT NULL)
           THEN 1
           ELSE 0
         END AS visitada,
 
         CASE
-          WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim'
-           AND LOWER(COALESCE(foco_encontrado,'')) = 'sim'
+          WHEN LOWER(COALESCE(foco_encontrado::text,'')) = 'sim'
           THEN 1
           ELSE 0
         END AS foco_encontrado,
 
         CASE
-          WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim'
-           AND LOWER(COALESCE(foco_encontrado,'')) = 'sim'
-           AND LOWER(COALESCE(foco_remediado,'')) = 'sim'
+          WHEN LOWER(COALESCE(foco_encontrado::text,'')) = 'sim'
+           AND LOWER(COALESCE(foco_remediado::text,'')) = 'sim'
           THEN 1
           ELSE 0
         END AS foco_remediado,
 
         CASE
-          WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim'
-           AND LOWER(COALESCE(foco_encontrado,'')) = 'sim'
-           AND LOWER(COALESCE(foco_remediado,'')) <> 'sim'
+          WHEN LOWER(COALESCE(foco_encontrado::text,'')) = 'sim'
+           AND LOWER(COALESCE(foco_remediado::text,'')) <> 'sim'
           THEN 1
           ELSE 0
         END AS foco_pendente,
 
+        -- Varre tanto a coluna principal (convertida para texto) quanto o campo de "outros" do Excel
         CASE
           WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%acesso%'
+            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%acesso%'
           THEN 1
           ELSE 0
         END AS nv_acesso,
 
         CASE
           WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%brigadista%'
+            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%brigadista%'
           THEN 1
           ELSE 0
         END AS nv_brigadista,
 
         CASE
           WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%viatura%'
+            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%viatura%'
           THEN 1
           ELSE 0
         END AS nv_viatura,
 
         CASE
           WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%esquecimento%'
+            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%esquecimento%'
           THEN 1
           ELSE 0
         END AS nv_esquecimento,
@@ -705,6 +706,8 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
         CASE
           WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%treinamento%'
             OR LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%capacitacao%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%treinamento%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%capacitacao%'
           THEN 1
           ELSE 0
         END AS mnr_capacitacao,
@@ -712,12 +715,15 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
         CASE
           WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%cloro%'
             OR LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%larvicida%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%cloro%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%larvicida%'
           THEN 1
           ELSE 0
         END AS mnr_larvicida,
 
         CASE
           WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%limpeza%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%limpeza%'
           THEN 1
           ELSE 0
         END AS mnr_limpeza,
@@ -725,6 +731,8 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
         CASE
           WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%cobertura%'
             OR LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%tampa%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%cobertura%'
+            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%tampa%'
           THEN 1
           ELSE 0
         END AS mnr_cobertura
@@ -733,23 +741,16 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
     `;
 
     const result = await pool.query(query);
-
     res.json(result.rows);
 
   } catch (err) {
-
-    console.error(
-      "❌ Erro no painel-dados:",
-      err
-    );
-
+    console.error("❌ Erro no painel-dados:", err);
     res.status(500).json({
       error: "Erro interno ao processar o painel analítico."
     });
-
   }
-
 });
+
 
 /* ==========================================================================
    ⭐ SOLUÇÃO temporária: consolidaremos na tabela fato_vistorias 

@@ -55,12 +55,36 @@ async function initSchema() {
         observacoes                  TEXT,
         data_registro                TIMESTAMP DEFAULT NOW(),
         outros_local                 TEXT,
-        outros_motivo_nao_vistoria   TEXT,
-        outros_motivo_nao_remediacao TEXT,
+        outros_motivos_nao_vistoria   TEXT,
+        outros_motivos_nao_remediacao TEXT,
         id_referencia                TEXT UNIQUE
       );
     `);
   
+// Nova rota para tabela fato_vistorias (Consolidado: EXCEL + PORTAL)
+
+   await pool.query(`
+      CREATE TABLE IF NOT EXISTS aedes.fato_vistorias (
+        id                           SERIAL PRIMARY KEY,
+        lote_id                      INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
+        unidade_id                   TEXT UNIQUE, 
+        unidade_nome                 TEXT,
+        vistoria_realizada           TEXT,
+        foco_encontrado              TEXT,
+        foco_remediado               TEXT,
+        motivos_nao_vistoria         TEXT,
+        motivos_nao_remediacao       TEXT,
+        locais_foco                  TEXT,
+        observacoes                  TEXT,
+        data_registro                TIMESTAMP DEFAULT NOW(),
+        outros_locais_foco           TEXT,
+        outros_motivos_nao_vistoria  TEXT,
+        outros_motivos_nao_remediacao TEXT,
+        id_referencia                TEXT UNIQUE
+      );
+    `);
+
+ 
     // Tabela de Focais
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focais (
@@ -92,24 +116,23 @@ async function initSchema() {
         COUNT(CASE WHEN LOWER(vistoria_realizada) = 'sim' THEN 1 END) AS total_vistorias,
         COUNT(CASE WHEN LOWER(foco_encontrado) = 'sim' THEN 1 END) AS total_focos,
         COUNT(CASE WHEN LOWER(foco_encontrado) = 'sim' AND LOWER(foco_remediado) = 'sim' THEN 1 END) AS total_remediados
-      FROM aedes.vistorias_itens;
+      FROM aedes.fato_vistorias;
     `);
 
     // 2. Correção segura para a Pizza de Motivos de Não Vistoria (Evitando erro de escalar)
-    await pool.query(`
-      CREATE OR REPLACE VIEW aedes.vw_motivos_nao_vistoria AS
-      SELECT 
-        COALESCE(motivo::text, 'Não Informado') AS motivo,
-        COUNT(*) AS quantidade
-      FROM aedes.vistorias_itens,
-      LATERAL (
-        SELECT jsonb_array_elements_text(motivos_nao_vistoria) AS motivo
-        WHERE jsonb_typeof(motivos_nao_vistoria) = 'array'
-        UNION ALL
-        SELECT outros_motivo_nao_vistoria WHERE outros_motivo_nao_vistoria IS NOT NULL AND outros_motivo_nao_vistoria <> ''
-      ) AS sub
-      GROUP BY motivo;
-    `);
+      await pool.query(`
+    CREATE OR REPLACE VIEW aedes.vw_motivos_nao_vistoria AS
+    SELECT 
+      COALESCE(motivo::text, 'Não Informado') AS motivo,
+      COUNT(*) AS quantidade
+    FROM aedes.fato_vistorias,
+    LATERAL (
+        SELECT motivos_nao_vistoria AS motivo WHERE motivos_nao_vistoria IS NOT NULL AND motivos_nao_vistoria <> ''
+    UNION ALL
+    SELECT outros_motivos_nao_vistoria WHERE outros_motivos_nao_vistoria IS NOT NULL AND outros_motivos_nao_vistoria <> ''
+  ) AS sub
+  GROUP BY motivo;
+` );
 
     // 3. Correção segura para a Pizza de Motivos de Não Remediação
     await pool.query(`
@@ -117,31 +140,35 @@ async function initSchema() {
       SELECT 
         COALESCE(motivo::text, 'Não Informado') AS motivo,
         COUNT(*) AS quantidade
-      FROM aedes.vistorias_itens,
-      LATERAL (
-        SELECT jsonb_array_elements_text(motivos_nao_remediacao) AS motivo
-        WHERE jsonb_typeof(motivos_nao_remediacao) = 'array'
-        UNION ALL
-        SELECT outros_motivo_nao_remediacao WHERE outros_motivo_nao_remediacao IS NOT NULL AND outros_motivo_nao_remediacao <> ''
-      ) AS sub
-      GROUP BY motivo;
-    `);
+      FROM aedes.fato_vistorias,
+     LATERAL (
+        SELECT motivos_nao_remediacao AS motivo WHERE motivos_nao_remediacao IS NOT NULL AND motivos_nao_remediacao <> ''
+    UNION ALL
+    SELECT outros_motivos_nao_remediacao WHERE outros_motivos_nao_remediacao IS NOT NULL AND outros_motivos_nao_remediacao <> ''
+  ) AS sub
+  GROUP BY motivo;
+` );
 
     // 4. Correção segura para a Pizza de Locais de Foco
-    await pool.query(`
-      CREATE OR REPLACE VIEW aedes.vw_locais_foco AS
-      SELECT 
-        COALESCE(local_foco::text, 'Não Informado') AS local_foco,
-        COUNT(*) AS quantidade
-      FROM aedes.vistorias_itens,
-      LATERAL (
-        SELECT jsonb_array_elements_text(locais_foco) AS local_foco
-        WHERE jsonb_typeof(locais_foco) = 'array'
-        UNION ALL
-        SELECT outros_local WHERE outros_local IS NOT NULL AND outros_local <> ''
-      ) AS sub
-      GROUP BY local_foco;
-    `);
+        // 4. Correção segura para a Pizza de Locais de Foco
+      await pool.query(`
+        -- 1. Remove a view antiga para evitar o erro de alteração de nome de coluna
+        DROP VIEW IF EXISTS aedes.vw_locais_foco;
+
+        -- 2. Cria a nova view com a lógica corrigida
+        CREATE VIEW aedes.vw_locais_foco AS
+        SELECT 
+          COALESCE(sub.local::text, 'Não Informado') AS locais_foco,
+          COUNT(*) AS quantidade
+        FROM aedes.fato_vistorias,
+        LATERAL (
+          SELECT locais_foco AS local WHERE locais_foco IS NOT NULL AND locais_foco <> ''
+          UNION ALL
+          SELECT outros_locais_foco AS local WHERE outros_locais_foco IS NOT NULL AND outros_locais_foco <> ''
+        ) AS sub
+        GROUP BY sub.local; -- Agrupa pelo resultado do LATERAL
+      `);
+
 
     console.log("✅ Estrutura de tabelas e Views do Sprint 3 validadas com sucesso.");
   } catch (err) {
@@ -177,7 +204,7 @@ app.get("/api/aedes/unidades-pendentes", async (req, res) => {
         unidade_nome,
         data_registro,
         CASE WHEN LOWER(vistoria_realizada) <> 'sim' THEN 'Não Enviado/Não Vistoriado' ELSE 'Pendente de Remediação' END AS status_pendencia
-      FROM aedes.vistorias_itens
+      FROM aedes.fato_vistorias
       WHERE LOWER(vistoria_realizada) <> 'sim' 
          OR (LOWER(foco_encontrado) = 'sim' AND LOWER(foco_remediado) <> 'sim')
     `);
@@ -727,7 +754,7 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
 /* ==========================================================================
    ⭐ SOLUÇÃO temporária: consolidaremos na tabela fato_vistorias 
 ========================================================================== */
-/*app.get("/api/aedes/consolidado", async (req, res) => {
+app.get("/api/aedes/consolidado", async (req, res) => {
   try {
     // Mapeia os campos reais descobertos na estrutura da tabela física
     const query = `
@@ -765,7 +792,7 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
       details: err.message 
     });
   }
-});*/
+});
 
 
 /* ==========================================================================

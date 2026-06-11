@@ -8,7 +8,7 @@ import { AedesAPI } from '../modules/aedes/aedes-api.js';
 
 // Estado global dos dados na página para permitir filtros dinâmicos por semana
 let DADOS_PAINEL_GLOBAL = [];
-
+4
 async function inicializarModuloAedes() {
     try {
         console.log("A carregar Módulo Aedes via View Consolidada do Banco...");

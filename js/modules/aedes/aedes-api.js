@@ -2,9 +2,9 @@
  * Módulo de Comunicação API - AEDES-api.js
  */
 
-const API_BASE = window.location.hostname === "localhost" 
+const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:3001" 
-    : "https://dma-aedes-api.onrender.com"; // 
+    : "https://dma-aedes-api.onrender.com";
 
 export const AedesAPI = {
 
@@ -115,11 +115,12 @@ export const AedesAPI = {
 
     /**
      * ⛔ ROTA DESLIGADA / LEGADA (Mantida apenas como stub seguro para evitar quebras)
-     */
+     
     async getConsolidadoView() {
         // Retorna um array vazio estável imediatamente sem gastar processamento de rede
         return [];
-    },
+    },*/
+    
 
     /**
      * 🟢 GERAÇÃO DE PDF: Conecta à nova rota do RMarkdown em formato PDF
@@ -135,6 +136,59 @@ export const AedesAPI = {
             window.open(url, '_blank');
         } catch (error) {
             console.error("❌ AedesAPI.downloadRelatorioPDF:", error);
+        }
+    },
+
+    
+    async getConsolidadoView() {
+        try {
+            const response = await fetch(`${API_BASE}/api/aedes/consolidado`);
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
+            
+            const json = await response.json();
+            
+            if (json && json.sucesso && Array.isArray(json.dados)) {
+                return json.dados.map(item => {
+                    const numSemana = item.semana_contagem !== undefined && item.semana_contagem !== null ? Number(item.semana_contagem) : 0;
+                    
+                    // Lógica para Vistoria Realizada
+                    let statusVistoria = "Não Informado";
+                    if (String(item.uv_sim).toLowerCase().trim() === "sim") statusVistoria = "Sim";
+                    if (String(item.uv_nao).toLowerCase().trim() === "sim") statusVistoria = "Não";
+
+                    // Lógica para Foco Detectado
+                    let statusFoco = "Não";
+                    if (String(item.fe_sim).toLowerCase().trim() === "sim") statusFoco = "Sim";
+
+                    // Lógica para Remediação do Foco
+                    let statusRemediacao = "-";
+                    if (String(item.rm_sim).toLowerCase().trim() === "sim") statusRemediacao = "Sim";
+                    if (String(item.rm_nao).toLowerCase().trim() === "sim") statusRemediacao = "Não";
+
+                    return {
+                        ...item,
+                        semana_contagem: numSemana,
+                        // Preenche período nulo com fallback descritivo legível por humanos
+                        periodo_semana: item.periodo_semana || `Semana Epidemiológica ${numSemana} / ${item.ano || 2026}`,
+                        vistoria: statusVistoria,
+                        foco: statusFoco,
+                        remediacao: statusRemediacao,
+                        // Campos de texto livre inexistentes na tabela física recebem fallback estável
+                        local_foco: statusVistoria === "Não" ? "Não vistoriado" : "-",
+                        motivo_nao_vistoria: null,
+                        observacoes: "-",
+                        focal: item.focal || "-",
+                        data_real_envio: item.data_real_envio || null
+                    };
+                });
+            }
+            
+            if (json && Array.isArray(json)) return json;
+            return [];
+            
+        } catch (error) {
+            console.error("❌ AedesAPI.getConsolidadoView:", error);
+            return [];
         }
     }
 };

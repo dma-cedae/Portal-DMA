@@ -337,8 +337,8 @@ async function loadData() {
   try {
     // Executa as duas requisições em paralelo para máxima performance
     const [resConsolidado, resPesagens] = await Promise.all([
-      fetch("/data/dados_reciclados.json"),
-      fetch("/data/dados_pesagens.json")
+      fetch("data/dados_reciclados.json"),
+      fetch("data/dados_pesagens.json")
     ]);
 
     if (!resConsolidado.ok) throw new Error("Falha ao ler dados_reciclados.json");

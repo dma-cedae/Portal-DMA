@@ -10,13 +10,11 @@ const BR_NUMBER = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 const BR_INTEGER = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
 const PREMIOS = [
-  { premio_id: "broche", nome: "Broche", custo_pontos: 10, estoque_inicial: 80, ativo: true },
-  { premio_id: "copo", nome: "Copo", custo_pontos: 20, estoque_inicial: 45, ativo: true },
-  { premio_id: "mochila", nome: "Mochila", custo_pontos: 100, estoque_inicial: 12, ativo: true },
-  { premio_id: "composto", nome: "Composto orgânico", custo_pontos: 0, estoque_inicial: 200, ativo: true }
+  { premio_id: "mochila", nome: "Mochila", custo_pontos: 100, estoque_inicial: 20, ativo: true },
+  { premio_id: "tablet", nome: "Tablet", custo_pontos: 100, estoque_inicial: 3, ativo: true }
 ];
 
-const CORES_GRAFICO = { Metal: "#2ec4b6", Papel: "#e67e22", Plastico: "#4361ee", Vidro: "#ff006e" };
+const CORES_GRAFICO = { Metal: "#fffb00", Papel: "#0091d8", Plastico: "#e72f2f", Vidro: "#51c751" };
 
 const els = {
   fase2DbStatus: document.getElementById("fase2DbStatus"),
@@ -29,8 +27,8 @@ const els = {
   consultaForm: document.getElementById("consultaForm"),
   consultaId: document.getElementById("consultaId"),
   consultaResultado: document.getElementById("consultaResultado"),
-  grafico2024: document.getElementById("graficoRadial2024"),
-  grafico2025: document.getElementById("graficoRadial2025")
+  grafico2024: document.getElementById("graficoPizza2024"),
+  grafico2025: document.getElementById("graficoPizza2025")
 };
 
 function formatNumber(value) { return BR_NUMBER.format(Number(value || 0)); }
@@ -44,23 +42,6 @@ function extractRecords(json) {
   return [];
 }
 
-// Agrupa as pesagens individuais por participante para gerar o Ranking e os KPIs globais
-function processarRegistrosDoConsolidado(dados) {
-  let agrupado = {};
-  
-  dados.forEach(item => {
-    const id = String(item.n_id || item.id);
-    const diretoria = String(item.diretoria || "DMA / CRS");
-    const quantidade = Number(item.Quantidade || 0);
-    
-    if (!agrupado[id]) {
-      agrupado[id] = { n_id: id, diretoria: diretoria, somatorio: 0 };
-    }
-    agrupado[id].somatorio += quantidade;
-  });
-  
-  return Object.values(agrupado);
-}
 
 function extractKpis(regs, dadosBrutos) {
   const totalPeso = dadosBrutos.reduce((a, b) => a + Number(b.Quantidade || 0), 0);
@@ -138,14 +119,10 @@ function renderHistoricTop5() {
   if (els.historicTop5Highlight && rankingDiretorias[0]) {
     els.historicTop5Highlight.innerHTML = `
       <i class="fa-solid fa-chart-line" style="color: #0284c7; margin-right: 4px;"></i> 
-      <strong>Gincana Interna:</strong> A <strong>DIRETORIA ${escapeHtml(rankingDiretorias[0].diretoria)}</strong> 
-      <span style="color: #64748b;">lidera o engajamento institucional com uma força operacional de</span> 
-      <strong>${rankingDiretorias[0].totalParticipantes} pessoas</strong>!
-      `;
+      <strong>Gincana Interna:</strong> A <strong>DIRETORIA ${escapeHtml(rankingDiretorias[0].diretoria)}</strong> lidera o engajamento institucional com uma força operacional de <strong>${rankingDiretorias[0].totalParticipantes} pessoas</strong>!
+    `;
   }
 }
-
-
 
 function bindConsulta() {
   if (!els.consultaForm) return;
@@ -215,66 +192,98 @@ function prepararDadosOrigemR(dados, sufixoAno) {
 
 function renderCharts() {
   if (!els.grafico2024 || !els.grafico2025 || !state.dadosReciclados) return;
-  els.grafico2024.innerHTML = ""; els.grafico2025.innerHTML = "";
+  els.grafico2024.innerHTML = ""; 
+  els.grafico2025.innerHTML = "";
 
   const dataset2024 = prepararDadosOrigemR(state.dadosReciclados, "24");
   const dataset2025 = prepararDadosOrigemR(state.dadosReciclados, "25");
 
   const obterBlueprintR = (dataset, tituloAno) => {
     return {
-      chart: { type: 'radialBar', height: 350 },
+      chart: { 
+        type: 'pie', 
+        height: 350,
+        fontFamily: 'inherit'
+      },
       colors: [CORES_GRAFICO.Papel, CORES_GRAFICO.Plastico, CORES_GRAFICO.Metal, CORES_GRAFICO.Vidro],
-      series: dataset.porcentagensRelativas, 
+      series: dataset.valoresReais, 
       labels: dataset.labels, 
-      plotOptions: {
-        radialBar: {
-          // Diminui o buraco central de 50% para 20%, aproximando os arcos do centro
-          hollow: { size: '20%' },
-          track: {
-            background: 'rgba(0, 0, 0, 0.04)',
-            strokeWidth: '100%', // Usa a espessura máxima disponível para cada arco
-            margin: 2            // Reduz a distância de 4px para apenas 2px entre as pistas
-          },
-          dataLabels: {
-            name: { show: true, fontSize: '13px', fontWeight: 700, color: '#0f172a' },
-            value: {
-              fontSize: '12px',
-              color: '#475569',
-              formatter: (val, opts) => {
-                const idx = opts.seriesIndex;
-                const kgMat = dataset.valoresReais[idx] || 0;
-                return `${formatNumber(kgMat)} kg (${formatNumber(val)}%)`;
-              }
-            },
-            total: {
-              show: true,
-              label: `TOTAL ${tituloAno}`,
-              color: '#1d3557',
-              fontSize: '13px',
-              fontWeight: 800,
-              formatter: () => `${formatNumber(dataset.totalAno)} kg`
-            }
+      stroke: {
+        show: true,
+        width: 2,
+        colors: ['#ffffff']
+      },
+      legend: { 
+        show: true,
+        position: 'bottom',
+        horizontalAlign: 'center',
+        fontSize: '12px',
+        labels: { colors: '#334155' },
+        markers: { radius: 12 }
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: function (val) {
+          return val.toFixed(1) + "%";
+        },
+        style: {
+          fontSize: '11px',
+          fontWeight: 'bold',
+          colors: ['#ffffff']
+        },
+        dropShadow: {
+          enabled: true,
+          top: 1,
+          left: 1,
+          blur: 1,
+          color: '#000000',
+          opacity: 0.5
+        }
+      },
+      tooltip: {
+        y: {
+          formatter: (val) => {
+            return `${formatNumber(val)} kg`;
           }
         }
       },
-      legend: { show: false }
+      plotOptions: {
+        pie: {
+          allowPointSelect: true,
+          expandOnClick: true,
+          dataLabels: {
+            offset: -10 
+          }
+        }
+      },
+      title: {
+        text: `TOTAL ${tituloAno}: ${formatNumber(dataset.totalAno)} kg`,
+        align: 'center',
+        style: {
+          fontSize: '13px',
+          fontWeight: 800,
+          color: '#1d3557'
+        }
+      }
     };
   };
 
-  if (dataset2024.totalAno > 0) {
-    new ApexCharts(els.grafico2024, obterBlueprintR(dataset2024, "2024")).render();
-  } else {
-    els.grafico2024.innerHTML = "<div style='text-align:center; padding:40px; color:#64748b;'>Sem registros em 2024</div>";
-  }
+  // ==========================================
+  // TRECHO CORRIGIDO: Instanciar e renderizar de fato os gráficos
+  // ==========================================
+  try {
+    const chart2024 = new ApexCharts(els.grafico2024, obterBlueprintR(dataset2024, "2024"));
+    chart2024.render();
 
-  if (dataset2025.totalAno > 0) {
-    new ApexCharts(els.grafico2025, obterBlueprintR(dataset2025, "2025")).render();
-  } else {
-    els.grafico2025.innerHTML = "<div style='text-align:center; padding:40px; color:#64748b;'>Sem registros em 2025</div>";
+    const chart2025 = new ApexCharts(els.grafico2025, obterBlueprintR(dataset2025, "2025"));
+    chart2025.render();
+  } catch (error) {
+    console.error("Erro ao renderizar gráficos do ApexCharts:", error);
   }
 
   adicionarCaptionEstilizado();
 }
+
 function adicionarCaptionEstilizado() {
   const containerId = "dashboardInsightCaption";
   let capEl = document.getElementById(containerId);
@@ -291,8 +300,8 @@ function adicionarCaptionEstilizado() {
       <h5 style="margin: 0 0 4px 0; color: #1d3557; font-size: 0.9rem; font-weight: 700;">📊 EVOLUÇÃO HISTÓRICA DA COLETA SELETIVA</h5>
       <p style="margin: 0; font-size: 0.75rem; color: #4a4e69; font-style: italic; font-weight: 600;">Análise comparativa da composição de materiais reciclados (Período 2024 - 2025)</p>
       <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 0.75rem; color: #1d3557; font-weight: 700; line-height: 1.3;">
-        💡 INSIGHT CHAVE: Em 2024, a operação era sustentada quase exclusivamente por Papel. Já em 2025, nota-se um amadurecimento 
-        relevante da diversidade da coleta a partir de agosto, marcado pela entrada massiva de Vidro e Plástico nas métricas.
+        💡 Em 2024, a operação era sustentada quase exclusivamente por Papel. Já em 2025, nota-se um amadurecimento 
+        relevante da diversidade da coleta a partir de agosto, marcado pela entrada de Vidro e Plástico nas métricas.
       </div>
     `;
   }
@@ -337,6 +346,8 @@ function processarRegistrosDoConsolidado(dados) {
 
   return Object.values(agrupadoParticipantes);
 }
+
+
 async function loadData() {
   try {
     // Executa as duas requisições em paralelo para máxima performance
@@ -359,11 +370,11 @@ async function loadData() {
     state.registros = processarRegistrosDoConsolidado(jsonPesagens);
     state.kpis = extractKpis(state.registros, jsonPesagens);
 
-    // Feedback de sucesso na tela
+    /* Feedback de sucesso na tela
     if (els.fase2DbStatus) {
       els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-circle-check"></i> Sincronismo estável (Múltiplas Fontes) · CRS 2026`;
-    }
-    
+    } */
+  
     // Dispara as renderizações isoladas por contexto de dados
     renderKpis(); 
     renderAwardCatalog(); 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recicla CEDAE · Fase 2</title>
+  <title>Recicla CEDAE · Fase 1</title>
 
   <link rel="stylesheet" href="css/recicla-fase2.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -38,8 +38,8 @@
     <div class="hero-tech__wrapper">
       <div class="hero-tech__main-row">
         <div class="hero-tech__content">
-          <span class="hero-pretitle">Programa de Reciclagem Institucional 2026</span>
-          <h2 class="hero-main-title">RECICLA CEDAE - Fase 2</h2>
+          <span class="hero-pretitle">Programa de Reciclagem Institucional 2025 </span>
+          <h2 class="hero-main-title">RECICLA CEDAE - Fase 1 </h2>
           <p class="hero-description">
             O programa tem como objetivo principal a promoção da conscientização ambiental, da sustentabilidade e a destinação adequada de resíduos recicláveis e de resíduos orgânicos produzidos pelos colaboradores em seu cotidiano, favorecendo a adesão no programa de Coleta Seletiva Solidária da Companhia,
 aprimorando a segregação dos resíduos e rejeitos, além de contribuir positivamente para a
@@ -54,7 +54,7 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
         </div>
       </div>
 
-      <!-- <div class="hero-divider">
+      <div class="hero-divider">
         <h3 class="hero-divider-title">
           <span><i class="fa-solid fa-chart-line"></i> Indicadores de Adesão e Impacto</span>
         </h3>
@@ -64,20 +64,20 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
         <div class="kpi-dashboard-grid">
           <div class="kpi-tech-card color-accent">
             <span class="kpi-tech-card__icon">🌱</span>
-            <span class="kpi-tech-card__label">Resíduos Reciclados</span>
+            <span class="kpi-tech-card__label">Resíduos Reciclados e Orgânicos</span>
             <div class="kpi-tech-card__value" id="publicKpiPesoTotal">—</div>
             <div class="kpi-tech-card__bar"></div>
           </div>
           <div class="kpi-tech-card">
             <span class="kpi-tech-card__icon">👥</span>
-            <span class="kpi-tech-card__label">Participantes Inscritos</span>
+            <span class="kpi-tech-card__label">Participantes Ativos</span>
             <div class="kpi-tech-card__value" id="publicKpiParticipantes">—</div>
             <div class="kpi-tech-card__bar"></div>
           </div>
         </div>
       </div>
     </div>
-  </section> -->
+  </section>
 
   <main class="module-page">
 
@@ -100,7 +100,7 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
         </div>
       </a>
 
-      <a href="assets/RegrasReciclaCEDAE_2026.pdf" target="_blank" class="documento-btn-card">
+      <a href="assets/cartilhaRecicla1.pdf" target="_blank" class="documento-btn-card">
         <div class="doc-preview-box">
           <div class="doc-preview-thumbnail secondary-thumb">
             <i class="fa-regular fa-file-pdf pdf-brand-icon"></i>
@@ -110,7 +110,7 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
         <div class="doc-info-box">
   
           <h3 class="documento-card-title">Documento Técnico</h3>
-          <p class="documento-card-desc">Edital RECICLA CEDAE 2026</p>
+          <p class="documento-card-desc">Edital RECICLA CEDAE 2025</p>
         </div>
         <div class="doc-action-box">
           <span class="action-circle-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
@@ -119,28 +119,52 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
 
     </section>
 
-    <!-- <section class="glass-panel" id="analise-materiais">
+        <section class="glass-panel" id="analise-materiais">
+
       <div class="cartilha-header">
         <div>
-        
-          <h2 class="cartilha-title">Evolução Histórica da Coleta Seletiva</h2>
-          <p class="cartilha-subtitle">Análise volumétrica proporcional comparativa consolidada na pasta data</p>
-        </div>
-      </div>
-      
-      <div class="split-section-modern" style="margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
-        <div class="grafico-bloco-real">
-          <h4 style="text-align: center; color: var(--azul-escuro); margin: 0 0 15px 0; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.5px;">Distribuição Anual - Ano 2024</h4>
-          <div id="graficoRadial2024"></div>
-        </div>
-        <div class="grafico-bloco-real">
-          <h4 style="text-align: center; color: var(--azul-escuro); margin: 0 0 15px 0; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.5px;">Distribuição Anual - Ano 2025</h4>
-          <div id="graficoRadial2025"></div>
-        </div>
-      </div>
-    </section> -->
+          <h2 class="cartilha-title">
+            <i class="fa-solid fa-chart-pie"></i>
+            Composição dos Materiais Reciclados
+          </h2>
 
-    <!-- <div class="split-section-modern">
+          <p class="cartilha-subtitle">
+            Distribuição percentual dos resíduos coletados por categoria
+          </p>
+        </div>
+      </div>
+
+      <div class="analytics-status-bar">
+        <span id="fase2DbStatus" class="dma-tag">
+          Carregando indicadores...
+        </span>
+      </div>
+
+      <!-- Remova o style inline antigo e deixe assim -->
+<div class="graficos-pizza-grid">
+
+  <div class="grafico-card">
+    <div class="grafico-card-header">
+      <h4><i class="fa-solid fa-calendar-days"></i> Ano 2024</h4>
+    </div>
+    <div id="graficoPizza2024"></div>
+  </div>
+
+  <div class="grafico-card">
+    <div class="grafico-card-header">
+      <h4><i class="fa-solid fa-calendar-days"></i> Ano 2025</h4>
+    </div>
+    <div id="graficoPizza2025"></div>
+  </div>
+
+</div>
+
+      </div>
+
+    </section>
+
+
+   <div class="split-section-modern">
       <section class="glass-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
           <h2 style="color:var(--azul-escuro); margin:0; font-size:1.2rem; font-weight:800;">
@@ -158,37 +182,35 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
                 <th>Posição</th>
                 <th>Diretoria</th>
                 <th>Participantes</th>
-              <th style="text-align:right;">Acumulado</th>
+                <th style="text-align:right;">Acumulado</th>
               </tr>
             </thead>
-            <tbody id="historicTop5Body">
-              </tbody>
+            <tbody id="historicTop5Body"></tbody>
           </table>
         </div>
-      </section> -->
+      </section>
 
-      <!-- <section class="glass-panel">
+      <section class="glass-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
           <h2 style="color:var(--azul-escuro); margin:0; font-size:1.2rem; font-weight:800;">
             <i class="fa-solid fa-gift" style="color:var(--azul-cedae);"></i> Regras e Reconhecimento
           </h2>
-          <span class="dma-tag">Fase 2 Programada</span>
         </div>
         <div id="awardCatalog" style="display: grid; gap: 14px;">
           </div>
-      </section> 
-    </div>-->
+      </section>
+    </div>
 
     <section class="search-console-card" id="consulta">
       <h2 style="margin:0 0 8px; font-size:1.5rem; font-weight:800; color:#fff;">
-        <i class="fa-solid fa-magnifying-glass-chart"></i> Consulte Seus Créditos
+        <i class="fa-solid fa-magnifying-glass-chart"></i> Verique sua Contribuição no Programa
       </h2>
       <p style="color:rgba(255,255,255,0.7); font-size:0.85rem; margin:0 0 24px;">
-        Insira seu identificador numérico único para checar seu extrato geral.
+        Insira o número da sua tag para consultar sua contribuição em kg.
       </p>
 
       <form id="consultaForm" class="input-glow-wrapper">
-        <input type="text" id="consultaId" placeholder="Digite o ID do participante (Ex: 42)..." required>
+        <input type="text" id="consultaId" placeholder=" (Ex: 42)..." required>
         <button type="submit" class="btn--neon-action">
           <i class="fa-solid fa-search"></i> Consultar
         </button>
@@ -204,7 +226,7 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
     <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
       <div style="width:7px; height:7px; background:var(--verde-sustentavel); border-radius:50%;"></div>
       <p style="margin:0; font-weight:700; color:rgba(255,255,255,0.9); font-size:0.8rem;">
-        · Diretoria de Sustentabilidade · Assessoria de Meio Ambiente · Departamento de Meio Ambiente ·
+        Diretoria de Sustentabilidade · Assessoria de Meio Ambiente · Departamento de Meio Ambiente ·
       </p>
     </div>
     <p style="margin:0; font-size:0.7rem; color:rgba(255,255,255,0.5);">
@@ -212,6 +234,6 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
     </p>
   </footer>
 
-  <script src="js/pages/recicla-fase2.js"></script>
+  <script src="js/pages/recicla-fase1.js"></script>
 </body>
 </html>

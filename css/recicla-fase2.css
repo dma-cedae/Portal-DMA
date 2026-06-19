@@ -4,11 +4,12 @@
 :root {
   --azul-cedae: #0056b3;
   --azul-escuro: #001d3d;
-  --verde-sustentavel: #22c55e;
+  --verde-sustentavel: #03722c;
   --cinza-texto: #475569;
   --cinza-claro: #f8fafc;
   --fundo-card: #ffffff;
-  --grad-topbar: linear-gradient(90deg, #001d3d 0%, #0056b3 100%);
+  
+  --grad-topbar: linear-gradient(90deg, #279623 0%, #3099ce 100%);
 }
 
 body {
@@ -28,7 +29,7 @@ body {
 /* Painéis Estilo Clean (Substituindo o visual escuro antigo) */
 .glass-panel {
   background: var(--fundo-card);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #81a7d8;
   border-radius: 14px;
   padding: 24px;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
@@ -139,7 +140,7 @@ body {
 .hero-tech { background: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 32px 24px; margin-bottom: 24px; }
 .hero-tech__wrapper { max-width: 1200px; margin: 0 auto; }
 .hero-tech__main-row { display: flex; justify-content: space-between; align-items: center; gap: 40px; }
-.hero-pretitle { color: var(--verde-sustentavel); font-weight: 700; text-transform: uppercase; font-size: 0.8rem; }
+.hero-pretitle { color: var(--verde-sustentavel); font-weight: 700; text-transform: uppercase; font-size: 1.0rem; }
 .hero-main-title { color: var(--azul-escuro); font-size: 2rem; font-weight: 800; margin: 6px 0; }
 .hero-description { color: var(--cinza-texto); font-size: 0.9rem; line-height: 1.5; max-width: 800px; }
 .hero-selo-img { width: 120px; height: auto; object-fit: contain; }
@@ -275,6 +276,35 @@ body {
 .cartilha-subtitle { color: var(--cinza-texto); font-size: 0.82rem; margin: 0; }
 .badge-celebration { background: rgba(34, 197, 94, 0.1); color: var(--verde-sustentavel); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-block; }
 
+
+.graficos-pizza-grid {
+  display: grid;
+  /* Mantém os dois gráficos lado a lado em 2 colunas perfeitas */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
+  gap: 24px;                  /* Espaçamento interno entre os dois gráficos */
+  
+  /* ==========================================================================
+     CORREÇÃO DA BORDA FALHADA (BOX-MODEL ADJUSTMENT)
+     ========================================================================== */
+  width: 100%;
+  box-sizing: border-box;     /* Força o navegador a calcular padding/border sem estourar */
+  padding: 8px 4px;           /* Dá um respiro leve nas laterais para não encostar na borda */
+  align-items: start;
+}
+
+.grafico-card {
+  background: transparent;    /* Remove fundos conflitantes se houver */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Garante que o painel cinza de insights ocupe as duas colunas no rodapé sem estourar */
+#dashboardInsightCaption {
+  grid-column: 1 / -1 !important; 
+  width: 100% !important;
+  box-sizing: border-box;
+  margin-top: 16px;
+}
 .grafico-bloco-real { padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #edf2f7; }
 
 /* Injeções de estilo para manter o ApexCharts perfeitamente claro e legível */
@@ -295,6 +325,9 @@ body {
 .btn--neon-action { background: var(--verde-sustentavel); color: #ffffff; border: none; padding: 10px 22px; border-radius: 6px; font-weight: 700; cursor: pointer; }
 
 #fase2DbStatus { color: var(--azul-cedae); font-weight: 700; font-size: 0.75rem; margin-bottom: 12px; }
+
+
+
 footer { background: var(--azul-escuro); color: rgba(255, 255, 255, 0.6); padding: 20px; text-align: center; margin-top: 32px; border-top: 3px solid var(--verde-sustentavel); }
 
 @media (max-width: 600px) {
@@ -302,4 +335,8 @@ footer { background: var(--azul-escuro); color: rgba(255, 255, 255, 0.6); paddin
   .documento-btn-card { flex-direction: column; text-align: center; }
   .doc-preview-box { margin-right: 0; margin-bottom: 12px; }
   .doc-action-box { display: none; }
+  
+  /* Melhora o comportamento da busca em telas mobile */
+  .input-glow-wrapper input { width: 100%; margin-right: 0; margin-bottom: 12px; }
+  .btn--neon-action { width: 100%; }
 }

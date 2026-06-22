@@ -1,4 +1,4 @@
-const CACHE_NAME = "portal-dma-v27";
+const CACHE_NAME = "portal-dma-v28";
 
 const APP_ASSETS = [
   "./",
@@ -10,6 +10,7 @@ const APP_ASSETS = [
   "./manifest.json",
   "./icon-192.png",
   "./recicla-fase2.html",
+  "./recicla-fase1.html",
 
   "./css/global.css",
   "./css/home.css",
@@ -28,6 +29,7 @@ const APP_ASSETS = [
   "./js/pages/aedes-focais.js",
   "./js/pages/aedes-focais-vistoria.js",
   "./js/pages/recicla-fase2.js",
+  "./js/pages/recicla-fase1.js",
  
 
   "./assets/icon.png",
@@ -35,7 +37,9 @@ const APP_ASSETS = [
   "./assets/logo-cedae-transparente.png",
   "./assets/recicla-transp.png", 
   "./assets/cartilha_canva.pdf",
-  "./assets/cartilhaRecicla1.pdf"
+  "./assets/cartilhaRecicla1.pdf",
+  "./assets/RegrasReciclaCEDAE_2026.pdf",
+    
   
   "./data/dados_reciclados.json",
   "./data/dados_pesagens.json"

@@ -63,13 +63,11 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
       <div class="hero-tech__kpi-section">
         <div class="kpi-dashboard-grid">
           <div class="kpi-tech-card color-accent">
-            <span class="kpi-tech-card__icon">🌱</span>
             <span class="kpi-tech-card__label">Resíduos Reciclados e Orgânicos</span>
             <div class="kpi-tech-card__value" id="publicKpiPesoTotal">—</div>
             <div class="kpi-tech-card__bar"></div>
           </div>
           <div class="kpi-tech-card">
-            <span class="kpi-tech-card__icon">👥</span>
             <span class="kpi-tech-card__label">Participantes Ativos</span>
             <div class="kpi-tech-card__value" id="publicKpiParticipantes">—</div>
             <div class="kpi-tech-card__bar"></div>
@@ -119,50 +117,54 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
 
     </section>
 
-        <section class="glass-panel" id="analise-materiais">
+         <section class="glass-panel" id="analise-materiais">
 
       <div class="cartilha-header">
         <div>
           <h2 class="cartilha-title">
             <i class="fa-solid fa-chart-pie"></i>
-            Composição dos Materiais Reciclados
+            Composição dos Materiais
           </h2>
-
-          <p class="cartilha-subtitle">
-            Distribuição percentual dos resíduos coletados por categoria
-          </p>
         </div>
       </div>
 
-      <div class="analytics-status-bar">
-        <span id="fase2DbStatus" class="dma-tag">
-          Carregando indicadores...
-        </span>
-      </div>
+      <div class="graficos-pizza-grid">
 
-      <!-- Remova o style inline antigo e deixe assim -->
-<div class="graficos-pizza-grid">
+        <div class="grafico-card">
+          <div class="grafico-card-header">
+            <h4><i class="fa-solid fa-calendar-days"></i> 2024</h4>
+          </div>
+          <div class="grafico-card__split">
+            <div class="grafico-card__mini">
+              <span class="grafico-card__mini-label">Resíduos</span>
+              <div id="graficoPizza2024Macro"></div>
+            </div>
+            <div class="grafico-card__mini">
+              <span class="grafico-card__mini-label">Recicláveis</span>
+              <div id="graficoPizza2024Sub"></div>
+            </div>
+          </div>
+        </div>
 
-  <div class="grafico-card">
-    <div class="grafico-card-header">
-      <h4><i class="fa-solid fa-calendar-days"></i> Ano 2024</h4>
-    </div>
-    <div id="graficoPizza2024"></div>
-  </div>
-
-  <div class="grafico-card">
-    <div class="grafico-card-header">
-      <h4><i class="fa-solid fa-calendar-days"></i> Ano 2025</h4>
-    </div>
-    <div id="graficoPizza2025"></div>
-  </div>
-
-</div>
+        <div class="grafico-card">
+          <div class="grafico-card-header">
+            <h4><i class="fa-solid fa-calendar-days"></i> 2025</h4>
+          </div>
+          <div class="grafico-card__split">
+            <div class="grafico-card__mini">
+              <span class="grafico-card__mini-label">Resíduos</span>
+              <div id="graficoPizza2025Macro"></div>
+            </div>
+            <div class="grafico-card__mini">
+              <span class="grafico-card__mini-label">Recicláveis</span>
+              <div id="graficoPizza2025Sub"></div>
+            </div>
+          </div>
+        </div>
 
       </div>
 
     </section>
-
 
    <div class="split-section-modern">
       <section class="glass-panel">
@@ -170,11 +172,9 @@ destinação sustentável de resíduos visando possível certificação Lixo Zer
           <h2 style="color:var(--azul-escuro); margin:0; font-size:1.2rem; font-weight:800;">
             <i class="fa-solid fa-trophy" style="color:#f59e0b;"></i> Líderes de Engajamento
           </h2>
-          <span id="historicTop5Count" class="dma-tag">0 registros</span>
+          
         </div>
-        <div id="historicTop5Highlight" class="dma-tag" style="display:block; margin-bottom:18px; border-left:3px solid var(--verde-sustentavel); padding:10px 14px;">
-          Processando dados de pesagem...
-        </div>
+       
         <div class="table-container-responsive">
           <table class="tech-table">
             <thead>

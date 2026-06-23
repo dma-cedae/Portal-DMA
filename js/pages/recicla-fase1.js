@@ -66,95 +66,482 @@ function extractKpis(regs, dadosBrutos) {
   return { total_participantes: regs.length, somatorio_total: totalPeso };
 }
 
-function renderAwardCatalog() {
-  if (!els.awardCatalog) return;
-
-  els.awardCatalog.innerHTML = `
-    <div class="premiacoes-info">
-      <p>
-        Durante o programa Recicla CEDAE, os participantes acumularam pontos por meio de suas contribuições.
-        Ao final do período, foram realizadas as seguintes premiações:
-      </p>
-
-      <ul>
-        <li>
-          <strong>50 pontos:</strong>
-          entrega de broches do programa aos participantes que alcançaram essa pontuação.
-        </li>
-
-        <li>
-          <strong>100 pontos:</strong>
-          entrega de mochilas aos 20 primeiros participantes que atingiram 100 pontos.
-        </li>
-
-        <li>
-          <strong>Acima de 100 pontos:</strong>
-          entrega de tablets aos 3 participantes com maior pontuação geral.
-        </li>
-      </ul>
-    </div>
-  `;
-}
+/* ==========================================================================
+   RECICLA CEDAE — Ranking, Premiações e KPIs
+   Substitui: renderHistoricTop5(), renderAwardCatalog(), renderKpis()
+   ========================================================================== */
 
 function renderKpis() {
-  if (els.publicKpiParticipantes) els.publicKpiParticipantes.textContent = formatInteger(state.kpis.total_participantes ?? 0);
-  if (els.publicKpiPesoTotal) els.publicKpiPesoTotal.textContent = `${formatNumber(state.kpis.somatorio_total ?? 0)} kg`;
+  if (els.publicKpiParticipantes) {
+    els.publicKpiParticipantes.textContent = formatInteger(state.kpis.total_participantes ?? 0);
+  }
+  if (els.publicKpiPesoTotal) {
+    els.publicKpiPesoTotal.textContent = `${formatNumber(state.kpis.somatorio_total ?? 0)} kg`;
+  }
 }
 
+/* --------------------------------------------------------------------------
+   renderHistoricTop5
+   — Pódio visual escalonado (1º maior, 2º médio, 3º menor)
+   — Lista compacta (4º em diante) com barra verde proporcional
+   — Injeta CSS na primeira chamada (flag _rankingCssInjetado)
+   -------------------------------------------------------------------------- */
 function renderHistoricTop5() {
   if (!els.historicTop5Body || !state.dadosDiretorias) return;
 
-  // 1. Ordena as diretorias pelo maior peso total coletado
-  const rankingDiretorias = [...state.dadosDiretorias]
-    .sort((a, b) => b.pesoTotal - a.pesoTotal);
+  _injetarCssRanking();
 
-  // Pega o maior peso para servir de base (100%) para a barra de progresso visual
-  const maxPesoElemento = rankingDiretorias[0]?.pesoTotal || 1;
+  const sorted = [...state.dadosDiretorias].sort((a, b) => b.pesoTotal - a.pesoTotal);
+  const maxPeso = sorted[0]?.pesoTotal || 1;
+  const top3    = sorted.slice(0, 3);
+  const demais  = sorted.slice(3);
 
-  // 2. Renderiza as linhas focando em Diretoria, Qtd de Pessoas e Peso
-  els.historicTop5Body.innerHTML = rankingDiretorias.map((dir, idx) => {
-    let posicao = idx + 1;
-    let medalhaOuPosicao = posicao === 1 ? "🥇" : posicao === 2 ? "🥈" : posicao === 3 ? "🥉" : `${posicao}º`;
+  /* --- Pódio ---
+     order: 1=centro (1º), 0=esquerda (2º), 2=direita (3º)
+     rc-p1 tem flex maior para ser visualmente mais largo/alto */
+  const MEDALS  = ['🥇', '🥈', '🥉'];
+  const POD_CLS = ['rc-pc rc-p1', 'rc-pc rc-p2', 'rc-pc rc-p3'];
+  const BAR_CLS = ['rc-bg1', 'rc-bg2', 'rc-bg3'];
 
-    // Calcula a porcentagem da barra de preenchimento proporcional
-    let pctBarra = (dir.pesoTotal / maxPesoElemento) * 100;
+  const podiumHTML = `
+    <div class="rc-podium">
+      ${top3.map((dir, i) => {
+        const pct = Math.round((dir.pesoTotal / maxPeso) * 100);
+        return `
+          <div class="${POD_CLS[i]}">
+            ${i === 0 ? '<span class="rc-ldr">líder</span>' : ''}
+            <span class="rc-medal">${MEDALS[i]}</span>
+            <div class="rc-eyebrow">Diretoria</div>
+            <div class="rc-pname">${escapeHtml(dir.diretoria)}</div>
+            <div class="rc-pkg">${formatNumber(dir.pesoTotal)}<sup>kg</sup></div>
+            <div class="rc-pppl">${dir.totalParticipantes} ${dir.totalParticipantes === 1 ? 'colaborador' : 'colaboradores'}</div>
+            <div class="rc-bart"><div class="rc-barf ${BAR_CLS[i]}" data-pct="${pct}"></div></div>
+          </div>`;
+      }).join('')}
+    </div>`;
 
-    return `
-      <tr>
-        <td style="font-weight: 800; text-align: center; font-size: 1.1rem; width: 50px;">${medalhaOuPosicao}</td>
-        <td style="vertical-align: middle;">
-          <div style="font-weight: 800; color: #0f172a; font-size: 0.9rem; letter-spacing: 0.5px;">
-            DIRETORIA ${escapeHtml(dir.diretoria)}
-          </div>
-          <div style="width: 100%; background: #f1f5f9; height: 6px; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-            <div style="width: ${pctBarra}%; background: var(--azul-cedae); height: 100%; border-radius: 3px; transition: width 0.5s ease;"></div>
-          </div>
-        </td>
-        <td style="vertical-align: middle; text-align: center;">
-          <span style="background: rgba(15, 23, 42, 0.06); color: #334155; font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; display: inline-block;">
-            <i class="fa-solid fa-users" style="font-size:0.65rem; margin-right:4px;"></i> ${dir.totalParticipantes} ${dir.totalParticipantes === 1 ? 'colaborador' : 'colaboradores'}
-          </span>
-        </td>
-        <td style="text-align: right; font-weight: 800; color: var(--verde-sustentavel); font-size: 0.95rem; vertical-align: middle;">
-          ${formatNumber(dir.pesoTotal)} kg
-        </td>
-      </tr>
-    `;
-  }).join("");
+  /* --- Lista (4º em diante) --- */
+  const listaHTML = demais.length === 0 ? '' : `
+    <div class="rc-sec-lbl">
+      <i class="fa-solid fa-list-ol"></i> Classificação
+    </div>
+    <div class="rc-lista">
+      ${demais.map((dir, i) => {
+        const pct = Math.round((dir.pesoTotal / maxPeso) * 100);
+        return `
+          <div class="rc-row">
+            <div class="rc-pos">${i + 4}º</div>
+            <div class="rc-dir">
+              <div class="rc-dn">DIRETORIA ${escapeHtml(dir.diretoria)}</div>
+              <div class="rc-dp">
+                <i class="fa-solid fa-users" style="font-size:10px"></i>
+                ${dir.totalParticipantes} ${dir.totalParticipantes === 1 ? 'colaborador' : 'colaboradores'}
+              </div>
+            </div>
+            <div class="rc-bw">
+              <div class="rc-bt"><div class="rc-bf" data-pct="${pct}"></div></div>
+            </div>
+            <div class="rc-kg">${formatNumber(dir.pesoTotal)} kg</div>
+          </div>`;
+      }).join('')}
+    </div>`;
 
-  // 3. Atualiza os cabeçalhos e destaques textuais superiores do bloco
   if (els.historicTop5Count) {
     els.historicTop5Count.textContent = `${state.dadosDiretorias.length} diretorias disputando`;
   }
 
-  /*if (els.historicTop5Highlight && rankingDiretorias[0]) {
-    els.historicTop5Highlight.innerHTML = `
-      <i class="fa-solid fa-chart-line" style="color: #0284c7; margin-right: 4px;"></i>
-      <strong>Gincana Interna:</strong> A <strong>DIRETORIA ${escapeHtml(rankingDiretorias[0].diretoria)}</strong> lidera o engajamento institucional com uma força operacional de <strong>${rankingDiretorias[0].totalParticipantes} pessoas</strong>!
-    `;
-  }*/
+  els.historicTop5Body.closest('table')
+    ? _injetarForaTabela(els.historicTop5Body, podiumHTML + listaHTML)
+    : (els.historicTop5Body.innerHTML = podiumHTML + listaHTML);
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll('.rc-barf[data-pct], .rc-bf[data-pct]').forEach(el => {
+        el.style.width = el.dataset.pct + '%';
+      });
+    }, 80);
+  });
 }
 
+function _injetarForaTabela(tbody, html) {
+  const table = tbody.closest('table');
+  const wrapper = document.createElement('div');
+  wrapper.id = 'historicTop5Body';
+  wrapper.innerHTML = html;
+  table.parentNode.replaceChild(wrapper, table);
+  els.historicTop5Body = wrapper;
+}
+
+/* --------------------------------------------------------------------------
+   renderAwardCatalog
+   — Coluna esquerda: premiações compactas (lista)
+   — Coluna direita:  carrossel automático com as 10 fotos do programa
+   -------------------------------------------------------------------------- */
+function renderAwardCatalog() {
+  if (!els.awardCatalog) return;
+
+  const FOTOS = Array.from({ length: 10 }, (_, i) =>
+    `assets/fotos/recicla/${String(i + 1).padStart(2, '0')}.jpg`
+  );
+
+  els.awardCatalog.innerHTML = `
+    <div class="rc-award-wrap">
+
+      <!-- Premiações compactas -->
+      <div class="rc-premios-col">
+        <div class="rc-premio-row">
+          <i class="fa-solid fa-medal" style="color:#1a6b3c; font-size:16px; flex-shrink:0"></i>
+          <div>
+            <div class="rc-pr-pts">50 pontos</div>
+            <div class="rc-pr-desc">Broche do programa</div>
+            <span class="rc-ptag rc-t1">todos</span>
+          </div>
+        </div>
+        <div class="rc-premio-row">
+          <i class="fa-solid fa-bag-shopping" style="color:#1a6b3c; font-size:16px; flex-shrink:0"></i>
+          <div>
+            <div class="rc-pr-pts">100 pontos</div>
+            <div class="rc-pr-desc">Mochila — 20 primeiros</div>
+            <span class="rc-ptag rc-t2">top 20</span>
+          </div>
+        </div>
+        <div class="rc-premio-row rc-premio-destaque">
+          <i class="fa-solid fa-tablet-screen-button" style="color:#c8860a; font-size:16px; flex-shrink:0"></i>
+          <div>
+            <div class="rc-pr-pts" style="color:#7a4e00">Maior pontuação</div>
+            <div class="rc-pr-desc">Tablet — top 3 geral</div>
+            <span class="rc-ptag rc-t3">top 3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carrossel de fotos -->
+      <div class="rc-carrossel-col">
+        <div class="rc-carrossel" id="rcCarrossel">
+          <div class="rc-slides" id="rcSlides">
+            ${FOTOS.map((src, i) => `
+              <div class="rc-slide">
+                <img src="${src}" alt="Foto ${i + 1} do programa Recicla CEDAE"
+                     onerror="this.closest('.rc-slide').style.display='none'">
+              </div>`).join('')}
+          </div>
+          <button class="rc-carr-btn rc-carr-prev" id="rcPrev" aria-label="Foto anterior">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button class="rc-carr-btn rc-carr-next" id="rcNext" aria-label="Próxima foto">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <div class="rc-carr-dots" id="rcDots">
+            ${FOTOS.map((_, i) => `<span class="rc-dot${i === 0 ? ' rc-dot-ativo' : ''}" data-idx="${i}"></span>`).join('')}
+          </div>
+        </div>
+      </div>
+
+    </div>`;
+
+  _iniciarCarrossel();
+}
+
+function _iniciarCarrossel() {
+  const slides  = document.getElementById('rcSlides');
+  const dots    = document.querySelectorAll('.rc-dot');
+  const btnPrev = document.getElementById('rcPrev');
+  const btnNext = document.getElementById('rcNext');
+  if (!slides) return;
+
+  let atual = 0;
+  let timer = null;
+  const total = dots.length;
+
+  function irPara(idx) {
+    atual = (idx + total) % total;
+    slides.style.transform = `translateX(-${atual * 100}%)`;
+    dots.forEach((d, i) => d.classList.toggle('rc-dot-ativo', i === atual));
+  }
+
+  function avancar() { irPara(atual + 1); }
+
+  function iniciarAuto() {
+    clearInterval(timer);
+    timer = setInterval(avancar, 3500);
+  }
+
+  function pararAuto() { clearInterval(timer); }
+
+  btnNext?.addEventListener('click', () => { avancar();          iniciarAuto(); });
+  btnPrev?.addEventListener('click', () => { irPara(atual - 1); iniciarAuto(); });
+  dots.forEach(d => d.addEventListener('click', () => { irPara(+d.dataset.idx); iniciarAuto(); }));
+
+  const carr = document.getElementById('rcCarrossel');
+  carr?.addEventListener('mouseenter', pararAuto);
+  carr?.addEventListener('mouseleave', iniciarAuto);
+
+  /* Swipe touch */
+  let touchX = null;
+  carr?.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+  carr?.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const diff = touchX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) diff > 0 ? avancar() : irPara(atual - 1);
+    touchX = null;
+    iniciarAuto();
+  }, { passive: true });
+
+  iniciarAuto();
+}
+
+/* --------------------------------------------------------------------------
+   CSS — injetado uma única vez
+   -------------------------------------------------------------------------- */
+function _injetarCssRanking() {
+  if (window._rankingCssInjetado) return;
+  window._rankingCssInjetado = true;
+
+  const css = `
+
+/* ---- Label de seção ---- */
+.rc-sec-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #1a6b3c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 1.25rem 0 10px;
+}
+.rc-sec-lbl::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, #2db564, transparent);
+  border-radius: 2px;
+}
+
+/* ---- Pódio ---- */
+.rc-podium {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;   /* ancora todos pela base — o padding-top cria a altura escalonada */
+  margin-bottom: 1rem;
+}
+
+/* Base comum dos cards do pódio */
+.rc-pc {
+  border-radius: 12px;
+  padding: 14px 13px 12px;
+  position: relative;
+  background: #ffffff;
+  border: 1.5px solid #d4e8db;
+  /* Largura proporcional à posição: 1º ocupa mais espaço */
+  flex: 1;
+}
+
+/* 1º lugar — centro, maior, borda verde forte */
+.rc-p1 {
+  order: 2;
+  flex: 1.35;
+  border-color: #1a6b3c;
+  padding-top: 28px;        /* empurra o conteúdo pra baixo, tornando o card visualmente mais alto */
+}
+
+/* 2º lugar — esquerda, tamanho médio */
+.rc-p2 {
+  order: 1;
+  flex: 1.1;
+  border-color: #4a9b6a;
+  padding-top: 18px;
+}
+
+/* 3º lugar — direita, menor */
+.rc-p3 {
+  order: 3;
+  flex: 0.9;
+  border-color: #a8d5b8;
+  padding-top: 8px;
+}
+
+/* Badge "líder" flutuante no 1º */
+.rc-ldr {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a6b3c;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.rc-medal   { font-size: 22px; display: block; margin-bottom: 6px; }
+.rc-eyebrow { font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: #5a9c7a; margin-bottom: 2px; }
+.rc-pname   { font-size: 15px; font-weight: 800; color: #0d3d22; margin-bottom: 6px; line-height: 1.2; }
+.rc-pkg     { font-size: 20px; font-weight: 800; color: #1a6b3c; margin-bottom: 2px; }
+.rc-pkg sup { font-size: 11px; color: #5a9c7a; font-weight: 600; margin-left: 3px; }
+.rc-pppl    { font-size: 11px; color: #7ab899; margin-bottom: 10px; }
+
+/* Barra de progresso do pódio */
+.rc-bart { height: 5px; background: #e8f5ee; border-radius: 3px; overflow: hidden; }
+.rc-barf { height: 100%; border-radius: 3px; transition: width 0.9s cubic-bezier(.4,0,.2,1); width: 0%; }
+.rc-bg1  { background: #1a6b3c; }   /* 1º — verde escuro */
+.rc-bg2  { background: #2db564; }   /* 2º — verde médio */
+.rc-bg3  { background: #7dcfa0; }   /* 3º — verde claro */
+
+/* ---- Lista (4º em diante) ---- */
+.rc-lista { display: flex; flex-direction: column; gap: 5px; }
+.rc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #d4e8db;
+  border-radius: 8px;
+  transition: border-color .15s, background .15s;
+}
+.rc-row:hover { border-color: #2db564; background: #f2fbf6; }
+
+.rc-pos  { font-size: 13px; font-weight: 700; color: #5a9c7a; width: 22px; text-align: center; flex-shrink: 0; }
+.rc-dir  { flex: 1; min-width: 0; }
+.rc-dn   { font-size: 13px; font-weight: 700; color: #0d3d22; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-dp   { font-size: 11px; color: #7ab899; margin-top: 1px; }
+
+/* Barra proporcional — container largo para mostrar a diferença entre diretorias */
+.rc-bw   { flex: 1; min-width: 60px; max-width: 160px; flex-shrink: 0; }
+.rc-bt   { height: 6px; background: #e8f5ee; border-radius: 3px; overflow: hidden; }
+.rc-bf   {
+  height: 100%;
+  background: linear-gradient(to right, #2db564, #1a6b3c);
+  border-radius: 3px;
+  transition: width 0.9s cubic-bezier(.4,0,.2,1);
+  width: 0%;
+}
+
+.rc-kg   { font-size: 13px; font-weight: 700; color: #1a6b3c; white-space: nowrap; flex-shrink: 0; text-align: right; min-width: 80px; }
+
+/* ---- Layout award: premiações + carrossel lado a lado ---- */
+.rc-award-wrap {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+@media (max-width: 560px) {
+  .rc-award-wrap { grid-template-columns: 1fr; }
+}
+
+/* ---- Premiações compactas (coluna esquerda) ---- */
+.rc-premios-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rc-premio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #ffffff;
+  border: 1.5px solid #d4e8db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  flex: 1;
+}
+.rc-premio-destaque { border-color: #e8c97a; background: #fffdf5; }
+.rc-pr-pts  { font-size: 13px; font-weight: 800; color: #0d3d22; margin-bottom: 1px; }
+.rc-pr-desc { font-size: 11px; color: #5a9c7a; margin-bottom: 4px; line-height: 1.4; }
+.rc-ptag    { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 20px; letter-spacing: 0.4px; }
+.rc-t1 { background: #e8f5ee; color: #1a6b3c; }
+.rc-t2 { background: #d4f0e0; color: #0d4a28; }
+.rc-t3 { background: #fff3dc; color: #7a4e00; }
+
+/* ---- Carrossel (coluna direita) ---- */
+.rc-carrossel-col { min-width: 0; }
+.rc-carrossel {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0d3d22;
+  height: 200px;
+  cursor: grab;
+}
+.rc-carrossel:active { cursor: grabbing; }
+.rc-slides {
+  display: flex;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(.4,0,.2,1);
+}
+.rc-slide {
+  min-width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+}
+.rc-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Botões prev/next */
+.rc-carr-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(13,61,34,0.65);
+  border: none;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: background .2s;
+  z-index: 2;
+}
+.rc-carr-btn:hover { background: rgba(13,61,34,0.9); }
+.rc-carr-prev { left: 8px; }
+.rc-carr-next { right: 8px; }
+
+/* Dots */
+.rc-carr-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 2;
+}
+.rc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: background .3s, transform .3s;
+}
+.rc-dot-ativo {
+  background: #2db564;
+  transform: scale(1.3);
+}
+
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
+}
 function bindConsulta() {
   if (!els.consultaForm) return;
   els.consultaForm.addEventListener("submit", (e) => {

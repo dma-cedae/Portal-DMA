@@ -45,6 +45,10 @@
   /* Sombras */
   --sombra-card:        0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.20);
   --sombra-destaque:    0 8px 40px rgba(34, 160, 90, 0.25);
+
+  --amarelo: #c4b921;
+
+
 }
 
 /* ── Reset & Base Corrigida para Legibilidade ────────────────────────────── */
@@ -725,7 +729,7 @@ p, .geracao-media-subtitle {
 
 /************************ Premiações */
 .premiacoes-info {
-  background: rgba(22, 161, 41, 0.651);
+  background: rgba(248, 253, 249, 0.651);
   border: 1px solid rgba(255,255,255,0.08);
   border-left: 4px solid var(--verde-vivo);
   border-radius: 10px;
@@ -760,8 +764,8 @@ p, .geracao-media-subtitle {
    CAMADA 4 — Search Console (verde profundo + teal)
    ========================================================================== */
 .search-console-card {
-  background: linear-gradient(135deg, var(--verde-floresta) 0%, var(--teal-profundo) 100%);
-  border: 1px solid rgba(77,190,128,0.25);
+  background: linear-gradient(135deg, var(--amarelo) 0%, var(--verde-medio) 100%);
+  border: 1px solid rgba(4, 77, 32, 0.89);
   border-radius: 16px;
   padding: 36px 28px;
   text-align: center;
@@ -779,7 +783,7 @@ p, .geracao-media-subtitle {
   right: -50px;
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(19,166,180,0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(195, 212, 212, 0.295) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -813,7 +817,7 @@ p, .geracao-media-subtitle {
 }
 
 .btn--neon-action {
-  background: var(--verde-vivo);
+  background: var(--amarelo);
   color: #020000;
   border: none;
   padding: 11px 24px;
@@ -826,7 +830,7 @@ p, .geracao-media-subtitle {
 }
 
 .btn--neon-action:hover {
-  background: var(--verde-claro);
+  background: var(--areia);
   transform: translateY(-1px);
 }
 

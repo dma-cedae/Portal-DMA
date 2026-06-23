@@ -188,15 +188,26 @@ function renderAwardCatalog() {
     <div class="rc-award-wrap">
 
       <!-- Premiações compactas -->
-      <div class="rc-premios-col">
-        <div class="rc-premio-row">
+      
+       <div class="rc-premio-row rc-premio-destaque">
+          <i class="fa-solid fa-tablet-screen-button" style="color:#c8860a; font-size:16px; flex-shrink:0"></i>
+          <div>
+            <div class="rc-pr-pts" style="color:#7a4e00">Maior pontuação</div>
+            <div class="rc-pr-desc">Tablet — top 3 geral</div>
+            <span class="rc-ptag rc-t3">top 3</span>
+         </div>
+            </div>
+
+         <div class="rc-premio-row">
           <i class="fa-solid fa-medal" style="color:#1a6b3c; font-size:16px; flex-shrink:0"></i>
           <div>
             <div class="rc-pr-pts">50 pontos</div>
             <div class="rc-pr-desc">Broche do programa</div>
             <span class="rc-ptag rc-t1">todos</span>
           </div>
-        </div>
+           </div>
+
+          <div class="rc-premios-col">
         <div class="rc-premio-row">
           <i class="fa-solid fa-bag-shopping" style="color:#1a6b3c; font-size:16px; flex-shrink:0"></i>
           <div>
@@ -205,15 +216,7 @@ function renderAwardCatalog() {
             <span class="rc-ptag rc-t2">top 20</span>
           </div>
         </div>
-        <div class="rc-premio-row rc-premio-destaque">
-          <i class="fa-solid fa-tablet-screen-button" style="color:#c8860a; font-size:16px; flex-shrink:0"></i>
-          <div>
-            <div class="rc-pr-pts" style="color:#7a4e00">Maior pontuação</div>
-            <div class="rc-pr-desc">Tablet — top 3 geral</div>
-            <span class="rc-ptag rc-t3">top 3</span>
-          </div>
-        </div>
-      </div>
+</div>
 
       <!-- Carrossel de fotos -->
       <div class="rc-carrossel-col">
@@ -305,7 +308,7 @@ function _injetarCssRanking() {
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: #1a6b3c;
+  color: #000000;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -342,15 +345,15 @@ function _injetarCssRanking() {
 .rc-p1 {
   order: 2;
   flex: 1.35;
-  border-color: #1a6b3c;
-  padding-top: 28px;        /* empurra o conteúdo pra baixo, tornando o card visualmente mais alto */
+  border-color: #e7d429;
+  padding-top: 30px;        /* empurra o conteúdo pra baixo, tornando o card visualmente mais alto */
 }
 
 /* 2º lugar — esquerda, tamanho médio */
 .rc-p2 {
   order: 1;
   flex: 1.1;
-  border-color: #4a9b6a;
+  border-color: #604a9b;
   padding-top: 18px;
 }
 
@@ -358,20 +361,20 @@ function _injetarCssRanking() {
 .rc-p3 {
   order: 3;
   flex: 0.9;
-  border-color: #a8d5b8;
+  border-color: #604a9b;
   padding-top: 8px;
 }
 
 /* Badge "líder" flutuante no 1º */
 .rc-ldr {
   position: absolute;
-  top: -11px;
+  top: -5px;
   left: 50%;
   transform: translateX(-50%);
-  background: #1a6b3c;
+  background: #e7d429;
   color: #ffffff;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 900;
   padding: 3px 14px;
   border-radius: 20px;
   white-space: nowrap;
@@ -381,7 +384,7 @@ function _injetarCssRanking() {
 
 .rc-medal   { font-size: 22px; display: block; margin-bottom: 6px; }
 .rc-eyebrow { font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: #5a9c7a; margin-bottom: 2px; }
-.rc-pname   { font-size: 15px; font-weight: 800; color: #0d3d22; margin-bottom: 6px; line-height: 1.2; }
+.rc-pname   { font-size: 15px; font-weight: 800; color: #0091d8; margin-bottom: 6px; line-height: 1.2; }
 .rc-pkg     { font-size: 20px; font-weight: 800; color: #1a6b3c; margin-bottom: 2px; }
 .rc-pkg sup { font-size: 11px; color: #5a9c7a; font-weight: 600; margin-left: 3px; }
 .rc-pppl    { font-size: 11px; color: #7ab899; margin-bottom: 10px; }
@@ -389,9 +392,9 @@ function _injetarCssRanking() {
 /* Barra de progresso do pódio */
 .rc-bart { height: 5px; background: #e8f5ee; border-radius: 3px; overflow: hidden; }
 .rc-barf { height: 100%; border-radius: 3px; transition: width 0.9s cubic-bezier(.4,0,.2,1); width: 0%; }
-.rc-bg1  { background: #1a6b3c; }   /* 1º — verde escuro */
-.rc-bg2  { background: #2db564; }   /* 2º — verde médio */
-.rc-bg3  { background: #7dcfa0; }   /* 3º — verde claro */
+.rc-bg1  { background: #309218; }   /* 1º — verde escuro */
+.rc-bg2  { background: #dac930; }   /* 2º — verde médio */
+.rc-bg3  { background: #e27d3a; }   /* 3º — verde claro */
 
 /* ---- Lista (4º em diante) ---- */
 .rc-lista { display: flex; flex-direction: column; gap: 5px; }
@@ -417,13 +420,13 @@ function _injetarCssRanking() {
 .rc-bt   { height: 6px; background: #e8f5ee; border-radius: 3px; overflow: hidden; }
 .rc-bf   {
   height: 100%;
-  background: linear-gradient(to right, #2db564, #1a6b3c);
+  background: linear-gradient(to right, #e04747, #fae151);
   border-radius: 3px;
   transition: width 0.9s cubic-bezier(.4,0,.2,1);
   width: 0%;
 }
 
-.rc-kg   { font-size: 13px; font-weight: 700; color: #1a6b3c; white-space: nowrap; flex-shrink: 0; text-align: right; min-width: 80px; }
+.rc-kg   { font-size: 13px; font-weight: 700; color: #000000; white-space: nowrap; flex-shrink: 0; text-align: right; min-width: 80px; }
 
 /* ---- Layout award: premiações + carrossel lado a lado ---- */
 .rc-award-wrap {

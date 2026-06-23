@@ -46,7 +46,7 @@
   --sombra-card:        0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.20);
   --sombra-destaque:    0 8px 40px rgba(34, 160, 90, 0.25);
 
-  --amarelo: #c4b921;
+  --amarelo: #fff017c9;
 
 
 }
@@ -764,12 +764,12 @@ p, .geracao-media-subtitle {
    CAMADA 4 — Search Console (verde profundo + teal)
    ========================================================================== */
 .search-console-card {
-  background: linear-gradient(135deg, var(--amarelo) 0%, var(--verde-medio) 100%);
+  background: linear-gradient(135deg, var(--creme) 10%,  #ff6a008a 50%, var(--amarelo) 100%);
   border: 1px solid rgba(4, 77, 32, 0.89);
   border-radius: 16px;
   padding: 36px 28px;
   text-align: center;
-  color: #ffffff;
+  color: #000000;
   position: relative;
   overflow: hidden;
   box-shadow: var(--sombra-destaque);
@@ -799,7 +799,7 @@ p, .geracao-media-subtitle {
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.20);
   background: rgba(255,255,255,0.09);
-  color: #ffffff;
+  color: #000000;
   width: 260px;
   font-size: 0.90rem;
   backdrop-filter: blur(4px);

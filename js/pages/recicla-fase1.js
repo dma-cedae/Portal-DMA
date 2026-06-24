@@ -560,10 +560,10 @@ function bindConsulta() {
 
     els.consultaResultado.innerHTML = `
       <div style="background: rgba(255,255,255,0.15); border: 1px solid var(--verde-sustentavel); border-radius: 8px; padding: 14px; color: #fff;">
-        <strong style="font-size: 0.95rem; color: var(--verde-sustentavel); display:block; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">ID Homologado: ${escapeHtml(part.n_id)}</strong>
-        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>Lotação:</strong> ${escapeHtml(part.diretoria)}</p>
+        <strong style="font-size: 0.95rem; color: var(--verde-sustentavel); display:block; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">ID: ${escapeHtml(part.n_id)}</strong>
+        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>Diretoria:</strong> ${escapeHtml(part.diretoria)}</p>
         <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.85rem;">Volume Acumulado:</span>
+          <span style="font-size: 0.85rem;">Pesagens Acumuladas:</span>
           <strong style="font-size: 1.2rem; color: var(--verde-sustentavel);">${formatNumber(part.somatorio)} kg</strong>
         </div>
       </div>`;

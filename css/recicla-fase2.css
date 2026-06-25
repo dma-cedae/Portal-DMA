@@ -445,7 +445,7 @@ body {
    GLASS PANELS — Camada vítrea sobre fundo escuro
    ========================================================================== */
 .glass-panel {
-  background: rgb(211, 232, 255);
+  background: rgba(178, 230, 195, 0.795);
   border: 1px solid var(--borda-sutil);
   border-radius: 18px;
   padding: 26px;

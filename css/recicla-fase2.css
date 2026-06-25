@@ -445,7 +445,7 @@ body {
    GLASS PANELS — Camada vítrea sobre fundo escuro
    ========================================================================== */
 .glass-panel {
-  background: rgba(192, 179, 170, 0.973);
+  background: rgb(211, 232, 255);
   border: 1px solid var(--borda-sutil);
   border-radius: 18px;
   padding: 26px;
@@ -854,7 +854,7 @@ body {
   background-image:
     linear-gradient(
       to bottom,
-      #9e938dfb 0%,
+      #d8bcadfb 0%,
       var(--teal-palido) 30%,
  
       var(--teal-palido) 55%,
@@ -934,4 +934,198 @@ footer p {
 ::selection {
   background: rgba(6, 78, 6, 0.993);
   color: #fff;
+}
+/* ==========================
+   PREMIAÇÕES
+========================== */
+
+.rc-premiacoes{
+  display:flex;
+  flex-direction:column;
+  gap:28px;
+}
+
+.rc-section-title{
+  font-size:1.1rem;
+  font-weight:800;
+  color:var(--azul-escuro);
+  border-bottom:2px solid rgba(0,0,0,.08);
+  padding-bottom:8px;
+}
+
+.rc-podio{
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.rc-podio-card{
+  width:180px;
+  text-align:center;
+  border-radius:20px;
+  padding:20px 16px;
+  color:#fff;
+  box-shadow:0 12px 24px rgba(0,0,0,.12);
+  transition:.3s;
+}
+
+.rc-podio-card:hover{
+  transform:translateY(-5px);
+}
+
+.rc-ouro{
+  background:linear-gradient(
+    135deg,
+    #f7c948,
+    #d89b00
+  );
+  min-height:240px;
+}
+
+.rc-prata{
+  background:linear-gradient(
+    135deg,
+    #d8dde3,
+    #9fa8b3
+  );
+  min-height:200px;
+}
+
+.rc-bronze{
+  background:linear-gradient(
+    135deg,
+    #c88952,
+    #9f5e2f
+  );
+  min-height:180px;
+}
+
+.rc-medalha{
+  font-size:2rem;
+  margin-bottom:10px;
+}
+
+.rc-podio-nome{
+  font-weight:800;
+  font-size:1rem;
+  margin-bottom:6px;
+}
+
+.rc-podio-dir{
+  opacity:.9;
+  font-size:.9rem;
+  margin-bottom:12px;
+}
+
+.rc-podio-premio{
+  font-weight:700;
+}
+
+.rc-mochilas{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.rc-badge-premiado{
+  background:#e9f6ee;
+  color:#17603a;
+  padding:10px 14px;
+  border-radius:999px;
+  font-size:.9rem;
+  font-weight:600;
+  border:1px solid rgba(23,96,58,.12);
+}
+
+.rc-broche{
+  background:linear-gradient(
+    135deg,
+    #6798c9,
+    #edf5ff
+  );
+  border-radius:18px;
+  padding:24px;
+  text-align:center;
+}
+
+.rc-broche i{
+  font-size:3rem;
+  color:#d89b00;
+  margin-bottom:12px;
+}
+
+.rc-broche p{
+  margin:0;
+  color:#425466;
+  line-height:1.7;
+}
+
+@media(max-width:768px){
+
+  .rc-podio{
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .rc-podio-card{
+    width:100%;
+    max-width:280px;
+    min-height:auto;
+  }
+
+}
+.rc-awards-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:18px;
+}
+
+.rc-award-card{
+  background:linear-gradient(
+    135deg,
+    rgba(27, 74, 161, 0.9),
+    rgba(4, 68, 133, 0.9)
+  );
+
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:20px;
+
+  padding:24px;
+
+  text-align:center;
+
+  transition:.25s;
+}
+
+.rc-award-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+.rc-award-icon{
+  font-size:2.8rem;
+  margin-bottom:12px;
+}
+
+.rc-award-card h3{
+  margin:0 0 12px;
+  color:var(--azul-escuro);
+  font-size:1.05rem;
+  font-weight:800;
+}
+
+.rc-award-card p{
+  margin:0;
+  color:#2068b1;
+  line-height:1.7;
+}
+
+@media(max-width:768px){
+
+  .rc-awards-grid{
+    grid-template-columns:1fr;
+  }
+
 }

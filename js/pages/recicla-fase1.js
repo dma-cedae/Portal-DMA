@@ -172,77 +172,86 @@ function _injetarForaTabela(tbody, html) {
   els.historicTop5Body = wrapper;
 }
 
-/* --------------------------------------------------------------------------
-   renderAwardCatalog
-   — Coluna esquerda: premiações compactas (lista)
-   — Coluna direita:  carrossel automático com as 10 fotos do programa
-   -------------------------------------------------------------------------- */
 function renderAwardCatalog() {
-  if (!els.awardCatalog) return;
 
-  const FOTOS = Array.from({ length: 10 }, (_, i) =>
-    `assets/fotos/recicla/${String(i + 1).padStart(2, '0')}.jpg`
-  );
+  const top3 = [
+    {
+      nome: "Heitor Diogo da Silva",
+      diretoria: "DFI",
+      posicao: 1
+    },
+    {
+      nome: "Lilian da Silva Braga",
+      diretoria: "DPR",
+      posicao: 2
+    },
+    {
+      nome: "Paulo Cesar Sant Anna Rosa",
+      diretoria: "DTP",
+      posicao: 3
+    }
+  ];
+
+  
 
   els.awardCatalog.innerHTML = `
-    <div class="rc-award-wrap">
 
-      <!-- Premiações compactas -->
-      
-       <div class="rc-premio-row rc-premio-destaque">
-          <i class="fa-solid fa-tablet-screen-button" style="color:#c8860a; font-size:16px; flex-shrink:0"></i>
-          <div>
-            <div class="rc-pr-pts" style="color:#7a4e00">Maior pontuação</div>
-            <div class="rc-pr-desc">Tablet — top 3 geral</div>
-            <span class="rc-ptag rc-t3">top 3</span>
-         </div>
-            </div>
+    <div class="rc-premiacoes">
 
-         <div class="rc-premio-row">
-          <i class="fa-solid fa-medal" style="color:#1a6b3c; font-size:16px; flex-shrink:0"></i>
-          <div>
-            <div class="rc-pr-pts">50 pontos</div>
-            <div class="rc-pr-desc">Broche do programa</div>
-            <span class="rc-ptag rc-t1">todos</span>
-          </div>
-           </div>
-
-          <div class="rc-premios-col">
-        <div class="rc-premio-row">
-          <i class="fa-solid fa-bag-shopping" style="color:#1a6b3c; font-size:16px; flex-shrink:0"></i>
-          <div>
-            <div class="rc-pr-pts">100 pontos</div>
-            <div class="rc-pr-desc">Mochila — 20 primeiros</div>
-            <span class="rc-ptag rc-t2">top 20</span>
-          </div>
-        </div>
-</div>
-
-      <!-- Carrossel de fotos -->
-      <div class="rc-carrossel-col">
-        <div class="rc-carrossel" id="rcCarrossel">
-          <div class="rc-slides" id="rcSlides">
-            ${FOTOS.map((src, i) => `
-              <div class="rc-slide">
-                <img src="${src}" alt="Foto ${i + 1} do programa Recicla CEDAE"
-                     onerror="this.closest('.rc-slide').style.display='none'">
-              </div>`).join('')}
-          </div>
-          <button class="rc-carr-btn rc-carr-prev" id="rcPrev" aria-label="Foto anterior">
-            <i class="fa-solid fa-chevron-left"></i>
-          </button>
-          <button class="rc-carr-btn rc-carr-next" id="rcNext" aria-label="Próxima foto">
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-          <div class="rc-carr-dots" id="rcDots">
-            ${FOTOS.map((_, i) => `<span class="rc-dot${i === 0 ? ' rc-dot-ativo' : ''}" data-idx="${i}"></span>`).join('')}
-          </div>
-        </div>
+      <div class="rc-section-title">
+        🏆 Pódio dos Campeões
       </div>
 
-    </div>`;
+      <div class="rc-podio">
 
-  _iniciarCarrossel();
+        <div class="rc-podio-card rc-prata">
+          <div class="rc-medalha">🥈</div>
+          <div class="rc-podio-nome">${top3[1].nome}</div>
+          <div class="rc-podio-dir">${top3[1].diretoria}</div>
+          <div class="rc-podio-premio">📱 Tablet</div>
+        </div>
+
+        <div class="rc-podio-card rc-ouro">
+          <div class="rc-medalha">🥇</div>
+          <div class="rc-podio-nome">${top3[0].nome}</div>
+          <div class="rc-podio-dir">${top3[0].diretoria}</div>
+          <div class="rc-podio-premio">📱 Tablet</div>
+        </div>
+
+        <div class="rc-podio-card rc-bronze">
+          <div class="rc-medalha">🥉</div>
+          <div class="rc-podio-nome">${top3[2].nome}</div>
+          <div class="rc-podio-dir">${top3[2].diretoria}</div>
+          <div class="rc-podio-premio">📱 Tablet</div>
+        </div>
+
+      </div>
+
+      <div class="rc-awards-grid">
+
+      <div class="rc-award-card">
+
+        <h3>100 Pontos</h3>
+
+        <p>
+          Foram entregues 
+          aos 20 primeiros participantes que alcançaram
+          <strong>100 pontos</strong> uma <strong>Mochila personalizada</strong> do programa.
+        </p>
+      </div>
+
+      <div class="rc-award-card">
+        <h3>50 Pontos</h3>
+
+        <p>
+          Todos os participantes que alcançaram
+          <strong>50 pontos</strong> receberam o
+          Broche Oficial do Programa Recicla CEDAE.
+        </p>
+      </div>
+
+    </div>
+  `;
 }
 
 function _iniciarCarrossel() {

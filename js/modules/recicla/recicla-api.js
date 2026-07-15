@@ -9,6 +9,7 @@
 // const API_BASE_URL = "https://dma-cedae.onrender.com/api/recicla"; 
 
 // 🟢 AGORA (Apontando para a sua API real do Render que está no seu print)
+
 const API_BASE_URL = "https://dma-aedes-api.onrender.com/api/recicla";
 
 export const ReciclaAPI = {

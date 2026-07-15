@@ -33,7 +33,7 @@ const APP_ASSETS = [
  
 
   "./assets/icon.png",
-  "./assets/folder-arboviroses.jpg"
+  "./assets/folder-arboviroses.jpg",
   "./assets/logo-cedae-transparente.png",
   "./assets/recicla-transp.png", 
   "./assets/cartilha_canva.pdf",

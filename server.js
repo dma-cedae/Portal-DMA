@@ -994,19 +994,17 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
   }
 });
 
-
 /* ==========================================================================
    MODULO DE INTEGRAÇÃO - RECICLA CEDAE FASE 2 (SCHEMA: RECICLA)
    CRS 2026 · Rotas Analíticas e de Consulta
    ========================================================================== */
+// ... suas outras configurações do server.js ...
+app.use(express.json({ limit: "10mb" }));
 
-/**
- * ROTA GLOBAL DO DASHBOARD
- * Compila os KPIs globais, o ranking de diretorias e o histórico linear de pesagens
- */
+// 🟢 COLE O BLOCO DAS ROTAS DO RECICLA EXATAMENTE AQUI:
+
 app.get("/api/recicla/dashboard-dados", async (req, res) => {
   try {
-    // 1. Consulta de KPIs Globais (Total de participantes cadastrados e soma total de Kg)
     const queryKpis = `
       SELECT 
         (SELECT COUNT(*) FROM recicla.recicla2_cadastro)::int AS total_participantes,
@@ -1015,7 +1013,6 @@ app.get("/api/recicla/dashboard-dados", async (req, res) => {
     `;
     const resKpis = await pool.query(queryKpis);
 
-    // 2. Ranking de Diretorias (Volume total acumulado e quantidade de participantes ativos por diretoria)
     const queryDiretorias = `
       SELECT 
         COALESCE(NULLIF(TRIM(c.diretoria), ''), 'DMA / CRS') AS diretoria,
@@ -1028,7 +1025,6 @@ app.get("/api/recicla/dashboard-dados", async (req, res) => {
     `;
     const resDiretorias = await pool.query(queryDiretorias);
 
-    // 3. Histórico de Coleta Cronológica (Mantendo compatibilidade de nomes com os gráficos do front)
     const queryReciclados = `
       SELECT 
         TO_CHAR(data_pesagem, 'YYYY-MM-DD') AS "Data",
@@ -1041,7 +1037,6 @@ app.get("/api/recicla/dashboard-dados", async (req, res) => {
     `;
     const resReciclados = await pool.query(queryReciclados);
 
-    // Envio do payload envelopado e formatado defensivamente
     res.json({
       sucesso: true,
       dados: {
@@ -1050,17 +1045,13 @@ app.get("/api/recicla/dashboard-dados", async (req, res) => {
         dadosReciclados: resReciclados.rows
       }
     });
-
   } catch (err) {
     console.error("❌ Erro na rota /api/recicla/dashboard-dados:", err.message);
-    res.status(500).json({ sucesso: false, error: "Erro interno ao processar dados do dashboard do Recicla." });
+    res.status(500).json({ sucesso: false, error: "Erro interno no servidor." });
   }
 });
 
-/**
- * ROTA DE CONSULTA INDIVIDUAL
- * Busca dados cadastrais de um colaborador e soma o total de pesagens dele via JOIN
- */
+// Rota de participante individual
 app.get("/api/recicla/participante", async (req, res) => {
   try {
     const { id } = req.query;
@@ -1090,18 +1081,24 @@ app.get("/api/recicla/participante", async (req, res) => {
       sucesso: true,
       dados: result.rows[0]
     });
-
   } catch (err) {
-    console.error(`❌ Erro em /api/recicla/participante para o ID [${req.query.id}]:`, err.message);
-    res.status(500).json({ sucesso: false, error: "Erro interno do servidor ao processar consulta." });
+    console.error(`❌ Erro em /api/recicla/participante:`, err.message);
+    res.status(500).json({ sucesso: false, error: "Erro interno do servidor." });
   }
 });
-// =========================================================================
+
 // INICIALIZAÇÃO DO SERVIDOR
 // =========================================================================
 
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
-  await initSchema();    // inicia schema aedes
-  await initReciclaSchema();   // inicia recicla
+  
+  // Executa a inicialização do banco de dados em segundo plano de forma segura
+  initSchema()
+    .then(() => {
+      console.log("🔋 Banco de dados totalmente sincronizado.");
+    })
+    .catch((err) => {
+      console.error("❌ Falha crítica ao inicializar esquemas no banco:", err.message);
+    });
 });

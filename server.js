@@ -995,11 +995,116 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
     res.status(500).json({ error: "Falha ao gerar documento PDF automático." });
   }
 });
+
+
+/* ==========================================================================
+   MODULO DE INTEGRAÇÃO - RECICLA CEDAE FASE 2 (SCHEMA: RECICLA)
+   CRS 2026 · Rotas Analíticas e de Consulta
+   ========================================================================== */
+import { initReciclaSchema } from "./js/db-recicla.js";
+
+/**
+ * ROTA GLOBAL DO DASHBOARD
+ * Compila os KPIs globais, o ranking de diretorias e o histórico linear de pesagens
+ */
+app.get("/api/recicla/dashboard-dados", async (req, res) => {
+  try {
+    // 1. Consulta de KPIs Globais (Total de participantes cadastrados e soma total de Kg)
+    const queryKpis = `
+      SELECT 
+        (SELECT COUNT(*) FROM recicla.recicla2_cadastro)::int AS total_participantes,
+        COALESCE(SUM(pesagem), 0)::float AS somatorio_total
+      FROM recicla.recicla2_pesagens;
+    `;
+    const resKpis = await pool.query(queryKpis);
+
+    // 2. Ranking de Diretorias (Volume total acumulado e quantidade de participantes ativos por diretoria)
+    const queryDiretorias = `
+      SELECT 
+        COALESCE(NULLIF(TRIM(c.diretoria), ''), 'DMA / CRS') AS diretoria,
+        SUM(p.pesagem)::float AS "pesoTotal",
+        COUNT(DISTINCT p.participante_id)::int AS "totalParticipantes"
+      FROM recicla.recicla2_cadastro c
+      INNER JOIN recicla.recicla2_pesagens p ON c.id = p.participante_id
+      GROUP BY c.diretoria
+      ORDER BY "pesoTotal" DESC;
+    `;
+    const resDiretorias = await pool.query(queryDiretorias);
+
+    // 3. Histórico de Coleta Cronológica (Mantendo compatibilidade de nomes com os gráficos do front)
+    const queryReciclados = `
+      SELECT 
+        TO_CHAR(data_pesagem, 'YYYY-MM-DD') AS "Data",
+        'Papel/Reciclável' AS "Material",
+        SUM(pesagem)::float AS "Quantidade"
+      FROM recicla.recicla2_pesagens
+      GROUP BY data_pesagem
+      ORDER BY data_pesagem ASC
+      LIMIT 100;
+    `;
+    const resReciclados = await pool.query(queryReciclados);
+
+    // Envio do payload envelopado e formatado defensivamente
+    res.json({
+      sucesso: true,
+      dados: {
+        kpis: resKpis.rows[0] || { total_participantes: 0, somatorio_total: 0 },
+        dadosDiretorias: resDiretorias.rows,
+        dadosReciclados: resReciclados.rows
+      }
+    });
+
+  } catch (err) {
+    console.error("❌ Erro na rota /api/recicla/dashboard-dados:", err.message);
+    res.status(500).json({ sucesso: false, error: "Erro interno ao processar dados do dashboard do Recicla." });
+  }
+});
+
+/**
+ * ROTA DE CONSULTA INDIVIDUAL
+ * Busca dados cadastrais de um colaborador e soma o total de pesagens dele via JOIN
+ */
+app.get("/api/recicla/participante", async (req, res) => {
+  try {
+    const { id } = req.query;
+    if (!id) {
+      return res.status(400).json({ sucesso: false, error: "O parâmetro ID é obrigatório para consulta." });
+    }
+
+    const query = `
+      SELECT 
+        c.id, 
+        c.nome, 
+        COALESCE(NULLIF(TRIM(c.diretoria), ''), 'DMA / CRS') AS diretoria, 
+        COALESCE(SUM(p.pesagem), 0)::float AS somatorio_peso
+      FROM recicla.recicla2_cadastro c
+      LEFT JOIN recicla.recicla2_pesagens p ON c.id = p.participante_id
+      WHERE c.id = $1
+      GROUP BY c.id, c.nome, c.diretoria;
+    `;
+
+    const result = await pool.query(query, [parseInt(id)]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ sucesso: false, error: "Colaborador não localizado no banco de dados." });
+    }
+
+    res.json({
+      sucesso: true,
+      dados: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error(`❌ Erro em /api/recicla/participante para o ID [${req.query.id}]:`, err.message);
+    res.status(500).json({ sucesso: false, error: "Erro interno do servidor ao processar consulta." });
+  }
+});
 // =========================================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // =========================================================================
 
 app.listen(PORT, async () => {
   console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
-  await initSchema();
+  await initSchema();    // inicia schema aedes
+  await initReciclaSchema();   // inicia recicla
 });

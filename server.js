@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { pool } from "./js/db.js";
+import { initReciclaSchema } from "./js/db-recicla.js";
 
 // 🟢 Ponte limpa e homologada para pacotes legados do CommonJS
 import { createRequire } from 'module';
@@ -148,15 +149,9 @@ async function initSchema() {
   ) AS sub
   GROUP BY motivo;
 ` );
-
-    // 4. Correção segura para a Pizza de Locais de Foco
-        // 4. Correção segura para a Pizza de Locais de Foco
-      await pool.query(`
-        -- 1. Remove a view antiga para evitar o erro de alteração de nome de coluna
-        DROP VIEW IF EXISTS aedes.vw_locais_foco;
-
-        -- 2. Cria a nova view com a lógica corrigida
-        CREATE VIEW aedes.vw_locais_foco AS
+    await pool.query(`   
+    DROP VIEW IF EXISTS aedes.vw_locais_foco;
+    CREATE VIEW aedes.vw_locais_foco AS
         SELECT 
           COALESCE(sub.local::text, 'Não Informado') AS locais_foco,
           COUNT(*) AS quantidade
@@ -166,11 +161,14 @@ async function initSchema() {
           UNION ALL
           SELECT outros_locais_foco AS local WHERE outros_locais_foco IS NOT NULL AND outros_locais_foco <> ''
         ) AS sub
-        GROUP BY sub.local; -- Agrupa pelo resultado do LATERAL
+        GROUP BY sub.local;
       `);
 
+      console.log("✅ Estrutura de tabelas e Views do Sprint 3 validadas com sucesso.");
+      
+      // 🟢 Inicializa o Schema do Recicla logo após validar o do Aedes
+      await initReciclaSchema(); 
 
-    console.log("✅ Estrutura de tabelas e Views do Sprint 3 validadas com sucesso.");
   } catch (err) {
     console.error("❌ Erro no initSchema:", err.message);
   }
@@ -1001,7 +999,6 @@ app.get("/api/aedes/relatorio-pdf", async (req, res) => {
    MODULO DE INTEGRAÇÃO - RECICLA CEDAE FASE 2 (SCHEMA: RECICLA)
    CRS 2026 · Rotas Analíticas e de Consulta
    ========================================================================== */
-import { initReciclaSchema } from "./js/db-recicla.js";
 
 /**
  * ROTA GLOBAL DO DASHBOARD

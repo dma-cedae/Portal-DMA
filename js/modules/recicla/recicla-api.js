@@ -1,7 +1,6 @@
 /**
  * ==========================================================================
- * RECICLA CEDAE FASE 2 - MÓDULO DE COMUNICAÇÃO COM API (CLIENT-SIDE)
- * CRS 2026 · Produção Homologada no Render (dma-cedae)
+ * js/modules/recicla/recicla-api.js
  * ==========================================================================
  */
 

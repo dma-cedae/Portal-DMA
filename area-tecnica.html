@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Área Técnica | Hub de Gestão</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      --sidebar-width: 260px;
+      --kpi-column-width: 280px;
+      --primary-blue: #0b3d91;
+      --dark-blue: #001d3d;
+      --accent-green: #22c55e;
+      --warning-orange: #f59e0b;
+      --danger-red: #ef4444;
+      --bg-gray: #f4f7fa;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-gray); display: flex; }
+
+    /* --- SIDEBAR ORIGINAL --- */
+    .sidebar { width: var(--sidebar-width); background: var(--dark-blue); color: white; position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 100; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
+    .sidebar__header { padding: 25px 20px; background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 15px; }
+    .logo-dma-estilizado { width: 45px; height: 45px; background: linear-gradient(135deg, var(--accent-green) 0%, #16a34a 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1.2rem; letter-spacing: -1px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.2); }
+    .brand-name { display: flex; flex-direction: column; }
+    .brand-name b { font-size: 1.1rem; letter-spacing: 1px; color: white; }
+    .brand-name span { font-size: 0.65rem; color: var(--accent-green); text-transform: uppercase; font-weight: bold; }
+    .sidebar__nav { flex: 1; padding: 20px 0; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 25px; color: rgba(255,255,255,0.6); text-decoration: none; transition: 0.3s; font-size: 0.95rem; }
+    .nav-item:hover, .nav-item.active { color: white; background: rgba(255,255,255,0.08); border-left: 4px solid var(--accent-green); }
+
+    /* --- ESTRUTURA DE COLUNAS --- */
+    .main-wrapper {
+        margin-left: var(--sidebar-width);
+        display: flex;
+        width: calc(100% - var(--sidebar-width));
+        padding: 35px;
+        gap: 25px;
+        align-items: flex-start;
+    }
+
+    .center-column { flex: 1; display: flex; flex-direction: column; gap: 25px; }
+    
+    .kpi-column {
+        width: var(--kpi-column-width);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        position: sticky;
+        top: 35px;
+    }
+
+    /* --- COMPONENTES --- */
+    .content-header { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    
+    .kpi-card:hover { transform: translateX(-5px); }
+    
+
+    .card { background: white; border-radius: 12px; border: 1px solid #eef2f6; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    .card-header { padding: 20px; background: #fcfdfe; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: var(--dark-blue); display: flex; align-items: center; gap: 10px; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f8fafc; padding: 15px; text-align: left; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }
+    td { padding: 15px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; }
+
+    .kpi-card {
+  background: white;
+  border: 1px solid #e8ecf0;
+  border-radius: 10px;
+  padding: 20px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.kpi-card h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+}
+.kpi-card span {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <div class="logo-dma-estilizado">DMA</div>
+      <div class="brand-name">
+          <span>DEPARTAMENTO DE</span>
+          <b>MEIO AMBIENTE</b>
+          <span>SISTEMA DE GESTÃO</span>
+      </div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="#" class="nav-item active"><i class="fas fa-shield-alt"></i> Histórico de Registros</a>
+      <a href="./aedes-tecnico.html" class="nav-item"><i class="fas fa-bug"></i> DENGUE</a>
+      <a href="./recicla-fase1.html" class="nav-item"><i class="fas fa-recycle"></i> RECICLA fase  1 </a>
+      <a href="./recicla-fase2.html" class="nav-item"><i class="fas fa-recycle"></i> RECICLA fase  2 </a>
+      <a href="./index.html" class="nav-item" style="margin-top: auto; color: #ff4d4d;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <div class="center-column">
+      <header class="content-header">
+        <h1 style="color:var(--dark-blue); font-weight: 800;">Painel de Auditoria</h1>
+        <p style="color:#64748b;">Monitoramento centralizado filtrado a partir de 14/05/2026.</p>
+      </header>
+
+      <section class="card">
+        <div class="card-header"><i class="fas fa-list-ul"></i> Últimos Registros Processados</div>
+        <div id="mainDataTable"></div>
+      </section>
+    </div>
+
+    <aside class="kpi-column">
+      <div class="kpi-card" style="border-left-color: #3b82f6">
+        <span>Vistorias Realizadas</span>
+        <h2 id="kpi-vistorias-sim">--</h2>
+      </div>
+
+      <div class="kpi-card" style="border-left-color: var(--danger-red)">
+        <span>Vistorias Não Realizadas</span>
+        <h2 id="kpi-vistorias-nao">--</h2>
+      </div>
+
+      <div class="kpi-card" style="border-left-color: var(--warning-orange)">
+        <span>Focos Encontrados</span>
+        <h2 id="kpi-focos">--</h2>
+      </div>
+
+      <div class="kpi-card" style="border-left-color: var(--accent-green)">
+        <span>Focos Remediados</span>
+        <h2 id="kpi-remediados">--</h2>
+      </div>
+
+    </aside>
+  </div>
+
+  <script src="./js/core/api-config.js"></script>
+  <script src="./js/core/auth.js"></script>
+  <script>requireAuth("./login.html");</script>
+  <script type="module" src="./js/pages/area-tecnica.js"></script>
+</body>
+</html>

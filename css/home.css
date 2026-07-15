@@ -1,0 +1,342 @@
+/* ======================================================
+HOME PAGE
+Portal DMA – estilo institucional 
+====================================================== */
+
+.home-page{
+  max-width:1200px;
+  margin:auto;
+  padding:32px 24px 80px;
+}
+
+/* ======================================================
+HERO
+====================================================== */
+
+.hero{
+  display:flex;
+  justify-content:center;
+  margin-bottom:56px;
+}
+
+.hero--centered{
+  text-align:center;
+}
+
+.hero__content{
+  max-width:720px;
+}
+
+.hero__title{
+  font-size:32px;
+  font-weight:700;
+  line-height:1.3;
+  margin:12px 0 16px;
+}
+
+.hero__text{
+  font-size:16px;
+  color:#475569;
+  line-height:1.6;
+  margin-bottom:28px;
+}
+
+.hero__actions{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* ======================================================
+SECTION HEAD
+====================================================== */
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  margin-bottom:32px;
+}
+
+.section-head h2{
+  font-size:24px;
+  font-weight:600;
+  margin-top:6px;
+}
+
+.section-label{
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:#64748b;
+}
+
+/* ======================================================
+MODULES
+====================================================== */
+
+.modules-section{
+  margin-top:40px;
+}
+
+.modules-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:20px;
+}
+
+/* ======================================================
+MODULE CARD
+====================================================== */
+
+.module-card{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+
+  padding:20px;
+
+  background:white;
+  border:1px solid #e5e7eb;
+
+  border-radius:10px;
+
+  text-decoration:none;
+  color:#0f172a;
+
+  transition:all .15s ease;
+}
+
+.module-card:hover{
+  border-color:#0b66c3;
+  transform:translateY(-2px);
+}
+
+.module-card__header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  margin-bottom:10px;
+}
+
+.module-card__status{
+  font-size:12px;
+  color:#64748b;
+}
+
+.module-card h3{
+  font-size:20px;
+  margin-bottom:8px;
+}
+
+.module-card__subtitle{
+  font-size:14px;
+  color:#475569;
+  line-height:1.5;
+
+  margin-bottom:18px;
+}
+
+.module-card__link{
+  font-size:13px;
+  font-weight:600;
+  color:#0b66c3;
+}
+
+.module-card__link--muted{
+  color:#94a3b8;
+}
+
+/* ======================================================
+STATUS DOT
+====================================================== */
+
+.status-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#94a3b8;
+}
+
+.status-dot--live{
+  background:#22c55e;
+}
+
+.status-dot--red{
+  background:#ef4444;
+}
+
+.status-dot--green{
+  background:#22c55e;
+}
+
+.status-dot--amber{
+  background:#f59e0b;
+}
+
+/* ======================================================
+MODULE COLORS
+====================================================== */
+
+.module-card--red{
+  border-top:3px solid #ef4444;
+}
+
+.module-card--green{
+  border-top:3px solid #22c55e;
+}
+
+.module-card--amber{
+  border-top:3px solid #f59e0b;
+}
+
+.module-card--blue{
+  border-top:3px solid #0b66c3;
+}
+
+.module-card--blue-soft{
+  border-top:3px solid #60a5fa;
+}
+
+/* ======================================================
+MISSION
+====================================================== */
+
+.mission-section{
+  margin-top:80px;
+  display:flex;
+  justify-content:center;
+}
+
+.mission-card{
+  max-width:720px;
+
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+
+  padding:32px;
+
+  border-radius:12px;
+
+  text-align:center;
+}
+
+.mission-card h2{
+  margin:10px 0 12px;
+  font-size:22px;
+}
+
+.mission-card p{
+  color:#475569;
+  line-height:1.6;
+}
+
+/* ======================================================
+MODAL
+====================================================== */
+
+.modal{
+  position:fixed;
+  inset:0;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  z-index:1000;
+}
+
+.modal__backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.45);
+}
+
+.modal__dialog{
+  position: relative;
+  background: white;
+  width: 880px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100vh - 40px);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0,0,0,.15);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.modal__body{
+  color:#475569;
+  line-height:1.6;
+}
+
+.modal__body--grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-top:10px;
+  max-height: calc(100vh - 140px);
+  overflow:auto;
+  padding-right:6px;
+}
+
+.portal-info{
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  padding:16px;
+}
+
+.portal-info--wide{
+  grid-column:1 / -1;
+}
+
+.portal-info h4{
+  font-size:15px;
+  font-weight:700;
+  margin:0 0 10px;
+  color:#0f172a;
+}
+
+.portal-info p{
+  font-size:14px;
+  line-height:1.7;
+  color:#475569;
+  margin:0 0 12px;
+}
+
+.portal-info p:last-child{
+  margin-bottom:0;
+}
+
+@media (max-width: 900px){
+  .modal__body--grid{
+    grid-template-columns:1fr;
+  }
+
+  .portal-info--wide{
+    grid-column:auto;
+  }
+}
+.portal-logo {
+    /*width: 250px; /* Ajuste o valor (px, rem, %) como desejar */
+    height: auto; /* Mantém a proporção da imagem automaticamente */
+}
+.portal-logo {
+    position: absolute;
+    top: 10px;
+    left: 80px;
+    width: 150px; /* Seu novo tamanho */
+}
+.nav-cta {
+  background: #0b66c3;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.nav-cta:hover {
+  background: #084f98;
+}

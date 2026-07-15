@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recicla CEDAE · Fase 2</title>
+
+  <link rel="stylesheet" href="css/recicla-fase2.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOPBAR — Linha Fina, Branca e Minimalista (Identidade Letícia)
+       ========================================================================== -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="index.html" class="logo-link">
+        <img src="assets/logo-cedae-transparente.png" alt="Logo CEDAE" class="logo-cedae" 
+             onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/e/e8/Logo_CEDAE.png';">
+      </a>
+      <span class="dma-tag-line">Coordenação de Resíduos Sólidos</span>
+    </div>
+
+    <div class="topbar__right-logos">
+      <div class="cedae-saude-brand-box"><span>DMA</span></div>
+      <div class="cedae-saude-brand-box"><span>Assessoria de Meio Ambiente</span></div>
+      <div class="cedae-saude-brand-box"><span>DSU</span></div>
+      <a href="index.html" class="topbar__back-link">
+        <i class="fa-solid fa-home"></i> Portal DMA
+      </a>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       HERO TECH SECTION — Apresentação Institucional e KPIs Globais
+       ========================================================================== -->
+  <section class="hero-tech">
+    <div class="hero-tech__wrapper">
+      <div class="hero-tech__main-row">
+        <div class="hero-tech__content">
+          <span class="hero-pretitle">Programa de Reciclagem Institucional 2026</span>
+          <h2 class="hero-main-title">RECICLA CEDAE - Fase 2</h2>
+          <p class="hero-description">
+            O programa RECICLA CEDAE tem como objetivo a promoção da conscientização e educação ambiental, 
+            sustentabilidade e destinação adequada de resíduos recicláveis e de resíduos orgânicos produzidos 
+            pelos colaboradores em seu cotidiano que muitas vezes destinam incorretamente seus resíduos com valor agregado.
+          </p>
+        </div>
+
+        <div class="hero-tech__visual">
+          <div class="hero-glow"></div>
+          <img src="assets/recicla-transp.png" alt="Selo Recicla CEDAE" class="hero-selo-img"
+               onerror="this.src='https://cdn-icons-png.flaticon.com/512/3253/3253245.png';">
+        </div>
+      </div>
+
+      <div class="hero-divider">
+        <h3 class="hero-divider-title">
+          <span><i class="fa-solid fa-chart-line"></i> Indicadores de Adesão e Impacto</span>
+        </h3>
+      </div>
+
+      <div class="hero-tech__kpi-section">
+        <div class="kpi-dashboard-grid">
+          <div class="kpi-tech-card color-accent">
+            <span class="kpi-tech-card__icon">🌱</span>
+            <span class="kpi-tech-card__label">Resíduos Reciclados</span>
+            <div class="kpi-tech-card__value" id="kpi-total-peso">—</div>
+            <div class="kpi-tech-card__bar"></div>
+          </div>
+          <div class="kpi-tech-card">
+            <span class="kpi-tech-card__icon">👥</span>
+            <span class="kpi-tech-card__label">Participantes Inscritos</span>
+            <div class="kpi-tech-card__value" id="kpi-participantes">—</div>
+            <div class="kpi-tech-card__bar"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Status do Sincronismo da API -->
+      <div id="fase2-db-status" style="text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 15px; font-weight: 500;">
+        <i class="fa-solid fa-spinner fa-spin"></i> Conectando à infraestrutura de dados...
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       CONTEÚDO PRINCIPAL E MÓDULOS DE ANÁLISE
+       ========================================================================== -->
+  <main class="module-page">
+
+    <!-- Documentação Técnica e Corporativa -->
+    <section class="documentos-grid-compact" id="documentos-corporativos">
+      <a href="assets/cartilhaRecicla2.pdf" target="_blank" class="documento-btn-card">
+        <div class="doc-preview-box">
+          <div class="doc-preview-thumbnail">
+            <i class="fa-regular fa-file-pdf pdf-brand-icon"></i>
+            <span class="thumb-footer-tag">TRIAGEM</span>
+          </div>
+        </div>
+        <div class="doc-info-box">
+          <h3 class="documento-card-title">Guia de Resíduos</h3>
+          <p class="documento-card-desc">Instruções para segregação correta de materiais recicláveis.</p>
+        </div>
+        <div class="doc-action-box">
+          <span class="action-circle-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+        </div>
+      </a>
+
+      <a href="assets/RegrasReciclaCEDAE_2026.pdf" target="_blank" class="documento-btn-card">
+        <div class="doc-preview-box">
+          <div class="doc-preview-thumbnail secondary-thumb">
+            <i class="fa-regular fa-file-pdf pdf-brand-icon"></i>
+            <span class="thumb-footer-tag">RECICLA</span>
+          </div>
+        </div>
+        <div class="doc-info-box">
+          <h3 class="documento-card-title">Documento Técnico</h3>
+          <p class="documento-card-desc">Edital RECICLA CEDAE 2026</p>
+        </div>
+        <div class="doc-action-box">
+          <span class="action-circle-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+        </div>
+      </a>
+    </section>
+
+    <!-- Painel de Gráficos Analíticos (ApexCharts) -->
+    <section class="glass-panel" id="analise-graficos">
+      <div class="cartilha-header">
+        <div>
+          <h2 class="cartilha-title">Evolução Histórica e Volumetria Coletada</h2>
+          <p class="cartilha-subtitle">Dados processados em tempo real integrados com o ecossistema do servidor</p>
+        </div>
+      </div>
+      
+      <div class="split-section-modern" style="margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+        <div class="grafico-bloco-real">
+          <h4 style="text-align: center; color: #fff; margin: 0 0 15px 0; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.5px;">Distribuição Proporcional por Diretoria</h4>
+          <div id="chart-recicla-diretorias"></div>
+        </div>
+        <div class="grafico-bloco-real">
+          <h4 style="text-align: center; color: #fff; margin: 0 0 15px 0; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.5px;">Evolução Cronológica de Pesagens</h4>
+          <div id="chart-recicla-historico"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ranking de Diretorias e Metas de Prêmios -->
+    <div class="split-section-modern" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 24px;">
+      
+      <!-- Líderes de Engajamento -->
+      <section class="glass-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h2 style="color:#fff; margin:0; font-size:1.2rem; font-weight:800;">
+            <i class="fa-solid fa-trophy" style="color:#f59e0b;"></i> Ranking de Engajamento Geral
+          </h2>
+          <span class="dma-tag">Atualizado</span>
+        </div>
+        
+        <div class="table-container-responsive">
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th style="text-align:center; width: 70px;">Posição</th>
+                <th>Diretoria</th>
+                <th style="text-align:center;">Participantes</th>
+                <th style="text-align:right;">Massa Total</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-ranking-diretorias">
+              <!-- Renderizado dinamicamente via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Catálogo de Prêmios Reativo -->
+      <section class="glass-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h2 style="color:#fff; margin:0; font-size:1.2rem; font-weight:800;">
+            <i class="fa-solid fa-gift" style="color:#10b981;"></i> Regras e Reconhecimento
+          </h2>
+          <span class="dma-tag">Metas Ativas</span>
+        </div>
+        <div id="container-premios-metas" style="display: grid; gap: 14px;">
+          <!-- Renderizado dinamicamente via JS -->
+        </div>
+      </section>
+    </div>
+
+    <!-- Console de Consulta Individual de Participantes -->
+    <section class="search-console-card" id="consulta" style="margin-top:24px;">
+      <h2 style="margin:0 0 8px; font-size:1.5rem; font-weight:800; color:#fff;">
+        <i class="fa-solid fa-magnifying-glass-chart"></i> Consulte Sua Contribuição
+      </h2>
+      <p style="color:rgba(255,255,255,0.7); font-size:0.85rem; margin:0 0 24px;">
+        Insira seu identificador numérico único para checar seu extrato de pesagem acumulado e prêmios.
+      </p>
+
+      <form id="form-consulta-recicla" class="input-glow-wrapper">
+        <input type="text" id="input-id-recicla" placeholder="Digite o ID do participante (Ex: 1)..." required>
+        <button type="submit" class="btn--neon-action">
+          <i class="fa-solid fa-search"></i> Consultar Base
+        </button>
+      </form>
+
+      <div id="resultado-consulta-recicla" style="margin-top:24px; text-align:left; max-width:500px; margin-left:auto; margin-right:auto;">
+        <!-- Retorno assíncrono do servidor injetado aqui -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================================================
+       RODAPÉ CORPORATIVO INSTITUCIONAL
+       ========================================================================== -->
+  <footer>
+    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
+      <div style="width:7px; height:7px; background:var(--verde-sustentavel); border-radius:50%;"></div>
+      <p style="margin:0; font-weight:700; color:rgba(255,255,255,0.9); font-size:0.8rem;">
+        · Diretoria de Sustentabilidade · Assessoria de Gestão Ambiental · Departamento de Meio Ambiente ·
+      </p>
+    </div>
+    <p style="margin:0; font-size:0.7rem; color:rgba(255,255,255,0.5);">
+      2026 CEDAE — Companhia Estadual de Águas e Esgotos do Rio de Janeiro
+    </p>
+  </footer>
+
+  <script src="js/pages/recicla-fase2.js" type="module"></script>
+</body>
+</html>

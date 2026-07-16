@@ -15,16 +15,21 @@ const state = {
   charts: {}
 };
 
-// ─── CONFIGURAÇÃO DE PREMIAÇÕES (REGRA DE NEGÓCIO) ──────────────────────────
-const PREMIOS = [
-  { meta: 10, nome: "Squeeze Ecológica Cedae", icone: "fa-bottle-water", cor: "#10b981" },
-  { meta: 50, nome: "EcoBag Reforçada CRS", icone: "fa-bag-shopping", cor: "#059669" },
-  { meta: 100, nome: "Camiseta DryFit Recicla", icone: "fa-shirt", cor: "#047857" },
-  { meta: 250, nome: "Kit Jardinagem + Adubo Orgânico", icone: "fa-seedling", cor: "#065f46" },
-  { meta: 500, nome: "Ingresso Cultural + Brinde Master", icone: "fa-ticket", cor: "#064e3b" }
-];
+// Meta anual de referência para o gráfico de progresso (kg).
+// Ajuste este valor conforme a meta oficial definida pela CRS.
+const META_ANUAL_KG = 5000;
 
-const CORES_GRAFICO = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+// Paleta baseada no padrão de cores da coleta seletiva (CONAMA):
+// azul = papel, verde = vidro, amarelo = metal, marrom = orgânico.
+const CORES_GRAFICO = ["#0B4C8C", "#2F7D4F", "#D99A2B", "#7C5233", "#3E7FC1", "#A9743B"];
+
+// ─── CATEGORIAS DE COLETA (conteúdo educativo, substitui o antigo catálogo de brindes) ──
+const CATEGORIAS_COLETA = [
+  { nome: "Papel & Papelão", cor: "#0B4C8C", icone: "fa-box-archive", desc: "Caixas, jornais e folhas de rascunho limpas e secas." },
+  { nome: "Vidro", cor: "#2F7D4F", icone: "fa-wine-bottle", desc: "Garrafas e potes, preferencialmente sem tampa e enxaguados." },
+  { nome: "Metal", cor: "#D99A2B", icone: "fa-jar", desc: "Latas de alumínio e aço, tampas e clipes metálicos." },
+  { nome: "Orgânico", cor: "#7C5233", icone: "fa-seedling", desc: "Restos de alimentos e borra de café para compostagem." }
+];
 
 // ─── MAPEAMENTO DE ELEMENTOS DO DOM ─────────────────────────────────────────
 const els = {
@@ -35,7 +40,7 @@ const els = {
   consultaId: document.getElementById("input-id-recicla"),
   consultaResultado: document.getElementById("resultado-consulta-recicla"),
   rankingCorpo: document.getElementById("corpo-ranking-diretorias"),
-  catalogoPremios: document.getElementById("container-premios-metas")
+  categoriasColeta: document.getElementById("container-categorias-coleta")
 };
 
 // ─── INICIALIZADOR PRINCIPAL ────────────────────────────────────────────────
@@ -53,26 +58,36 @@ async function loadData() {
       els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Conectando ao Banco Central...`;
     }
 
-    // Consome a rota agregada da API
-    const data = await ReciclaAPI.getDadosDashboard();
+    const [dados, ranking, historico] = await Promise.all([
+      ReciclaAPI.getDadosDashboard(),
+      ReciclaAPI.getRankingDiretorias(),
+      ReciclaAPI.getHistoricoPesagens()
+    ]);
 
-    state.kpis = data.kpis;
-    state.dadosDiretorias = data.dadosDiretorias;
-    state.dadosReciclados = data.dadosReciclados;
+    console.log("Resposta da API:", { dados, ranking, historico });
+
+    state.kpis = {
+      total_participantes: dados.participantes || 0,
+      total_pesagens: dados.pesagens || 0,
+      somatorio_total: dados.pesoTotal || 0,
+      ultimaAtualizacao: dados.ultimaAtualizacao || null
+    };
+
+    state.dadosDiretorias = Array.isArray(ranking) ? ranking : [];
+    state.dadosReciclados = Array.isArray(historico) ? historico : [];
+
+    renderKpis();
+    renderCategoriasColeta();
+    renderRankingTable();
+    renderCharts();
 
     if (els.fase2DbStatus) {
-      els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-circle-check"></i> Sincronismo estável (Banco de Dados Central) · CRS 2026`;
+      els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-circle-check"></i> Banco conectado`;
     }
-    
-    // Renderiza os componentes visuais
-    renderKpis(); 
-    renderAwardCatalog(); 
-    renderRankingTable(); 
-    renderCharts();
   } catch (err) {
     console.error("Erro ao inicializar dashboard:", err);
     if (els.fase2DbStatus) {
-      els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i> Erro ao carregar dados do banco: ${err.message}`;
+      els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${err.message}`;
     }
   }
 }
@@ -88,16 +103,16 @@ function renderKpis() {
   }
 }
 
-function renderAwardCatalog() {
-  if (!els.catalogoPremios) return;
-  els.catalogoPremios.innerHTML = PREMIOS.map(p => `
-    <div class="card-premio" style="border-left: 4px solid ${p.cor}; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 6px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px;">
-      <div style="background: ${p.cor}; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem;">
-        <i class="fa-solid ${p.icone}"></i>
+function renderCategoriasColeta() {
+  if (!els.categoriasColeta) return;
+  els.categoriasColeta.innerHTML = CATEGORIAS_COLETA.map(c => `
+    <div class="card-categoria">
+      <div class="card-categoria__ponto" style="background:${c.cor};">
+        <i class="fa-solid ${c.icone}"></i>
       </div>
-      <div style="flex: 1;">
-        <h4 style="margin: 0; font-size: 0.95rem; color: #fff;">${p.nome}</h4>
-        <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #94a3b8;">Meta Desbloqueada com: <strong>${p.meta} kg</strong> acumulados</p>
+      <div class="card-categoria__texto">
+        <h4>${c.nome}</h4>
+        <p>${c.desc}</p>
       </div>
     </div>
   `).join("");
@@ -107,20 +122,20 @@ function renderRankingTable() {
   if (!els.rankingCorpo) return;
 
   if (state.dadosDiretorias.length === 0) {
-    els.rankingCorpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8; font-size:0.85rem; padding: 20px;">Nenhuma pesagem computada neste ciclo.</td></tr>`;
+    els.rankingCorpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#6B6255; font-size:0.85rem; padding: 20px;">Nenhuma pesagem computada neste ciclo.</td></tr>`;
     return;
   }
 
   els.rankingCorpo.innerHTML = state.dadosDiretorias.map((d, index) => {
     const medalhas = ["🥇", "🥈", "🥉"];
     const rankVis = index < 3 ? `<span style="font-size:1.1rem;">${medalhas[index]}</span>` : `${index + 1}º`;
-    
+
     return `
       <tr>
-        <td style="text-align: center; font-weight: bold; color: #fff;">${rankVis}</td>
-        <td style="font-weight: 600; color: #e2e8f0;">${escapeHtml(d.diretoria)}</td>
-        <td style="text-align: center; color: #cbd5e1;">${formatInteger(d.totalParticipantes)}</td>
-        <td style="text-align: right; font-weight: bold; color: var(--verde-sustentavel);">${formatFloat(d.pesoTotal)} kg</td>
+        <td style="text-align: center; font-weight: bold;">${rankVis}</td>
+        <td style="font-weight: 600;">${escapeHtml(d.diretoria)}</td>
+        <td style="text-align: center;">${formatInteger(d.totalParticipantes)}</td>
+        <td style="text-align: right; font-weight: bold; color: var(--verde-vidro);">${formatFloat(d.pesoTotal)} kg</td>
       </tr>
     `;
   }).join("");
@@ -129,51 +144,89 @@ function renderRankingTable() {
 // ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS) ──────────────────────────────────
 function renderCharts() {
   // Destrói instâncias antigas se existirem para evitar vazamento de memória
-  if (state.charts.diretoria && typeof state.charts.diretoria.destroy === "function") state.charts.diretoria.destroy();
-  if (state.charts.historico && typeof state.charts.historico.destroy === "function") state.charts.historico.destroy();
+  ["diretoria", "historico", "meta"].forEach(key => {
+    if (state.charts[key] && typeof state.charts[key].destroy === "function") {
+      state.charts[key].destroy();
+    }
+  });
 
   const elChartDir = document.getElementById("chart-recicla-diretorias");
   const elChartHist = document.getElementById("chart-recicla-historico");
+  const elChartMeta = document.getElementById("chart-recicla-meta");
 
-  // 1. Gráfico de Rosca/Donut - Distribuição por Diretoria
+  const fontFamily = "'Inter', sans-serif";
+
+  // 1. Gráfico de Rosca — Distribuição por Diretoria
   if (elChartDir && state.dadosDiretorias.length > 0) {
     const optionsDir = {
       series: state.dadosDiretorias.map(d => d.pesoTotal),
       labels: state.dadosDiretorias.map(d => d.diretoria),
-      chart: { type: 'donut', height: 280, background: 'transparent' },
-      theme: { monochrome: { enabled: false } },
+      chart: { type: "donut", height: 260, background: "transparent", fontFamily },
       colors: CORES_GRAFICO,
-      legend: { position: 'bottom', labels: { colors: '#94a3b8' } },
+      legend: { position: "bottom", labels: { colors: "#6B6255" }, fontSize: "12px" },
       dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
-      plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'Total', color: '#94a3b8', formatter: () => `${formatFloat(state.kpis.somatorio_total)} kg` } } } } }
+      stroke: { colors: ["#FFFFFF"] },
+      plotOptions: {
+        pie: { donut: { labels: { show: true, total: { show: true, label: "Total", color: "#6B6255", formatter: () => `${formatFloat(state.kpis.somatorio_total)} kg` } } } }
+      }
     };
     state.charts.diretoria = new ApexCharts(elChartDir, optionsDir);
     state.charts.diretoria.render();
   }
 
-  // 2. Gráfico de Linha/Área - Evolução Cronológica das Coletas
+  // 2. Gráfico de Área — Evolução Cronológica das Coletas
   if (elChartHist && state.dadosReciclados.length > 0) {
     const optionsHist = {
-      series: [{ name: 'Massa Coletada', data: state.dadosReciclados.map(r => r.Quantidade) }],
-      chart: { type: 'area', height: 280, toolbar: { show: false }, background: 'transparent' },
-      colors: ['#10b981'],
+      series: [{ name: "Massa Coletada", data: state.dadosReciclados.map(r => r.Quantidade) }],
+      chart: { type: "area", height: 260, toolbar: { show: false }, background: "transparent", fontFamily },
+      colors: ["#0B4C8C"],
       dataLabels: { enabled: false },
-      stroke: { curve: 'smooth', width: 3 },
-      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
+      stroke: { curve: "smooth", width: 3 },
+      fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05 } },
       xaxis: {
         categories: state.dadosReciclados.map(r => {
           if (!r.Data) return "";
           const partes = r.Data.split("-");
           return partes.length === 3 ? `${partes[2]}/${partes[1]}` : r.Data;
         }),
-        labels: { style: { colors: '#94a3b8' } }
+        labels: { style: { colors: "#6B6255" } }
       },
-      yaxis: { labels: { style: { colors: '#94a3b8' }, formatter: (val) => `${val.toFixed(0)} kg` } },
-      grid: { borderColor: 'rgba(255,255,255,0.06)' },
-      tooltip: { theme: 'dark' }
+      yaxis: { labels: { style: { colors: "#6B6255" }, formatter: (val) => `${val.toFixed(0)} kg` } },
+      grid: { borderColor: "#E4DDCC" },
+      tooltip: { theme: "light" }
     };
     state.charts.historico = new ApexCharts(elChartHist, optionsHist);
     state.charts.historico.render();
+  }
+
+  // 3. Gráfico Radial — Progresso frente à Meta Anual
+  if (elChartMeta) {
+    const percentual = META_ANUAL_KG > 0
+      ? Math.min(100, (state.kpis.somatorio_total / META_ANUAL_KG) * 100)
+      : 0;
+
+    const optionsMeta = {
+      series: [Number(percentual.toFixed(1))],
+      chart: { type: "radialBar", height: 260, background: "transparent", fontFamily },
+      colors: ["#2F7D4F"],
+      plotOptions: {
+        radialBar: {
+          hollow: { size: "62%" },
+          dataLabels: {
+            name: { fontSize: "12px", color: "#6B6255", offsetY: -6 },
+            value: {
+              fontSize: "22px",
+              fontWeight: 700,
+              color: "#262117",
+              formatter: (val) => `${val}%`
+            }
+          }
+        }
+      },
+      labels: [`Meta de ${formatInteger(META_ANUAL_KG)} kg`]
+    };
+    state.charts.meta = new ApexCharts(elChartMeta, optionsMeta);
+    state.charts.meta.render();
   }
 }
 
@@ -187,16 +240,15 @@ function bindConsulta() {
     if (!id || !els.consultaResultado) return;
 
     els.consultaResultado.innerHTML = `
-      <div style="text-align:center; color: #94a3b8; font-size: 0.8rem; padding: 10px;">
+      <div style="text-align:center; color: #6B6255; font-size: 0.8rem; padding: 10px;">
         <i class="fa-solid fa-spinner fa-spin"></i> Consultando base de homologação...
       </div>`;
-    
-    // Executa a busca individual parametrizada mapeando o JOIN do banco
+
     const part = await ReciclaAPI.consultarParticipante(id);
-    
+
     if (!part) {
       els.consultaResultado.innerHTML = `
-        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid #ef4444; border-radius: 8px; padding: 14px; color: #ef4444; font-size: 0.8rem; text-align: center; line-height: 1.4;">
+        <div style="background: rgba(180,58,42,0.08); border: 1px solid #B43A2A; border-radius: 8px; padding: 14px; color: #B43A2A; font-size: 0.8rem; text-align: center; line-height: 1.4;">
           <i class="fa-solid fa-circle-xmark" style="font-size: 1.1rem; margin-bottom: 5px; display:block;"></i>
           <strong>ID [${escapeHtml(id)}] não localizado!</strong><br>
           Verifique o número digitado ou contate o suporte da CRS.
@@ -204,33 +256,17 @@ function bindConsulta() {
       return;
     }
 
-    // Calcula a próxima meta com base no volume atual
-    const metaAlcancada = PREMIOS.filter(p => part.somatorio >= p.meta).pop();
-    const proximaMeta = PREMIOS.find(p => part.somatorio < p.meta);
-    
-    let metaHtml = `<p style="margin: 8px 0 0 0; font-size: 0.75rem; color: #a8a29e;"><i class="fa-solid fa-award"></i> Nenhuma meta atingida ainda. Continue reciclando!</p>`;
-    if (metaAlcancada) {
-      metaHtml = `<p style="margin: 8px 0 0 0; font-size: 0.75rem; color: #f59e0b;"><i class="fa-solid fa-trophy"></i> <strong>Prêmio Liberado:</strong> ${metaAlcancada.nome}</p>`;
-    }
-    if (proximaMeta) {
-      const faltaQuanto = (proximaMeta.meta - part.somatorio).toFixed(1);
-      metaHtml += `<p style="margin: 3px 0 0 0; font-size: 0.72rem; color: #94a3b8;"><i class="fa-solid fa-arrow-up-from-bracket"></i> Faltam <strong>${faltaQuanto} kg</strong> para liberar o próximo prêmio.</p>`;
-    } else {
-      metaHtml += `<p style="margin: 3px 0 0 0; font-size: 0.72rem; color: #10b981;"><i class="fa-solid fa-star"></i> <strong>Incrível!</strong> Você maximizou o catálogo de metas!</p>`;
-    }
-    
     els.consultaResultado.innerHTML = `
-      <div style="background: rgba(255,255,255,0.04); border: 1px solid #10b981; border-radius: 8px; padding: 14px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease;">
-        <strong style="font-size: 0.95rem; color: #10b981; display:block; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+      <div style="background: #fff; border: 1px solid #2F7D4F; border-radius: 8px; padding: 14px; color: #262117; box-shadow: 0 4px 12px rgba(0,0,0,0.08); animation: fadeIn 0.3s ease;">
+        <strong style="font-size: 0.95rem; color: #2F7D4F; display:block; margin-bottom:8px; border-bottom:1px solid #E4DDCC; padding-bottom:4px;">
           <i class="fa-solid fa-user-check"></i> ${escapeHtml(part.nome)}
         </strong>
-        <p style="margin: 4px 0; font-size: 0.8rem; color: #cbd5e1;"><strong>ID Interno:</strong> ${escapeHtml(part.id)}</p>
-        <p style="margin: 4px 0; font-size: 0.8rem; color: #cbd5e1;"><strong>Lotação:</strong> ${escapeHtml(part.diretoria)}</p>
-        <div style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.8rem; color: #94a3b8;">Volume Acumulado:</span>
-          <strong style="font-size: 1.25rem; color: #10b981;">${formatFloat(part.somatorio)} kg</strong>
+        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>ID Interno:</strong> ${escapeHtml(part.id)}</p>
+        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>Lotação:</strong> ${escapeHtml(part.diretoria)}</p>
+        <div style="margin-top: 12px; background: #F5F1E7; padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.8rem; color: #6B6255;">Volume Acumulado:</span>
+          <strong style="font-size: 1.25rem; color: #2F7D4F;">${formatFloat(part.somatorio)} kg</strong>
         </div>
-        ${metaHtml}
       </div>`;
   });
 }

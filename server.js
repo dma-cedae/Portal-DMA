@@ -1,31 +1,44 @@
-// server.js
+/// server.js
 
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import { pool } from "./js/db.js";
 import { initReciclaSchema } from "./js/db-recicla.js";
+import reciclaRoutes from "./js/recicla-routes.js";
 
-// 🟢 Ponte limpa e homologada para pacotes legados do CommonJS
-import { createRequire } from 'module';
+// 🟢 Necessário apenas para bibliotecas CommonJS
+import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
-// Carrega a classe PdfPrinter de forma limpa pelo require padrão do Node.js
-const PdfPrinter = require('pdfmake');
+// Biblioteca que ainda utiliza CommonJS
+const PdfPrinter = require("pdfmake");
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ─── Middlewares ─────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────
+// Middlewares
+// ───────────────────────────────────────────────────────────────
+
 app.use(cors({
-  origin: '*',
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
-app.use(express.json({ limit: "10mb" }));
 
+app.use(express.json({
+  limit: "10mb"
+}));
+
+// ───────────────────────────────────────────────────────────────
+// Rotas
+// ───────────────────────────────────────────────────────────────
+
+app.use("/api/recicla", reciclaRoutes);
 // ─── Inicialização do Banco ──────────────────────────────────────────────────
 async function initSchema() {
   try {

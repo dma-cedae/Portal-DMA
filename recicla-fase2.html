@@ -289,28 +289,41 @@
     }
 
     /* Gráficos */
-    .graficos-grid{
-      display:grid;
-      grid-template-columns: 1.1fr 1.1fr 0.8fr;
-      gap:20px;
-    }
-    .grafico-bloco-real{
-      background: var(--creme-card);
-      border:1px solid var(--linha);
-      border-radius: var(--raio);
-      padding:18px;
-    }
-    .grafico-bloco-real h4{
-      text-align:center; font-size:0.85rem; font-weight:700;
-      color: var(--tinta); margin-bottom:10px; letter-spacing:0.01em;
+    .graficos-grid {
+      display: flex;
+      justify-content: center;   /* Centraliza horizontalmente */
+      width: 100%;
+      gap: 20px;
     }
 
-    /* Reorganização: coleta correta + ranking lado a lado */
-    .split-section-modern{
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap:24px;
+    .grafico-bloco-real {
+      background: var(--creme-card);
+      border: 1px solid var(--linha);
+      border-radius: var(--raio);
+      padding: 24px;              /* Aumentado levemente para dar mais respiro */
+      
+      /* Ajustes para deixar o card maior e centralizado */
+      width: 100%;                
+      max-width: 800px;           /* Aumentado de 500px para 800px */
+      margin: 0 auto;
+      box-sizing: border-box;
     }
+
+    /* Garante que a div onde o JavaScript renderiza o gráfico ocupe 100% da largura */
+    #chart-recicla-diretorias {
+      width: 100%;
+      min-height: 400px;          /* Define uma altura mínima maior para o gráfico crescer proporcionalmente */
+    }
+
+    .grafico-bloco-real h4 {
+      text-align: center; 
+      font-size: 1rem;            /* Aumentado o tamanho do título para acompanhar o novo tamanho do gráfico */
+      font-weight: 700;
+      color: var(--tinta); 
+      margin-bottom: 20px; 
+      letter-spacing: 0.01em;
+    }
+
 
     .painel-titulo{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; gap:10px; flex-wrap:wrap; }
     .painel-titulo h2{ font-size:1.1rem; font-weight:700; color:var(--tinta); display:flex; align-items:center; gap:8px; }

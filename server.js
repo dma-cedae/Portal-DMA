@@ -56,49 +56,47 @@ async function initSchema() {
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
-        id                           SERIAL PRIMARY KEY,
-        lote_id                      INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
-        unidade_id                   TEXT UNIQUE, 
-        unidade_nome                 TEXT,
-        vistoria_realizada           TEXT,
-        foco_encontrado              TEXT,
-        foco_remediado               TEXT,
-        motivos_nao_vistoria         JSONB,
-        motivos_nao_remediacao       JSONB,
-        locais_foco                  JSONB,
-        observacoes                  TEXT,
-        data_registro                TIMESTAMP DEFAULT NOW(),
-        outros_local                 TEXT,
+        id                            SERIAL PRIMARY KEY,
+        lote_id                       INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
+        unidade_id                    TEXT UNIQUE, 
+        unidade_nome                  TEXT,
+        vistoria_realizada            TEXT,
+        foco_encontrado               TEXT,
+        foco_remediado                TEXT,
+        motivos_nao_vistoria          JSONB,
+        motivos_nao_remediacao        JSONB,
+        locais_foco                   JSONB,
+        observacoes                   TEXT,
+        data_registro                 TIMESTAMP DEFAULT NOW(),
+        outros_local                  TEXT,
         outros_motivos_nao_vistoria   TEXT,
         outros_motivos_nao_remediacao TEXT,
-        id_referencia                TEXT UNIQUE
+        id_referencia                 TEXT UNIQUE
       );
     `);
   
-// Nova rota para tabela fato_vistorias (Consolidado: EXCEL + PORTAL)
-
-   await pool.query(`
+    // Nova rota para tabela fato_vistorias (Consolidado: EXCEL + PORTAL)
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.fato_vistorias (
-        id                           SERIAL PRIMARY KEY,
-        lote_id                      INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
-        unidade_id                   TEXT UNIQUE, 
-        unidade_nome                 TEXT,
-        vistoria_realizada           TEXT,
-        foco_encontrado              TEXT,
-        foco_remediado               TEXT,
-        motivos_nao_vistoria         TEXT,
-        motivos_nao_remediacao       TEXT,
-        locais_foco                  TEXT,
-        observacoes                  TEXT,
-        data_registro                TIMESTAMP DEFAULT NOW(),
-        outros_locais_foco           TEXT,
-        outros_motivos_nao_vistoria  TEXT,
+        id                            SERIAL PRIMARY KEY,
+        lote_id                       INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
+        unidade_id                    TEXT UNIQUE, 
+        unidade_nome                  TEXT,
+        vistoria_realizada            TEXT,
+        foco_encontrado               TEXT,
+        foco_remediado                TEXT,
+        motivos_nao_vistoria          TEXT,
+        motivos_nao_remediacao        TEXT,
+        locais_foco                   TEXT,
+        observacoes                   TEXT,
+        data_registro                 TIMESTAMP DEFAULT NOW(),
+        outros_locais_foco            TEXT,
+        outros_motivos_nao_vistoria   TEXT,
         outros_motivos_nao_remediacao TEXT,
-        id_referencia                TEXT UNIQUE
+        id_referencia                 TEXT UNIQUE
       );
     `);
 
- 
     // Tabela de Focais
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focais (
@@ -120,7 +118,7 @@ async function initSchema() {
       );
     `);
     
-  // ─── CORREÇÃO E CRIAÇÃO DAS VIEWS DO SPRINT 3 ───────────────────────────
+    // ─── CORREÇÃO E CRIAÇÃO DAS VIEWS DO SPRINT 3 ───────────────────────────
     
     // 1. Recriando a vw_resumo_aedes (Que estava faltando)
     await pool.query(`
@@ -134,19 +132,19 @@ async function initSchema() {
     `);
 
     // 2. Correção segura para a Pizza de Motivos de Não Vistoria (Evitando erro de escalar)
-      await pool.query(`
-    CREATE OR REPLACE VIEW aedes.vw_motivos_nao_vistoria AS
-    SELECT 
-      COALESCE(motivo::text, 'Não Informado') AS motivo,
-      COUNT(*) AS quantidade
-    FROM aedes.fato_vistorias,
-    LATERAL (
+    await pool.query(`
+      CREATE OR REPLACE VIEW aedes.vw_motivos_nao_vistoria AS
+      SELECT 
+        COALESCE(motivo::text, 'Não Informado') AS motivo,
+        COUNT(*) AS quantidade
+      FROM aedes.fato_vistorias,
+      LATERAL (
         SELECT motivos_nao_vistoria AS motivo WHERE motivos_nao_vistoria IS NOT NULL AND motivos_nao_vistoria <> ''
-    UNION ALL
-    SELECT outros_motivos_nao_vistoria WHERE outros_motivos_nao_vistoria IS NOT NULL AND outros_motivos_nao_vistoria <> ''
-  ) AS sub
-  GROUP BY motivo;
-` );
+        UNION ALL
+        SELECT outros_motivos_nao_vistoria WHERE outros_motivos_nao_vistoria IS NOT NULL AND outros_motivos_nao_vistoria <> ''
+      ) AS sub
+      GROUP BY motivo;
+    `);
 
     // 3. Correção segura para a Pizza de Motivos de Não Remediação
     await pool.query(`
@@ -155,39 +153,78 @@ async function initSchema() {
         COALESCE(motivo::text, 'Não Informado') AS motivo,
         COUNT(*) AS quantidade
       FROM aedes.fato_vistorias,
-     LATERAL (
+      LATERAL (
         SELECT motivos_nao_remediacao AS motivo WHERE motivos_nao_remediacao IS NOT NULL AND motivos_nao_remediacao <> ''
-    UNION ALL
-    SELECT outros_motivos_nao_remediacao WHERE outros_motivos_nao_remediacao IS NOT NULL AND outros_motivos_nao_remediacao <> ''
-  ) AS sub
-  GROUP BY motivo;
-` );
-    await pool.query(`   
-    DROP VIEW IF EXISTS aedes.vw_locais_foco;
-    CREATE VIEW aedes.vw_locais_foco AS
-        SELECT 
-          COALESCE(sub.local::text, 'Não Informado') AS locais_foco,
-          COUNT(*) AS quantidade
-        FROM aedes.fato_vistorias,
-        LATERAL (
-          SELECT locais_foco AS local WHERE locais_foco IS NOT NULL AND locais_foco <> ''
-          UNION ALL
-          SELECT outros_locais_foco AS local WHERE outros_locais_foco IS NOT NULL AND outros_locais_foco <> ''
-        ) AS sub
-        GROUP BY sub.local;
-      `);
+        UNION ALL
+        SELECT outros_motivos_nao_remediacao WHERE outros_motivos_nao_remediacao IS NOT NULL AND outros_motivos_nao_remediacao <> ''
+      ) AS sub
+      GROUP BY motivo;
+    `);
 
-      console.log("✅ Estrutura de tabelas e Views do Sprint 3 validadas com sucesso.");
-      
-      // 🟢 Inicializa o Schema do Recicla logo após validar o do Aedes
-      await initReciclaSchema(); 
+    // 4. Locais de Foco
+    await pool.query(`   
+      DROP VIEW IF EXISTS aedes.vw_locais_foco;
+      CREATE VIEW aedes.vw_locais_foco AS
+      SELECT 
+        COALESCE(sub.local::text, 'Não Informado') AS locais_foco,
+        COUNT(*) AS quantidade
+      FROM aedes.fato_vistorias,
+      LATERAL (
+        SELECT locais_foco AS local WHERE locais_foco IS NOT NULL AND locais_foco <> ''
+        UNION ALL
+        SELECT outros_locais_foco AS local WHERE outros_locais_foco IS NOT NULL AND outros_locais_foco <> ''
+      ) AS sub
+      GROUP BY sub.local;
+    `);
+
+    // ─── SPRINT 4: VIEW MATERIALIZADA DE CERTIFICADOS (CONGELADA) ───────────
+    
+    // Criação segura da View Materializada (Puxando os dados novos da fato_vistorias com tratamento de nulos)
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'aedes' AND matviewname = 'mv_certificados_consolidados') THEN
+          EXECUTE '
+            CREATE MATERIALIZED VIEW aedes.mv_certificados_consolidados AS
+            SELECT 
+              UPPER(TRIM(unidade_nome)) AS unidade,
+              EXTRACT(MONTH FROM data_registro)::INTEGER AS mes,
+              EXTRACT(YEAR FROM data_registro)::INTEGER AS ano,
+              COALESCE(COUNT(CASE WHEN LOWER(vistoria_realizada) = ''sim'' THEN 1 END)::INTEGER, 0) AS total_vistorias,
+              COALESCE(
+                CASE 
+                  WHEN COUNT(DISTINCT EXTRACT(WEEK FROM data_registro)) >= 4 THEN true 
+                  ELSE false 
+                END, false
+              ) AS cobertura_semanal_completa,
+              COALESCE(
+                CASE 
+                  WHEN COUNT(CASE WHEN LOWER(foco_encontrado) = ''sim'' AND LOWER(foco_remediado) <> ''sim'' THEN 1 END) > 0 THEN true
+                  ELSE false 
+                END, false
+              ) AS focos_nao_remediados
+            FROM aedes.fato_vistorias
+            WHERE LOWER(vistoria_realizada) = ''sim''
+            GROUP BY UPPER(TRIM(unidade_nome)), EXTRACT(YEAR FROM data_registro), EXTRACT(MONTH FROM data_registro);
+          ';
+        END IF;
+      END $$;
+    `);
+    // Garante a criação do índice de ordenação rápida da view
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_mv_certificados_ordenacao 
+      ON aedes.mv_certificados_consolidados (ano DESC, mes DESC, unidade ASC);
+    `);
+
+    console.log("✅ Estrutura de tabelas, Views e View Materializada validadas com sucesso.");
+    
+    // 🟢 Inicializa o Schema do Recicla logo após validar o do Aedes
+    await initReciclaSchema(); 
 
   } catch (err) {
     console.error("❌ Erro no initSchema:", err.message);
   }
 }
-
-
 /* =========================================================
    ROTAS REQUISITADAS NO SPRINT 3
 ========================================================= */
@@ -483,48 +520,30 @@ app.get("/api/aedes/base", async (req, res) => {
 });
 
 /* =========================================================
-   CERTIFICADOS (CONSOLIDADO: EXCEL + PORTAL) - REVISADO
+   CERTIFICADOS (CONSOLIDADO - VIEW MATERIALIZADA)
 ========================================================= */
 app.get("/api/aedes/certificados", async (_req, res) => {
   try {
+    // Busca os dados congelados e homologados direto da View Materializada
     const result = await pool.query(`
       SELECT 
-        UPPER(TRIM(unidade)) AS unidade,
-        EXTRACT(MONTH FROM data_registro) AS mes,
-        EXTRACT(YEAR FROM data_registro) AS ano,
-        COUNT(CASE WHEN uv_sim = 'Sim' THEN 1 END) AS total_vistorias,
-        -- Elegível se houver vistorias registradas em pelo menos 4 semanas diferentes
-        CASE 
-          WHEN COUNT(DISTINCT semana) >= 4 THEN true 
-          ELSE false 
-        END AS cobertura_semanal_completa,
-        -- Foco em aberto: se achou foco (fe_sim = 'Sim') mas a remediação NÃO foi concluída (rm_sim != 'Sim')
-        CASE 
-          WHEN COUNT(CASE WHEN fe_sim = 'Sim' AND rm_sim <> 'Sim' THEN 1 END) > 0 THEN true
-          ELSE false 
-        END AS focos_nao_remediados
-      FROM aedes.excel_portal
-      WHERE uv_sim = 'Sim'
-      GROUP BY UPPER(TRIM(unidade)), EXTRACT(YEAR FROM data_registro), EXTRACT(MONTH FROM data_registro)
+        unidade,
+        mes,
+        ano,
+        total_vistorias,
+        cobertura_semanal_completa,
+        focos_nao_remediados
+      FROM aedes.mv_certificados_consolidados
       ORDER BY ano DESC, mes DESC, unidade ASC;
     `);
 
-    const linhasFormatadas = result.rows.map(row => ({
-      unidade: row.unidade, // Agora garantido em formato UPPER pelo banco
-      mes: parseInt(row.mes),
-      ano: parseInt(row.ano),
-      total_vistorias: parseInt(row.total_vistorias || 0),
-      cobertura_semanal_completa: row.cobertura_semanal_completa,
-      focos_nao_remediados: row.focos_nao_remediados
-    }));
-
-    res.json(linhasFormatadas);
+    // Como a View já devolve os dados tipados e formatados, enviamos direto!
+    res.json(result.rows);
   } catch (err) {
-    console.error("❌ Erro ao calcular certificados na tabela consolidada:", err.message);
-    res.status(500).json({ error: "Erro interno ao processar as regras de elegibilidade." });
+    console.error("❌ Erro ao buscar certificados na view consolidada:", err.message);
+    res.status(500).json({ error: "Erro interno ao processar os dados de elegibilidade." });
   }
 });
-
 
 /* =========================================================
    ROTAS DE VISTORIAS (LOTES)

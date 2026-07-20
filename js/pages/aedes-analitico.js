@@ -134,31 +134,3 @@ async function carregarGraficoMotivos() {
     }
 }
 
-function renderizarGraficoRosca(labels, valores) {
-    const canvas = document.getElementById('chartPendencias');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (meuGrafico) {
-        meuGrafico.destroy();
-    }
-
-    meuGrafico = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels.length > 0 ? labels : ['Sem ocorrências'],
-            datasets: [{
-                data: valores.length > 0 ? valores : [0],
-                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#6366f1', '#ec4899'],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                title: { display: true, text: 'Distribuição Histórica de Justificativas (Não Vistoria)', font: { weight: 'bold' } }
-            }
-        }
-    });
-}

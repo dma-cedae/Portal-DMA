@@ -423,6 +423,47 @@ app.get("/api/aedes/base", async (req, res) => {
   }
 });
 
+// 🟢 ADICIONE ESTA ROTA DE VOLTA NO SEU SERVER.JS
+
+// Rota de Consolidado: Fornece a base histórica e atual para a tela técnica
+app.get("/api/aedes/consolidado", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        ano,
+        mes,
+        data_registro AS data_real_envio,
+        unidade_nome AS unidade,
+        vistoria_realizada,
+        foco_encontrado,
+        foco_remediado,
+        motivos_nao_vistoria,
+        motivos_nao_remediacao,
+        locais_foco,
+        outros_motivos_nao_vistoria,
+        outros_motivos_nao_remediacao,
+        outros_locais_foco,
+        observacoes
+      FROM aedes.fato_vistorias
+      ORDER BY data_registro DESC;
+    `;
+    
+    const result = await pool.query(query);
+
+    res.json({
+      sucesso: true,
+      dados: result.rows
+    });
+  } catch (err) {
+    console.error("❌ Erro crítico na rota /api/aedes/consolidado:", err.message);
+    res.status(500).json({ 
+      sucesso: false, 
+      error: "Erro ao consultar a tabela física no banco de dados.",
+      details: err.message 
+    });
+  }
+});
+
 /* =========================================================
    CERTIFICADOS (CONSOLIDADO - VIEW MATERIALIZADA)
 ========================================================= */

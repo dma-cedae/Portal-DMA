@@ -67,63 +67,85 @@
       color: white !important;
     }
 
-    /* --- CONTAINER DOS CARDS (SUBIDOS NA TELA) --- */
+    /* --- CONTAINER DOS CARDS (alinhado ao mesmo padding do header) --- */
     .container-hub {
-      max-width: 1200px;
-      margin: 150px auto; /* Reduzido de 60px para subir os cards */
-      padding: 0 40px;
+      width: 100%;
+      margin: 0 auto 80px;
+      padding: 80px 10% 0;
     }
 
+    .hub-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--primary-blue);
+      margin-bottom: 8px;
+    }
+    .hub-subtitle {
+      font-size: 1rem;
+      color: #64748b;
+      margin-bottom: 40px;
+    }
+
+    /* --- GRID: 3 na mesma linha em telas grandes, empilha no mobile --- */
     .showcase-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 450px));
-      gap: 30px;
-      justify-content: center;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 28px;
+      width: 100%;
     }
 
+    @media (max-width: 900px) {
+      .showcase-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+
+    /* --- CARD --- */
     .program-card {
-      height: 380px;
+      height: 440px;
       position: relative;
-      border-radius: 24px;
+      border-radius: 20px;
       overflow: hidden;
       text-decoration: none;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 30px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.08);
-      transition: all 0.4s ease;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.10);
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+      border-top: 5px solid transparent;
     }
 
-    .program-card:hover { transform: translateY(-10px); }
+    .program-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 28px 50px rgba(0,0,0,0.16);
+    }
+
+    .program-card.status-ativo      { border-top-color: #ef4444; }
+    .program-card.status-encerrado  { border-top-color: #22c55e; }
+    .program-card.status-programado { border-top-color: #e6d92f; }
 
     .bg-img {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background-size: 60%; 
+      background-size: 55%;
       background-repeat: no-repeat;
-      background-position: center 25%;
+      background-position: center 30%;
       z-index: 1;
     }
 
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(0deg, rgba(0,29,61,0.9) 20%, rgba(0,29,61,0) 60%);
+      background: linear-gradient(0deg, rgba(0,29,61,0.92) 25%, rgba(0,29,61,0) 65%);
       z-index: 2;
     }
 
     .card-info { position: relative; z-index: 3; color: white; text-align: left; }
-    .card-info h2 { font-size: 1.8rem; margin-bottom: 8px; font-weight: 800; }
-    .card-info p { font-size: 0.9rem; opacity: 0.9; line-height: 1.4; }
-    
-    .tag {
-      display: inline-block; padding: 4px 12px; border-radius: 20px;
-      font-size: 0.65rem; font-weight: 900; margin-bottom: 12px;
-      text-transform: uppercase; letter-spacing: 1px;
-    }
+    .card-info h2 { font-size: 1.6rem; margin-bottom: 10px; font-weight: 800; }
+    .card-info p  { font-size: 0.9rem; opacity: 0.9; line-height: 1.5; }
 
-    @media (max-width: 768px) {
-      .nav-links { display: none; }
-      .showcase-grid { grid-template-columns: 1fr; }
+    .tag {
+      display: inline-block; padding: 5px 14px; border-radius: 20px;
+      font-size: 0.65rem; font-weight: 900; margin-bottom: 14px;
+      text-transform: uppercase; letter-spacing: 1px;
     }
   </style>
 </head>
@@ -132,20 +154,14 @@
   <header class="gov-header">
     <div class="top-utility-bar">
       <div> · Diretoria de Sustentabilidade · Assessoria de Gestão Ambiental · Departamento de Meio Ambiente </div>
-      <!--<div class="links">
-        <span>Comunicação</span>
-        <span>Relatórios</span>
-        <span>Indicadores</span>
-      </div> -->
     </div>
 
-   <nav class="main-nav">
+    <nav class="main-nav">
       <div class="brand-section">
         <img src="./assets/logo-cedae-transparente.png" alt="Logo Cedae" style="height: 60px; width: auto; margin-right: 20px;">
-        
+
         <div style="width: 5px; height: 40px; background: rgba(255,255,255,0.2); margin-right: 20px;"></div>
 
-  
         <div class="brand-text">
           <b>Portal Ambiental</b>
           <span>Sistema de Gestão Ambiental</span>
@@ -153,70 +169,64 @@
       </div>
 
       <div class="nav-links">
-        <!--<a href="#">Início</a>
-        <a href="#">Programas</a> -->
         <a href="./area-tecnica.html" class="btn-area-tecnica">Área técnica</a>
       </div>
     </nav>
   </header>
 
   <main class="container-hub">
+    <h1 class="hub-title">Programas ambientais</h1>
+    <p class="hub-subtitle">Diretoria de Sustentabilidade · Assessoria de Gestão Ambiental</p>
+
     <div class="showcase-grid">
-      
-      <a href="./aedes.html" class="program-card" style="background: linear-gradient(to bottom, #ffffff 0%, #fff1f1 100%);">
+
+      <a href="./aedes.html" class="program-card status-ativo" style="background: linear-gradient(to bottom, #ffffff 0%, #fff1f1 100%);">
         <div class="bg-img" style="background-image: url('./assets/logo_pura_dengue.png');"></div>
         <div class="overlay"></div>
         <div class="card-info">
           <span class="tag" style="background: #ef4444;">Ativo</span>
+          <h2>Programa Aedes</h2>
           <p>Monitoramento preventivo e controle de vetores nas unidades operacionais.</p>
         </div>
       </a>
 
-      <!--<a href="./dashboard_aedes.html" class="program-card" style="background: linear-gradient(to bottom, #ffffff 0%, #fff1f1 100%);">
-        <div class="bg-img" style="background-image: url('./assets/dash_dengue.png');"></div>
+      <a href="./recicla-fase1.html" class="program-card status-encerrado" style="background: linear-gradient(to bottom, #ffffff 0%, #f1fdf4 100%);">
+        <div class="bg-img" style="background-image: url('./assets/logo-recicla-cedae-removebg-preview.png'); background-size: 60%;"></div>
         <div class="overlay"></div>
         <div class="card-info">
-          <span class="tag" style="background: #ef4444;">Ativo</span>
-          <p>Dashboard para monitoramento e análise dos dados do programa de controle de vetores.</p>
+          <span class="tag" style="background: #22c55e;">Encerrado</span>
+          <h2>Recicla CEDAE — Fase 1</h2>
+          <p>Primeira etapa do programa de reciclagem interna, já concluída.</p>
         </div>
-      </a> -->
+      </a>
 
-       <a href="./recicla-fase1.html" class="program-card" style="background: linear-gradient(to bottom, #ffffff 0%, #f1fdf4 100%);">
-         <div class="bg-img" style="background-image: url('./assets/logo-recicla-cedae-removebg-preview.png'); background-size: 65%;"></div>
+      <a href="./recicla-fase2.html" class="program-card status-programado" style="background: linear-gradient(to bottom, #ffffff 0%, #f1fdf4 100%);">
+        <div class="bg-img" style="background-image: url('./assets/logo-recicla-cedae-removebg-preview.png'); background-size: 60%;"></div>
         <div class="overlay"></div>
         <div class="card-info">
-          <span class="tag" style="background:  #22c55e;">ENCERRADO</span>
-         <h2>Programa Recicla CEDAE - Fase 1</h2>
+          <span class="tag" style="background: #e6d92f;">Programado</span>
+          <h2>Recicla CEDAE — Fase 2</h2>
+          <p>Nova etapa em planejamento, com expansão do escopo de coleta.</p>
         </div>
       </a>
-      
-         <a href="./recicla-fase2.html" class="program-card" style="background: linear-gradient(to bottom, #ffffff 0%, #f1fdf4 100%);">
-        <div class="bg-img" style="background-image: url('./assets/logo-recicla-cedae-removebg-preview.png'); background-size: 65%;"></div>
-        <div class="overlay"></div>
-        <div class="card-info">
-            <span class="tag" style="background: #e6d92f;">PROGRAMADO</span>
-            <h2>Programa Recicla CEDAE - Fase 2</h2>
-        </div>
-      </a>
-      
-    </div>
 
     </div>
   </main>
-    <script src="./js/core/auth.js"></script>
 
-      <script>
-        if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js') 
-              .then((registration) => {
-                console.log('Service Worker registrado com sucesso:', registration.scope);
-              })
-              .catch((error) => {
-                console.error('Falha ao registrar o Service Worker:', error);
-              });
+  <script src="./js/core/auth.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then((registration) => {
+            console.log('Service Worker registrado com sucesso:', registration.scope);
+          })
+          .catch((error) => {
+            console.error('Falha ao registrar o Service Worker:', error);
           });
-        }
-      </script>
+      });
+    }
+  </script>
 </body>
 </html>

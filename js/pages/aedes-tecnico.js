@@ -1,81 +1,152 @@
 /**
  * Portal-DMA - CEDAE
  * Módulo de Controle de Vetores (Aedes aegypti)
- * Script de Integração da View Consolidada e Exportação Avançada com ExcelJS
+ * Script de Integração da Tabela Física e Exportação Avançada com ExcelJS
  */
 
 import { AedesAPI } from '../modules/aedes/aedes-api.js';
 
-// Estado global dos dados na página para permitir filtros dinâmicos por semana
+// Estado global dos dados na página para permitir filtros dinâmicos por mês/ano
 let DADOS_PAINEL_GLOBAL = [];
-4
+let ORDENACAO_DATA_CRESCENTE = false; // Começa como false para exibir do MAIS RECENTE primeiro
+
 async function inicializarModuloAedes() {
     try {
-        console.log("A carregar Módulo Aedes via View Consolidada do Banco...");
-
-        // 1. Busca os dados já unificados e processados pela View SQL
+        console.log("A carregar Módulo Aedes via Tabela Física do Banco...");
         const dadosView = await AedesAPI.getConsolidadoView();
 
         if (!dadosView || dadosView.length === 0) {
-            throw new Error("Nenhum dado retornado do banco de dados ou formato inválido.");
+            throw new Error("Nenhum dado retornado do banco de dados.");
         }
 
-        // Armazena a resposta pura no estado global
         DADOS_PAINEL_GLOBAL = dadosView;
-        console.log("✅ Dados carregados com sucesso! Total de registros:", DADOS_PAINEL_GLOBAL.length);
 
-        // 2. Renderiza os componentes na tela (Dropdown de Semanas e Tabela)
-        configurarFiltrosSemana(DADOS_PAINEL_GLOBAL);
+        // 💡 Correção do nome: de "ejecutar..." para "executar..."
+        executarOrdenacaoDados(ORDENACAO_DATA_CRESCENTE);
+
+        configurarFiltrosMesAno(DADOS_PAINEL_GLOBAL);
         renderizarTabelaConsolidada(DADOS_PAINEL_GLOBAL);
 
-        // 3. Configura a ação do botão de exportação baseado no filtro atual da tela
+        // Configuração da ação do botão de exportar baseada nos checkboxes ativos
         const btnExport = document.getElementById('btnExportExcel');
         if (btnExport) {
             btnExport.onclick = () => {
-                const filtroAtual = document.getElementById('selectFiltroSemana').value;
-                const dadosFiltrados = filtroAtual === 'todas' 
-                    ? DADOS_PAINEL_GLOBAL 
-                    : DADOS_PAINEL_GLOBAL.filter(d => d.semana_contagem == filtroAtual);
+                const gridCheckboxes = document.getElementById('selectFiltroSemana');
+                if (!gridCheckboxes) return;
+                
+                const checkboxesMarcados = Array.from(gridCheckboxes.querySelectorAll('.chk-mes-filtro:checked')).map(chk => chk.value);
+                
+                if (checkboxesMarcados.length === 0) {
+                    alert("Por favor, selecione pelo menos um mês para exportar.");
+                    return;
+                }
+
+                const dadosFiltrados = DADOS_PAINEL_GLOBAL.filter(d => checkboxesMarcados.includes(`${d.mes}/${d.ano}`));
                 exportarParaExcel(dadosFiltrados);
             };
         }
-
     } catch (error) {
-        console.error("Erro crítico ao inicializar painel do Módulo Aedes:", error);
+        console.error("Erro técnico ao inicializar painel do Módulo Aedes:", error);
         exibirMensagemErroInterface(`Não foi possível sincronizar a matriz de dados. Motivo: ${error.message}`);
     }
 }
 
 /**
- * Monta dinamicamente o dropdown de semanas com os períodos calculados pela View
+ * Função utilitária para ordenar o array global baseado na propriedade de data
  */
-function configurarFiltrosSemana(dados) {
-    const selectSemana = document.getElementById('selectFiltroSemana');
-    if (!selectSemana) return;
+function executarOrdenacaoDados(ordemCrescente) {
+    DADOS_PAINEL_GLOBAL.sort((a, b) => {
+        const dataA = new Date(a.data_real_envio || a.data_registro || 0);
+        const dataB = new Date(b.data_real_envio || b.data_registro || 0);
+        return ordemCrescente ? dataA - dataB : dataB - dataA;
+    });
+}
 
-    // Isola as semanas existentes e ordena do maior para o menor (Mais recente primeiro)
-    const semanasUnicas = [...new Set(dados.map(item => item.semana_contagem))].sort((a, b) => b - a);
-    selectSemana.innerHTML = '<option value="todas">-- Todas as Semanas / Todo o Histórico --</option>';
-    
-    semanasUnicas.forEach(sem => {
-        const amostraDado = dados.find(d => d.semana_contagem === sem);
-        const labelPeriodo = amostraDado ? amostraDado.periodo_semana : '';
-        
-        const option = document.createElement('option');
-        option.value = sem;
-        option.textContent = sem === 0 ? 'Histórico (Pré-Portal)' : `Semana ${sem} (${labelPeriodo})`;
-        selectSemana.appendChild(option);
+/**
+ * Configura o evento de clique na coluna de data para alternar a ordenação
+ */
+function configurarEventosOrdenacao() {
+    const thData = document.getElementById('thDataEnvio');
+    if (!thData) return;
+
+    thData.onclick = () => {
+        ORDENACAO_DATA_CRESCENTE = !ORDENACAO_DATA_CRESCENTE;
+
+        executarOrdenacaoDados(ORDENACAO_DATA_CRESCENTE);
+
+        // Mantém o filtro atual dos meses ativo ao reordenar
+        const gridCheckboxes = document.getElementById('selectFiltroSemana');
+        if (gridCheckboxes) {
+            const checkboxesMarcados = Array.from(gridCheckboxes.querySelectorAll('.chk-mes-filtro:checked')).map(chk => chk.value);
+            const dadosFiltrados = DADOS_PAINEL_GLOBAL.filter(d => checkboxesMarcados.includes(`${d.mes}/${d.ano}`));
+            renderizarTabelaConsolidada(dadosFiltrados);
+        } else {
+            renderizarTabelaConsolidada(DADOS_PAINEL_GLOBAL);
+        }
+    };
+}
+
+/**
+ * Monta dinamicamente os Checkboxes dentro do Grid do novo Layout Bonito
+ */
+function configurarFiltrosMesAno(dados) {
+    const gridCheckboxes = document.getElementById('selectFiltroSemana'); 
+    if (!gridCheckboxes) return;
+
+    const periodosValidos = dados.map(item => ({ mes: item.mes, ano: item.ano, chave: `${item.mes}/${item.ano}` }));
+    const chavesUnicas = [...new Set(periodosValidos.map(p => p.chave))].sort((a, b) => {
+        const [mesA, anoA] = a.split('/').map(Number);
+        const [mesB, anoB] = b.split('/').map(Number);
+        return anoB !== anoA ? anoB - anoA : mesB - mesA;
     });
 
-    selectSemana.onchange = (e) => {
-        const valorFiltro = e.target.value;
-        if (valorFiltro === 'todas') {
-            renderizarTabelaConsolidada(DADOS_PAINEL_GLOBAL);
+    const nomesMeses = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+    gridCheckboxes.innerHTML = ''; 
+    
+    chavesUnicas.forEach(chave => {
+        const [mes, ano] = chave.split('/');
+        const divItem = document.createElement('div');
+        divItem.className = 'checkbox-item-wrapper';
+        
+        divItem.innerHTML = `
+            <input type="checkbox" class="chk-mes-filtro" id="chk_${mes}_${ano}" value="${chave}" checked> 
+            <label for="chk_${mes}_${ano}">${nomesMeses[Number(mes)]} / ${ano}</label>
+        `;
+        gridCheckboxes.appendChild(divItem);
+    });
+
+    const executarFiltroMultiplo = () => {
+        const checkboxesMarcados = Array.from(gridCheckboxes.querySelectorAll('.chk-mes-filtro:checked')).map(chk => chk.value);
+        const chkTodos = document.getElementById('chk_todos');
+
+        if (chkTodos) {
+            chkTodos.checked = (checkboxesMarcados.length === chavesUnicas.length);
+        }
+
+        if (checkboxesMarcados.length === 0) {
+            renderizarTabelaConsolidada([]);
         } else {
-            const dadosFiltrados = DADOS_PAINEL_GLOBAL.filter(d => d.semana_contagem == valorFiltro);
+            executarOrdenacaoDados(ORDENACAO_DATA_CRESCENTE);
+            const dadosFiltrados = DADOS_PAINEL_GLOBAL.filter(d => checkboxesMarcados.includes(`${d.mes}/${d.ano}`));
             renderizarTabelaConsolidada(dadosFiltrados);
         }
     };
+
+    const chkTodos = document.getElementById('chk_todos');
+    if (chkTodos) {
+        chkTodos.onchange = (e) => {
+            const status = e.target.checked;
+            gridCheckboxes.querySelectorAll('.chk-mes-filtro').forEach(chk => chk.checked = status);
+            executarFiltroMultiplo();
+        };
+    }
+
+    gridCheckboxes.querySelectorAll('.chk-mes-filtro').forEach(chk => {
+        chk.onchange = () => {
+            executarFiltroMultiplo();
+        };
+    });
 }
 
 /**
@@ -85,72 +156,111 @@ function renderizarTabelaConsolidada(dados) {
     const container = document.getElementById('containerTabelaAedes');
     if (!container) return;
 
+    const classeIcone = ORDENACAO_DATA_CRESCENTE ? "fas fa-sort-up" : "fas fa-sort-down";
+
     let html = `
         <table class="tabela-aedes-dma">
             <thead>
                 <tr>
-                    <th style="text-align: center; width: 110px;">Nº Semana</th>
-                    <th>Período</th>
+                    <th style="text-align: center; width: 120px; cursor: pointer; user-select: none; background: #e2e8f0;" id="thDataEnvio">
+                        Data Envio <i class="${classeIcone}" id="iconeOrdenacaoData" style="margin-left: 5px; color: var(--teal-cedae);"></i>
+                    </th>
                     <th>Unidade CEDAE</th>
                     <th style="text-align: center;">Vistoria</th>
                     <th style="text-align: center;">Foco</th>
-                    <th>Local do Foco</th>
+                    <th>Locais do Foco</th>
+                    <th>Outros Detalhes Foco</th>
                     <th style="text-align: center;">Remediação</th>
-                    <th>Responsável / Focal</th>
-                    <th style="text-align: center;">Data do Envio</th>
+                    <th>Motivo Não Vistoria</th>
+                    <th>Motivo Não Remediação</th>
+                    <th>Observações DMA</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    dados.forEach(item => {
-        // Coleta e limpa os valores normalizados vindos da API
-        const vistoriaStr = String(item.vistoria || 'Não Informado').trim();
-        const vistoriaLower = vistoriaStr.toLowerCase();
-        const focoLower = String(item.foco || 'Não').toLowerCase().trim();
+    const limparCampoArrayDoBanco = (valorTexto, valorOutros) => {
+        let textoLimpo = '';
+        try {
+            if (valorTexto && valorTexto !== '-' && valorTexto !== '[]') {
+                const arrayParsed = JSON.parse(valorTexto);
+                if (Array.isArray(arrayParsed)) {
+                    textoLimpo = arrayParsed.map(termo => 
+                        termo.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                    ).join(', ');
+                }
+            }
+        } catch (e) {
+            textoLimpo = String(valorTexto);
+        }
 
-        // Linha ganha cor cinza/amarelada se não houver informação ou a vistoria foi negativa
-        let classeLinha = (vistoriaStr === 'Não Informado' || vistoriaLower === 'não' || vistoriaLower === 'nao' || vistoriaStr === '-') ? 'status-nao-informado' : '';
-        // Célula do foco ganha cor vermelha de alerta se houver foco positivo
+        if (textoLimpo.toLowerCase().includes('nenhum foco') || textoLimpo.trim() === '') {
+            textoLimpo = '';
+        }
+
+        const outrosLimpo = (valorOutros && valorOutros !== '-') ? String(valorOutros).trim() : '';
+        if (textoLimpo && outrosLimpo) {
+            return `${textoLimpo} (${outrosLimpo})`;
+        }
+        return textoLimpo || outrosLimpo || '-';
+    };
+
+    dados.forEach(item => {
+        const vistoriaStr = String(item.vistoria_realizada || 'Não Informado').trim();
+        const vistoriaLower = vistoriaStr.toLowerCase();
+        const focoLower = String(item.foco_encontrado || 'Não').toLowerCase().trim();
+        const remediacaoStr = String(item.foco_remediado || '-').trim();
+
+        let classeLinha = (vistoriaLower === 'não' || vistoriaLower === 'nao') ? 'status-nao-informado' : '';
         let classeFoco = (focoLower === 'sim' || focoLower === 's') ? 'status-foco-alerta' : '';
         
-        // Formata a data de registro fornecida pelo banco
-        const campoData = item.data_real_envio;
-        const dataFormatada = campoData ? new Date(campoData).toLocaleDateString('pt-BR') : '-';
-        
-        const labelSemana = item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`;
-        const periodoSemana = item.periodo_semana || '-';
-        const unidadeNome = item.unidade || '-';
-        const remediacao = item.remediacao || '-';
-        const focalNome = item.focal || '-';
-
-        // Exibição amigável com base no status da vistoria
-        let localExibicao = item.local_foco || '-';
-        if (vistoriaLower === 'não' || vistoriaLower === 'nao') {
-            localExibicao = 'Não vistoriado';
+        const campoDataStr = item.data_real_envio || item.data_registro || '';
+        let dataFormatada = '-';
+        if (campoDataStr && campoDataStr !== '-') {
+            const match = campoDataStr.substring(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (match) {
+                dataFormatada = `${match[3]}/${match[2]}/${match[1]}`;
+            } else {
+                dataFormatada = campoDataStr;
+            }
         }
+        
+        const nomeUnidadeExibicao = item.unidade_nome || item.unidade || item.nome_unidade || item.unidade_descricao || '-';
+
+        const exibeCamposFoco = !(vistoriaLower === 'não' || vistoriaLower === 'nao' || focoLower === 'não' || focoLower === 'nao' || focoLower === 'n');
+
+        const colunaLocaisFoco = exibeCamposFoco ? limparCampoArrayDoBanco(item.locais_foco, '') : '-';
+        const colunaOutrosLocais = exibeCamposFoco ? ((item.outros_locais_foco && item.outros_locais_foco !== '-') ? item.outros_locais_foco : '-') : '-';
+
+        const colunaMotivoNaoVistoria = limparCampoArrayDoBanco(item.motivos_nao_vistoria, item.outros_motivos_nao_vistoria);
+        const colunaMotivoNaoRemediacao = limparCampoArrayDoBanco(item.motivos_nao_remediacao, item.outros_motivos_nao_remediacao);
+        const colunaObservacoes = (item.observacoes && item.observacoes !== '-') ? item.observacoes : '-';
 
         html += `
             <tr class="${classeLinha}">
-                <td style="text-align: center; font-weight: bold; color: #0f766e;">${labelSemana}</td>
-                <td style="font-size: 11px; white-space: nowrap;">${periodoSemana}</td>
-                <td><strong>${unidadeNome}</strong></td>
-                <td style="text-align: center; font-weight: 500;">${vistoriaStr}</td>
-                <td class="${classeFoco}" style="text-align: center;">${item.foco || 'Não'}</td>
-                <td>${localExibicao}</td>
-                <td style="text-align: center;">${remediacao}</td>
-                <td>${focalNome}</td>
-                <td style="text-align: center;">${dataFormatada}</td>
+                <td style="font-size: 11px; white-space: nowrap; text-align: center; font-weight: bold; color: #0f766e;">${dataFormatada}</td>
+                <td><strong>${nomeUnidadeExibicao}</strong></td>
+                <td style="text-align: center; font-weight: 500;">${vistoriaStr.toUpperCase()}</td>
+                <td style="text-align: center;"><span class="${classeFoco ? 'status-foco-alerta' : ''}">${focoLower.toUpperCase()}</span></td>
+                <td>${colunaLocaisFoco}</td>
+                <td style="font-size: 11px; font-style: italic; color: #555;">${colunaOutrosLocais}</td>
+                <td style="text-align: center;">${remediacaoStr.toUpperCase()}</td>
+                <td style="color: #c2410c;">${colunaMotivoNaoVistoria}</td>
+                <td style="color: #991b1b;">${colunaMotivoNaoRemediacao}</td>
+                <td style="font-size: 11px; color: #374151;">${colunaObservacoes}</td>
             </tr>
         `;
     });
 
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    // Ativa novamente as escutas de clique do cabeçalho da tabela montada
+    configurarEventosOrdenacao();
 }
 
 /**
- * Motor de Exportação Avançada utilizando ExcelJS mapeando diretamente a View SQL
+ * Motor de Exportação Avançada utilizando ExcelJS
  */
 async function exportarParaExcel(dadosParaExportar) {
     if (typeof ExcelJS === 'undefined') {
@@ -160,90 +270,101 @@ async function exportarParaExcel(dadosParaExportar) {
 
     try {
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Painel Consolidado Aedes');
+        const worksheet = workbook.addWorksheet('Relatório Fato Vistorias');
 
-        // Estrutura exata das colunas do relatório XLSX baseado na View
         worksheet.columns = [
-            { header: 'Nº SEMANA', key: 'semana_contagem', width: 14 },
-            { header: 'PERÍODO COBERTURA', key: 'periodo_semana', width: 25 },
-            { header: 'UNIDADE CEDAE', key: 'unidade', width: 32 },
-            { header: 'VISTORIA REALIZADA', key: 'vistoria', width: 22 },
-            { header: 'FOCO DETECTADO', key: 'foco', width: 18 },
-            { header: 'LOCAL DO FOCO / MOTIVO', key: 'local_foco', width: 28 },
-            { header: 'REMEDIAÇÃO', key: 'remediacao', width: 15 },
-            { header: 'OBSERVAÇÕES TÉCNICAS', key: 'observacoes', width: 45 },
-            { header: 'FOCAL RESPONSÁVEL', key: 'focal', width: 28 },
-            { header: 'DATA REAL DE ENVIO', key: 'data_real_envio', width: 20 }
+            { header: 'DATA REAL DE ENVIO', key: 'data_real_envio', width: 20 },
+            { header: 'UNIDADE CEDAE', key: 'unidade_nome', width: 35 },
+            { header: 'VISTORIA REALIZADA', key: 'vistoria_realizada', width: 22 },
+            { header: 'FOCO DETECTADO', key: 'foco_encontrado', width: 18 },
+            { header: 'LOCAIS DO FOCO', key: 'locais_foco', width: 28 },
+            { header: 'OUTROS DETALHES FOCO', key: 'outros_locais_foco', width: 30 },
+            { header: 'REMEDIAÇÃO', key: 'foco_remediado', width: 15 },
+            { header: 'MOTIVO NÃO VISTORIA', key: 'motivos_nao_vistoria', width: 35 },
+            { header: 'MOTIVO NÃO REMEDIAÇÃO', key: 'motivos_nao_remediacao', width: 35 },
+            { header: 'OBSERVAÇÕES TÉCNICAS', key: 'observacoes', width: 45 }
         ];
 
         dadosParaExportar.forEach(item => {
-            const vistoriaStr = String(item.vistoria || '-').trim();
+            const vistoriaStr = String(item.vistoria_realizada || '-').trim();
             const vistoriaLower = vistoriaStr.toLowerCase();
-            const focoLower = String(item.foco || '-').toLowerCase().trim();
+            const focoLower = String(item.foco_encontrado || '-').toLowerCase().trim();
             
-            const campoData = item.data_real_envio || item.data_envio;
-
-            let localExibicao = item.local_foco || '-';
-            if (vistoriaLower === 'não' || vistoriaLower === 'nao') {
-                localExibicao = item.motivo_nao_vistoria ? `Não vistoriado: ${item.motivo_nao_vistoria}` : 'Não vistoriado';
+            const campoDataStr = item.data_real_envio || item.data_registro || '';
+            let dataFormatadaExcel = '-';
+            if (campoDataStr && campoDataStr !== '-') {
+                const match = campoDataStr.substring(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (match) {
+                    dataFormatadaExcel = `${match[3]}/${match[2]}/${match[1]}`;
+                } else {
+                    dataFormatadaExcel = campoDataStr;
+                }
             }
 
+            const nomeUnidadeExibicao = item.unidade_nome || item.unidade || item.nome_unidade || item.unidade_descricao || '-';
+
+            const limparExcelArray = (val, out) => {
+                if (!val || val === '[]' || val === '-') return (out && out !== '-') ? out : '-';
+                try {
+                    const parsed = JSON.parse(val);
+                    if (Array.isArray(parsed)) {
+                        let str = parsed.map(t => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(', ');
+                        if (str.toLowerCase().includes('nenhum foco') || str.trim() === '') return '-';
+                        return out && out !== '-' ? `${str} (${out})` : str;
+                    }
+                } catch(e) {}
+                if (String(val).toLowerCase().includes('nenhum foco')) return '-';
+                return val;
+            };
+
+            const exibeFocoCampos = !(vistoriaLower === 'não' || vistoriaLower === 'nao' || focoLower === 'não' || focoLower === 'nao' || focoLower === 'n');
+
             const row = worksheet.addRow({
-                semana_contagem: item.semana_contagem === 0 ? 'Histórico' : `Semana ${item.semana_contagem}`,
-                periodo_semana: item.periodo_semana || '-',
-                unidade: item.unidade || '-',
-                vistoria: vistoriaStr,
-                foco: item.foco || '-',
-                local_foco: localExibicao,
-                remediacao: item.remediacao || '-',
-                observacoes: item.observacoes || '-',
-                focal: item.focal || item.focal_nome || '-',
-                data_real_envio: campoData ? new Date(campoData).toLocaleDateString('pt-BR') : '-'
+                data_real_envio: dataFormatadaExcel,
+                unidade_nome: nomeUnidadeExibicao,
+                vistoria_realizada: vistoriaStr.toUpperCase(),
+                foco_encontrado: focoLower.toUpperCase(),
+                locais_foco: exibeFocoCampos ? limparExcelArray(item.locais_foco, '') : '-',
+                outros_locais_foco: exibeFocoCampos && item.outros_locais_foco && item.outros_locais_foco !== '-' ? item.outros_locais_foco : '-',
+                foco_remediado: String(item.foco_remediado || '-').toUpperCase(),
+                motivos_nao_vistoria: limparExcelArray(item.motivos_nao_vistoria, item.outros_motivos_nao_vistoria),
+                motivos_nao_remediacao: limparExcelArray(item.motivos_nao_remediacao, item.outros_motivos_nao_remediacao),
+                observacoes: item.observacoes && item.observacoes !== '-' ? item.observacoes : '-'
             });
 
-            // Alinhamentos visuais das células
-            row.getCell('semana_contagem').alignment = { horizontal: 'center' };
-            row.getCell('periodo_semana').alignment = { horizontal: 'center' };
-            row.getCell('vistoria').alignment = { horizontal: 'center' };
-            row.getCell('foco').alignment = { horizontal: 'center' };
-            row.getCell('remediacao').alignment = { horizontal: 'center' };
             row.getCell('data_real_envio').alignment = { horizontal: 'center' };
+            row.getCell('vistoria_realizada').alignment = { horizontal: 'center' };
+            row.getCell('foco_encontrado').alignment = { horizontal: 'center' };
+            row.getCell('foco_remediado').alignment = { horizontal: 'center' };
 
-            // Cor de fundo para unidades inadimplentes/não informadas (Amarelo bem suave)
-            if (vistoriaStr === 'Não Informado' || vistoriaLower === 'não' || vistoriaLower === 'nao' || vistoriaStr === '-') {
+            if (vistoriaLower === 'não' || vistoriaLower === 'nao' || vistoriaStr === '-') {
                 row.eachCell((cell) => {
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F2' } };
                 });
             }
             
-            // Destaque crítico para focos positivos (Fundo vermelho claro, texto vermelho escuro e negrito)
             if (focoLower === 'sim' || focoLower === 's') {
-                row.getCell('foco').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
-                row.getCell('foco').font = { color: { argb: '991B1B' }, bold: true };
+                row.getCell('foco_encontrado').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEE2E2' } };
+                row.getCell('foco_encontrado').font = { color: { argb: '991B1B' }, bold: true };
             }
-        });
+    });
 
-        // Estilização do cabeçalho oficial DMA (#0F766E - Verde institucional)
         const headerRow = worksheet.getRow(1);
         headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
         headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } };
         headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
         headerRow.height = 28;
 
-        worksheet.autoFilter = 'A1:J1'; // Ativa as setas de filtro nativas do Excel
-        worksheet.views = [{ state: 'frozen', ySplit: 1 }]; // Mantém o topo fixo ao rolar para baixo
+        worksheet.autoFilter = 'A1:J1';
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
 
-        // Executa o download binário do arquivo .xlsx
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        
-        const filtroAtual = document.getElementById('selectFiltroSemana')?.value || 'Geral';
-        const nomeArquivo = `CEDAE_Aedes_PainelConsolidado_Semana_${filtroAtual}.xlsx`;
         
         const url = window.URL.createObjectURL(blob);
         const linkDownload = document.createElement('a');
         linkDownload.href = url;
-        linkDownload.download = nomeArquivo;
+        linkDownload.download = `CEDAE_Aedes_FatoVistorias_Export.xlsx`;
         linkDownload.click();
         
         window.URL.revokeObjectURL(url);
@@ -260,5 +381,4 @@ function exibirMensagemErroInterface(mensagem) {
     }
 }
 
-// Escuta o carregamento seguro da árvore DOM antes de rodar
 document.addEventListener("DOMContentLoaded", inicializarModuloAedes);

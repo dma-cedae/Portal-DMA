@@ -139,56 +139,67 @@ export const AedesAPI = {
         }
     },
 
-    
-    async getConsolidadoView() {
+async getConsolidadoView() {
+    try {
+        const response = await fetch(`${API_BASE}/api/aedes/consolidado`);
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
+        
+        const json = await response.json();
+        
+        // Garante o mapeamento se os dados vierem envelopados em json.dados ou direto no array
+        const dadosOrigem = json && json.sucesso && Array.isArray(json.dados) ? json.dados : (Array.isArray(json) ? json : []);
+
+        return dadosOrigem.map(item => {
+            // Se o backend não retornar o ano na query, usamos o atual como fallback
+            const anoAtual = item.ano || 2026; 
+
+            // Tratamento amigável para exibição dos booleanos/strings que vêm do banco
+            const statusVistoria = item.vistoria_realizada ? "sim" : "nao";
+            const statusFoco = item.foco_encontrado ? "sim" : "nao";
+            const statusRemediacao = item.foco_remediado ? "sim" : "nao";
+
+            return {
+                ...item,
+                // Mantém compatibilidade com a estrutura esperada pela sua View/Tabela do frontend
+                ano: anoAtual,
+                vistoria: statusVistoria,
+                foco: statusFoco,
+                remediacao: statusRemediacao,
+                
+                // Mapeia os novos campos de texto vindos da query do banco
+                local_foco: item.locais_foco || (statusVistoria === "nao" ? "Não vistoriado" : "-"),
+                motivo_nao_vistoria: item.motivos_nao_vistoria || null,
+                observacoes: item.observacoes || "-",
+                data_real_envio: item.data_real_envio || null,
+
+                // Fallback para campos que não estavam explicitamente na query enviada, mas mantêm o formato seguro
+                unidade: item.unidade || "-",
+                mes: item.mes || "-"
+            };
+        });
+        
+    } catch (error) {
+        console.error("❌ AedesAPI.getConsolidadoView:", error);
+        return [];
+    }
+},
+
+// Adicione este método dentro do objeto export const AedesAPI = { ... }
+
+ /**
+     * SPRINT 4: Busca as unidades inadimplentes baseadas na semana interna de um mês específico
+     */
+    async getUnidadesNaoEnviadas(ano, mes, semanaMes) {
         try {
-            const response = await fetch(`${API_BASE}/api/aedes/consolidado`);
+            if (!ano || !mes || !semanaMes) return null;
+            
+            const response = await fetch(`${API_BASE}/api/aedes/nao-enviados?ano=${parseInt(ano)}&mes=${parseInt(mes)}&semana_mes=${parseInt(semanaMes)}`);
             if (!response.ok) throw new Error(`Status: ${response.status}`);
             
-            const json = await response.json();
-            
-            if (json && json.sucesso && Array.isArray(json.dados)) {
-                return json.dados.map(item => {
-                    const numSemana = item.semana_contagem !== undefined && item.semana_contagem !== null ? Number(item.semana_contagem) : 0;
-                    
-                    // Lógica para Vistoria Realizada
-                    let statusVistoria = "Não Informado";
-                    if (String(item.uv_sim).toLowerCase().trim() === "sim") statusVistoria = "Sim";
-                    if (String(item.uv_nao).toLowerCase().trim() === "sim") statusVistoria = "Não";
-
-                    // Lógica para Foco Detectado
-                    let statusFoco = "Não";
-                    if (String(item.fe_sim).toLowerCase().trim() === "sim") statusFoco = "Sim";
-
-                    // Lógica para Remediação do Foco
-                    let statusRemediacao = "-";
-                    if (String(item.rm_sim).toLowerCase().trim() === "sim") statusRemediacao = "Sim";
-                    if (String(item.rm_nao).toLowerCase().trim() === "sim") statusRemediacao = "Não";
-
-                    return {
-                        ...item,
-                        semana_contagem: numSemana,
-                        // Preenche período nulo com fallback descritivo legível por humanos
-                        periodo_semana: item.periodo_semana || `Semana Epidemiológica ${numSemana} / ${item.ano || 2026}`,
-                        vistoria: statusVistoria,
-                        foco: statusFoco,
-                        remediacao: statusRemediacao,
-                        // Campos de texto livre inexistentes na tabela física recebem fallback estável
-                        local_foco: statusVistoria === "Não" ? "Não vistoriado" : "-",
-                        motivo_nao_vistoria: null,
-                        observacoes: "-",
-                        focal: item.focal || "-",
-                        data_real_envio: item.data_real_envio || null
-                    };
-                });
-            }
-            
-            if (json && Array.isArray(json)) return json;
-            return [];
-            
+            return await response.json();
         } catch (error) {
-            console.error("❌ AedesAPI.getConsolidadoView:", error);
-            return [];
+            console.error(`❌ AedesAPI.getUnidadesNaoEnviadas:`, error);
+            return null;
         }
     }
 };

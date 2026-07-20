@@ -1,5 +1,3 @@
-/// server.js
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -35,10 +33,10 @@ app.use(express.json({
 }));
 
 // ───────────────────────────────────────────────────────────────
-// Rotas
+// Rotas Módulos Externos
 // ───────────────────────────────────────────────────────────────
-
 app.use("/api/recicla", reciclaRoutes);
+
 // ─── Inicialização do Banco ──────────────────────────────────────────────────
 async function initSchema() {
   try {
@@ -58,7 +56,7 @@ async function initSchema() {
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
         id                            SERIAL PRIMARY KEY,
         lote_id                       INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
-        unidade_id                    TEXT UNIQUE, 
+        unidade_id                    TEXT, 
         unidade_nome                  TEXT,
         vistoria_realizada            TEXT,
         foco_encontrado               TEXT,
@@ -75,12 +73,15 @@ async function initSchema() {
       );
     `);
   
-    // Nova rota para tabela fato_vistorias (Consolidado: EXCEL + PORTAL)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.fato_vistorias (
         id                            SERIAL PRIMARY KEY,
         lote_id                       INTEGER REFERENCES aedes.lotes(id) ON DELETE CASCADE,
-        unidade_id                    TEXT UNIQUE, 
+        origem                        TEXT DEFAULT 'Portal',
+        ano                           INTEGER,
+        mes                           INTEGER,
+        semana                        INTEGER,
+        unidade_id                    TEXT, 
         unidade_nome                  TEXT,
         vistoria_realizada            TEXT,
         foco_encontrado               TEXT,
@@ -117,278 +118,181 @@ async function initSchema() {
         data_inicio      TIMESTAMP DEFAULT NOW()
       );
     `);
-    
-    // ─── CORREÇÃO E CRIAÇÃO DAS VIEWS DO SPRINT 3 ───────────────────────────
-    
-    // 1. Recriando a vw_resumo_aedes (Que estava faltando)
+
+
+    // Views Analíticas (Garantindo que existam no Banco)
     await pool.query(`
       CREATE OR REPLACE VIEW aedes.vw_resumo_aedes AS
       SELECT 
         COUNT(*) AS total_registros,
-        COUNT(CASE WHEN LOWER(vistoria_realizada) = 'sim' THEN 1 END) AS total_vistorias,
-        COUNT(CASE WHEN LOWER(foco_encontrado) = 'sim' THEN 1 END) AS total_focos,
-        COUNT(CASE WHEN LOWER(foco_encontrado) = 'sim' AND LOWER(foco_remediado) = 'sim' THEN 1 END) AS total_remediados
+        COUNT(CASE WHEN LOWER(TRIM(vistoria_realizada)) = 'sim' THEN 1 END) AS total_vistorias,
+        COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' THEN 1 END) AS total_focos,
+        COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) = 'sim' THEN 1 END) AS total_remediados
       FROM aedes.fato_vistorias;
     `);
 
-    // 2. Correção segura para a Pizza de Motivos de Não Vistoria (Evitando erro de escalar)
-    await pool.query(`
-      CREATE OR REPLACE VIEW aedes.vw_motivos_nao_vistoria AS
-      SELECT 
-        COALESCE(motivo::text, 'Não Informado') AS motivo,
-        COUNT(*) AS quantidade
-      FROM aedes.fato_vistorias,
-      LATERAL (
-        SELECT motivos_nao_vistoria AS motivo WHERE motivos_nao_vistoria IS NOT NULL AND motivos_nao_vistoria <> ''
-        UNION ALL
-        SELECT outros_motivos_nao_vistoria WHERE outros_motivos_nao_vistoria IS NOT NULL AND outros_motivos_nao_vistoria <> ''
-      ) AS sub
-      GROUP BY motivo;
-    `);
-
-    // 3. Correção segura para a Pizza de Motivos de Não Remediação
-    await pool.query(`
-      CREATE OR REPLACE VIEW aedes.vw_motivos_nao_remediacao AS
-      SELECT 
-        COALESCE(motivo::text, 'Não Informado') AS motivo,
-        COUNT(*) AS quantidade
-      FROM aedes.fato_vistorias,
-      LATERAL (
-        SELECT motivos_nao_remediacao AS motivo WHERE motivos_nao_remediacao IS NOT NULL AND motivos_nao_remediacao <> ''
-        UNION ALL
-        SELECT outros_motivos_nao_remediacao WHERE outros_motivos_nao_remediacao IS NOT NULL AND outros_motivos_nao_remediacao <> ''
-      ) AS sub
-      GROUP BY motivo;
-    `);
-
-    // 4. Locais de Foco
-    await pool.query(`   
-      DROP VIEW IF EXISTS aedes.vw_locais_foco;
-      CREATE VIEW aedes.vw_locais_foco AS
-      SELECT 
-        COALESCE(sub.local::text, 'Não Informado') AS locais_foco,
-        COUNT(*) AS quantidade
-      FROM aedes.fato_vistorias,
-      LATERAL (
-        SELECT locais_foco AS local WHERE locais_foco IS NOT NULL AND locais_foco <> ''
-        UNION ALL
-        SELECT outros_locais_foco AS local WHERE outros_locais_foco IS NOT NULL AND outros_locais_foco <> ''
-      ) AS sub
-      GROUP BY sub.local;
-    `);
-
-    // ─── SPRINT 4: VIEW MATERIALIZADA DE CERTIFICADOS (CONGELADA) ───────────
-    
-    // Criação segura da View Materializada (Puxando os dados novos da fato_vistorias com tratamento de nulos)
-    await pool.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'aedes' AND matviewname = 'mv_certificados_consolidados') THEN
-          EXECUTE '
-            CREATE MATERIALIZED VIEW aedes.mv_certificados_consolidados AS
-            SELECT 
-              UPPER(TRIM(unidade_nome)) AS unidade,
-              EXTRACT(MONTH FROM data_registro)::INTEGER AS mes,
-              EXTRACT(YEAR FROM data_registro)::INTEGER AS ano,
-              COALESCE(COUNT(CASE WHEN LOWER(vistoria_realizada) = ''sim'' THEN 1 END)::INTEGER, 0) AS total_vistorias,
-              COALESCE(
-                CASE 
-                  WHEN COUNT(DISTINCT EXTRACT(WEEK FROM data_registro)) >= 4 THEN true 
-                  ELSE false 
-                END, false
-              ) AS cobertura_semanal_completa,
-              COALESCE(
-                CASE 
-                  WHEN COUNT(CASE WHEN LOWER(foco_encontrado) = ''sim'' AND LOWER(foco_remediado) <> ''sim'' THEN 1 END) > 0 THEN true
-                  ELSE false 
-                END, false
-              ) AS focos_nao_remediados
-            FROM aedes.fato_vistorias
-            WHERE LOWER(vistoria_realizada) = ''sim''
-            GROUP BY UPPER(TRIM(unidade_nome)), EXTRACT(YEAR FROM data_registro), EXTRACT(MONTH FROM data_registro);
-          ';
-        END IF;
-      END $$;
-    `);
-    // Garante a criação do índice de ordenação rápida da view
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_mv_certificados_ordenacao 
-      ON aedes.mv_certificados_consolidados (ano DESC, mes DESC, unidade ASC);
-    `);
-
-    console.log("✅ Estrutura de tabelas, Views e View Materializada validadas com sucesso.");
-    
-    // 🟢 Inicializa o Schema do Recicla logo após validar o do Aedes
+    console.log("✅ Estrutura de tabelas e Views do Módulo Aedes sincronizadas.");
     await initReciclaSchema(); 
 
   } catch (err) {
     console.error("❌ Erro no initSchema:", err.message);
   }
 }
+
 /* =========================================================
-   ROTAS REQUISITADAS NO SPRINT 3
+   ⭐ ROTAS DO NOVO COMPONENTE DE AUDITORIA SEMANAL
 ========================================================= */
 
-// ─── ROTAS DO CENTRO OPERACIONAL (aedes-tecnico.html) ──────────────────────
-
-// 1. Matriz de Cobertura Semanal
-app.get("/api/aedes/cobertura-semanal", async (req, res) => {
+// 1. ROTA DE IDENTIFICAÇÃO DE INADIMPLÊNCIA E MÉTRICAS POR SEMANA DO MÊS (ATUALIZADA)
+app.get("/api/aedes/nao-enviados", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM aedes.vw_cobertura_semanal ORDER BY ano DESC, semana DESC`);
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Erro em /cobertura-semanal:", err.message);
-    res.status(500).json({ error: "Erro ao buscar matriz de cobertura." });
-  }
-});
+    const { ano, mes, semana_mes } = req.query;
+    if (!ano || !mes || !semana_mes) {
+      return res.status(400).json({ error: "Parâmetros 'ano', 'mes' e 'semana_mes' são obrigatórios." });
+    }
 
-// 2. Unidades Pendentes e Focos Não Remediados
-app.get("/api/aedes/unidades-pendentes", async (req, res) => {
-  try {
-    // Caso a view física retorne nula, criamos um fallback dinâmico seguro na query
-    const result = await pool.query(`
+    const a = parseInt(ano);
+    const m = parseInt(mes);
+    const s = parseInt(semana_mes);
+
+    // Define o intervalo de dias reais baseado na semana do mês escolhida
+    let diaInicio = 1 + (s - 1) * 7;
+    let diaFim = s * 7;
+    if (s === 4) {
+      // Se for a última semana do mês, estende até o último dia do mês correspondente
+      diaFim = new Date(a, m, 0).getDate();
+    }
+
+    const dataInicioStr = `${a}-${String(m).padStart(2, '0')}-${String(diaInicio).padStart(2, '0')} 00:00:00`;
+    const dataFimStr = `${a}-${String(m).padStart(2, '0')}-${String(diaFim).padStart(2, '0')} 23:59:59`;
+    const intervaloTexto = `${String(diaInicio).padStart(2, '0')}/${String(m).padStart(2, '0')} a ${String(diaFim).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+
+    // Query 1: Unidades que NÃO enviaram neste intervalo de datas
+    const sqlNaoEnviados = `
       SELECT 
-        unidade_id,
-        unidade_nome,
-        data_registro,
-        CASE WHEN LOWER(vistoria_realizada) <> 'sim' THEN 'Não Enviado/Não Vistoriado' ELSE 'Pendente de Remediação' END AS status_pendencia
+        u.unidade_id, u.nome_unidade,
+        f.nome AS focal_name, f.email AS focal_email
+      FROM aedes.unidades u
+      LEFT JOIN aedes.focal_unidade fu ON u.unidade_id = fu.unidade_id AND fu.ativo = true
+      LEFT JOIN aedes.focais f ON fu.focal_pk = f.focal_pk AND f.ativo = true
+      WHERE u.ativo = true
+        AND u.nome_unidade NOT IN (
+          SELECT DISTINCT unidade_nome 
+          FROM aedes.fato_vistorias 
+          WHERE data_registro >= $1::timestamp AND data_registro <= $2::timestamp AND unidade_nome IS NOT NULL
+        )
+      ORDER BY u.nome_unidade ASC;
+    `;
+
+   // Query 2: Contadores volumétricos + Detalhes de Focos e Não Remediações (ATUALIZADA)
+    const sqlMetricas = `
+      SELECT 
+        COUNT(*)::int AS qtd_entrou,
+        COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' THEN 1 END)::int AS qtd_focos,
+        COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) = 'sim' THEN 1 END)::int AS qtd_remediados,
+        
+        -- Detalhes das Unidades com Foco e situação
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'unidade', unidade_nome,
+              'remediado', LOWER(TRIM(foco_remediado)),
+              -- Captura a justificativa de não remediação se houver pendência
+              'motivo_nao_remediado', COALESCE(NULLIF(motivos_nao_remediacao, ''), NULLIF(outros_motivos_nao_remediacao, ''), '-')
+            )
+          ) FILTER (WHERE LOWER(TRIM(foco_encontrado)) = 'sim'), 
+          '[]'
+        ) AS lista_focos
       FROM aedes.fato_vistorias
-      WHERE LOWER(vistoria_realizada) <> 'sim' 
-         OR (LOWER(foco_encontrado) = 'sim' AND LOWER(foco_remediado) <> 'sim')
-    `);
-    res.json(result.rows);
+      WHERE data_registro >= $1::timestamp AND data_registro <= $2::timestamp;
+    `;
+
+    const resNaoEnviados = await pool.query(sqlNaoEnviados, [dataInicioStr, dataFimStr]);
+    const resMetricas = await pool.query(sqlMetricas, [dataInicioStr, dataFimStr]);
+    
+    const metricas = resMetricas.rows[0] || { qtd_entrou: 0, qtd_focos: 0, qtd_remediados: 0 };
+
+    res.json({
+      intervalo: intervaloTexto,
+      nao_enviados: resNaoEnviados.rows,
+      metricas: metricas
+    });
+
   } catch (err) {
-    console.error("Erro em /unidades-pendentes:", err.message);
-    res.status(500).json({ error: "Erro ao buscar pendências." });
+    console.error("❌ Erro na rota /api/aedes/nao-enviados:", err.message);
+    res.status(500).json({ error: "Erro interno ao processar auditoria.", detalhe: err.message });
   }
 });
 
-// ─── ROTAS DO CENTRO ANALÍTICO (aedes-painel.html) ─────────────────────────
+/* =========================================================
+   ⭐ RETORNO DAS ROTAS DAS VIEWS (DASHBOARD PIZZA/GRAFICOS)[cite: 1]
+========================================================= */
 
-// 3. KPIs de Resumo (Total vistorias, focos, remediados)
+// 2. Rota de Motivos de Não Vistoria (Gráfico de Pizza)[cite: 1]
+app.get("/api/aedes/views/motivos-nao-vistoria", async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM aedes.vw_motivos_nao_vistoria ORDER BY quantidade DESC`);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar view de motivos não vistoria." });
+  }
+});
+
+// 3. Rota de Motivos de Não Remediação (Gráfico de Pizza)[cite: 1]
+app.get("/api/aedes/views/motivos-nao-remediacao", async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM aedes.vw_motivos_nao_remediacao ORDER BY quantidade DESC`);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar view de motivos não remediação." });
+  }
+});
+
+// 4. Rota de Locais de Foco Encontrados (Gráfico de Barras/Pizza)[cite: 1]
+app.get("/api/aedes/views/locais-foco", async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM aedes.vw_locais_foco ORDER BY quantidade DESC`);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar view de locais de foco." });
+  }
+});
+
+// 5. KPIs Gerais do Resumo (Vistorias, Focos, Remediados)[cite: 1]
 app.get("/api/aedes/resumo", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM aedes.vw_resumo_aedes`);
     res.json(result.rows[0] || { total_registros: 0, total_vistorias: 0, total_focos: 0, total_remediados: 0 });
   } catch (err) {
-    console.error("Erro em /resumo:", err.message);
     res.status(500).json({ error: "Erro ao buscar resumo de KPIs." });
   }
 });
 
-/* ==========================================================================\
-   ROTAS ANALÍTICAS ATUALIZADAS (INTEGRAÇÃO HISTÓRICO EXCEL + LOTES API)
-========================================================================== */
-
-// 1. ROTA PRINCIPAL: KPIs, Tabelas de Outros e Ranking Global (Puxa tudo da Fato/View)
+// 6. Rota Limpa e Principal do Painel de Dados Operacionais[cite: 1]
 app.get("/api/aedes/painel-dados", async (req, res) => {
   try {
     const { unidade, ano, mes, semana } = req.query;
-
-    // USANDO AS COLUNAS REAIS DA SUA TABELA FATO_VISTORIAS (PLURAIS E EXCEL-COMPATÍVEIS)
     let query = `
-      SELECT 
-        origem,
-        lote_id,
-        data_registro,
-        ano,
-        mes,
-        semana,
-        unidade_id,
-        unidade_nome,
-        vistoria_realizada,
-        foco_encontrado,
-        foco_remediado,
-        motivos_nao_vistoria,
-        motivos_nao_remediacao,
-        locais_foco,
-        outros_motivos_nao_vistoria,
-        outros_motivos_nao_remediacao,
-        outros_locais_foco,
-        observacoes,
-        semana_acumulada
-      FROM aedes.fato_vistorias 
-      WHERE 1=1
+      SELECT origins, lote_id, data_registro, ano, mes, semana, unidade_id, unidade_nome, 
+             vistoria_realizada, foco_encontrado, foco_remediado, motivos_nao_vistoria, 
+             motivos_nao_remediacao, locais_foco, observacoes
+      FROM aedes.fato_vistorias WHERE 1=1
     `;
-    
     const params = [];
-    let paramIndex = 1;
+    let pIndex = 1;
 
-    // Filtros dinâmicos sanitizados
-    if (unidade && unidade.trim() !== "") { 
-      query += ` AND LOWER(unidade_nome) = LOWER($${paramIndex})`; 
-      params.push(unidade.trim()); 
-      paramIndex++; 
-    }
-    if (ano && ano.trim() !== "") { 
-      query += ` AND ano = $${paramIndex}`; 
-      params.push(parseInt(ano)); 
-      paramIndex++; 
-    }
-    if (mes && mes.trim() !== "") { 
-      query += ` AND mes = $${paramIndex}`; 
-      params.push(parseInt(mes)); 
-      paramIndex++; 
-    }
-    if (semana && semana.trim() !== "") { 
-      query += ` AND semana = $${paramIndex}`; 
-      params.push(parseInt(semana)); 
-      paramIndex++; 
-    }
+    if (unidade) { query += ` AND LOWER(unidade_nome) = LOWER($${pIndex})`; params.push(unidade.trim()); pIndex++; }
+    if (ano) { query += ` AND ano = $${pIndex}`; params.push(parseInt(ano)); pIndex++; }
+    if (mes) { query += ` AND mes = $${pIndex}`; params.push(parseInt(mes)); pIndex++; }
+    if (semana) { query += ` AND semana = $${pIndex}`; params.push(parseInt(semana)); pIndex++; }
 
-    // Ordenação padrão e limite seguro para não sobrecarregar a memória do Node
-    query += ` ORDER BY ano DESC, semana DESC LIMIT 25000`;
-
+    query += ` ORDER BY data_registro DESC LIMIT 25000`;
     const result = await pool.query(query, params);
-    
-    // Retorna o objeto esperado pelo seu aedes-painel.js
     res.json({ registros: result.rows });
   } catch (err) {
-    // Isto vai printar no terminal do Node o erro exato caso ainda falte algo
-    console.error("❌ Erro crítico na rota /api/aedes/painel-dados:", err.message);
-    res.status(500).json({ error: "Erro interno no servidor ao processar a base unificada.", detalhe: err.message });
+    res.status(500).json({ error: "Erro interno no servidor.", detalhe: err.message });
   }
 });
-
-// 2. ROTA DA LINHA DO TEMPO: Cobertura Cronológica Baseada na View ou Fato
-app.get("/api/aedes/cobertura-semanal", async (req, res) => {
-  try {
-    const { unidade, ano, mes, semana } = req.query;
-
-    // Se sua view 'vw_cobertura_semanal' já calcula em cima da fato_vistorias, usamos ela:
-    let query = `SELECT * FROM aedes.vw_cobertura_semanal WHERE 1=1`;
-    const params = [];
-    let paramIndex = 1;
-
-    if (unidade) { query += ` AND LOWER(unidade_nome) = LOWER($${paramIndex})`; params.push(unidade); paramIndex++; }
-    if (ano) { query += ` AND ano = $${paramIndex}`; params.push(parseInt(ano)); paramIndex++; }
-    if (mes) { query += ` AND mes = $${paramIndex}`; params.push(parseInt(mes)); paramIndex++; }
-    if (semana) { query += ` AND semana = $${paramIndex}`; params.push(parseInt(semana)); paramIndex++; }
-
-    query += ` ORDER BY ano DESC, semana ASC`;
-
-    const result = await pool.query(query, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Erro em cobertura-semanal:", err.message);
-    // Fallback de segurança caso a view quebre com strings vazias: busca agregada direto na Fato
-    try {
-      let fallbackQuery = `
-        SELECT ano, semana, COUNT(*) as registros,
-               SUM(CASE WHEN LOWER(vistoria_realizada) = 'sim' THEN 1 ELSE 0 END) as vistorias
-        FROM aedes.fato_vistorias
-        WHERE 1=1
-      `;
-      // (mesmos filtros aplicados ao fallback se necessário...)
-      fallbackQuery += ` GROUP BY ano, semana ORDER BY ano DESC, semana ASC`;
-      const fallbackResult = await pool.query(fallbackQuery);
-      return res.json(fallbackResult.rows);
-    } catch (fallbackErr) {
-      res.status(500).json({ error: "Erro ao gerar histórico linear." });
-    }
-  }
-});
-
 // 5. Exportações Fake/Estruturadas (CSV e PDF) para download no Frontend
 app.get("/api/aedes/export/csv", async (req, res) => {
   try {
@@ -626,511 +530,19 @@ app.get("/api/aedes/lotes", async (_req, res) => {
 });
 
 /* =========================================================
-   ROTAS GERAIS E RELATÓRIO DO PAINEL ANALÍTICO
+   DEMAIS ROTAS ACESSÓRIAS E RECURSOS
 ========================================================= */
-
 app.get("/api/unidades", async (_req, res) => {
   try {
-    const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades ORDER BY nome_unidade ASC`);
+    const result = await pool.query(`SELECT unidade_id, nome_unidade FROM aedes.unidades WHERE ativo = true ORDER BY nome_unidade ASC`);
     res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: "Erro ao buscar unidades." });
-  }
+  } catch (err) { res.status(500).json({ error: "Erro ao buscar unidades." }); }
 });
 
-/*app.get("/api/unidades", async (_req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT DISTINCT "Unidade" AS nome_unidade 
-      FROM aedes.excel_historico 
-      WHERE "Unidade" IS NOT NULL 
-      ORDER BY nome_unidade ASC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Erro na rota /api/unidades:", err.message);
-    res.status(500).json({ error: "Erro ao buscar unidades." });
-  }
-}); */
-
-app.get("/api/aedes/painel-dados", async (req, res) => {
-  try {
-    const query = `
-      SELECT
-        ano AS "Ano",
-        CASE mes
-          WHEN 1 THEN 'Janeiro'
-          WHEN 2 THEN 'Fevereiro'
-          WHEN 3 THEN 'Março'
-          WHEN 4 THEN 'Abril'
-          WHEN 5 THEN 'Maio'
-          WHEN 6 THEN 'Junho'
-          WHEN 7 THEN 'Julho'
-          WHEN 8 THEN 'Agosto'
-          WHEN 9 THEN 'Setembro'
-          WHEN 10 THEN 'Outubro'
-          WHEN 11 THEN 'Novembro'
-          WHEN 12 THEN 'Dezembro'
-        END AS "Mes_Nome",
-        unidade_nome AS "Unidade",
-
-        -- Correção: Se veio do Excel e o status geral aponta foco ou motivo, consideramos visitada
-        -- ou se o campo estiver explicitamente como 'sim'
-        CASE
-          WHEN LOWER(COALESCE(vistoria_realizada::text,'')) = 'sim'
-               OR foco_encontrado IS NOT NULL 
-               OR (motivos_nao_vistoria::text <> '[]' AND motivos_nao_vistoria IS NOT NULL)
-          THEN 1
-          ELSE 0
-        END AS visitada,
-
-        CASE
-          WHEN LOWER(COALESCE(foco_encontrado::text,'')) = 'sim'
-          THEN 1
-          ELSE 0
-        END AS foco_encontrado,
-
-        CASE
-          WHEN LOWER(COALESCE(foco_encontrado::text,'')) = 'sim'
-           AND LOWER(COALESCE(foco_remediado::text,'')) = 'sim'
-          THEN 1
-          ELSE 0
-        END AS foco_remediado,
-
-        CASE
-          WHEN LOWER(COALESCE(foco_encontrado::text,'')) = 'sim'
-           AND LOWER(COALESCE(foco_remediado::text,'')) <> 'sim'
-          THEN 1
-          ELSE 0
-        END AS foco_pendente,
-
-        -- Varre tanto a coluna principal (convertida para texto) quanto o campo de "outros" do Excel
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%acesso%'
-            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%acesso%'
-          THEN 1
-          ELSE 0
-        END AS nv_acesso,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%brigadista%'
-            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%brigadista%'
-          THEN 1
-          ELSE 0
-        END AS nv_brigadista,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%viatura%'
-            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%viatura%'
-          THEN 1
-          ELSE 0
-        END AS nv_viatura,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_vistoria::text,'')) LIKE '%esquecimento%'
-            OR LOWER(COALESCE(outros_motivos_nao_vistoria::text,'')) LIKE '%esquecimento%'
-          THEN 1
-          ELSE 0
-        END AS nv_esquecimento,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%treinamento%'
-            OR LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%capacitacao%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%treinamento%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%capacitacao%'
-          THEN 1
-          ELSE 0
-        END AS mnr_capacitacao,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%cloro%'
-            OR LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%larvicida%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%cloro%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%larvicida%'
-          THEN 1
-          ELSE 0
-        END AS mnr_larvicida,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%limpeza%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%limpeza%'
-          THEN 1
-          ELSE 0
-        END AS mnr_limpeza,
-
-        CASE
-          WHEN LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%cobertura%'
-            OR LOWER(COALESCE(motivos_nao_remediacao::text,'')) LIKE '%tampa%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%cobertura%'
-            OR LOWER(COALESCE(outros_motivos_nao_remediacao::text,'')) LIKE '%tampa%'
-          THEN 1
-          ELSE 0
-        END AS mnr_cobertura
-
-      FROM aedes.fato_vistorias
-    `;
-
-    const result = await pool.query(query);
-    res.json(result.rows);
-
-  } catch (err) {
-    console.error("❌ Erro no painel-dados:", err);
-    res.status(500).json({
-      error: "Erro interno ao processar o painel analítico."
-    });
-  }
-});
-
-
-/* ==========================================================================
-   ⭐ SOLUÇÃO temporária: consolidaremos na tabela fato_vistorias 
-========================================================================== */
-app.get("/api/aedes/consolidado", async (req, res) => {
-  try {
-    // Mapeia os campos reais descobertos na estrutura da tabela física
-    const query = `
-      SELECT 
-        id,
-        semana AS semana_contagem,
-        semana_acumulada AS periodo_semana,
-        ano,
-        data_registro AS data_real_envio,
-        unidade,
-        uv_sim,
-        uv_nao,
-        fe_sim,
-        fe_nao,
-        rm_sim,
-        rm_nao,
-        matricula,
-        focal_nome AS focal,
-        focal_email
-      FROM aedes.excel_portal 
-      ORDER BY semana DESC, unidade ASC;
-    `;
-    
-    const result = await pool.query(query);
-
-    res.json({
-      sucesso: true,
-      dados: result.rows
-    });
-  } catch (err) {
-    console.error("❌ Erro crítico na rota /api/aedes/consolidado:", err.message);
-    res.status(500).json({ 
-      sucesso: false, 
-      error: "Erro ao consultar a tabela física no banco de dados.",
-      details: err.message 
-    });
-  }
-});
-
-
-/* ==========================================================================
-   ROTA DO DOSSIÊ
-========================================================================== */
-app.get("/api/aedes/focal-dossie", async (req, res) => {
-  try {
-    const { unidade } = req.query;
-    if (!unidade) return res.status(400).json({ error: "Nome da unidade é obrigatório." });
-
-    const query = `
-      WITH ranking_unidades AS (
-        SELECT 
-          vi.unidade_nome,
-          DENSE_RANK() OVER (ORDER BY vi.unidade_nome ASC) as id_calculado
-        FROM aedes.vistorias_itens vi
-        WHERE vi.unidade_nome IS NOT NULL
-        GROUP BY vi.unidade_nome
-      )
-      SELECT f.nome, f.matricula, f.email
-      FROM aedes.focal_unidade fu
-      INNER JOIN aedes.focais f ON fu.focal_pk = f.focal_pk
-      INNER JOIN ranking_unidades ru ON fu.unidade_id = ru.id_calculado
-      WHERE LOWER(TRIM(ru.unidade_nome)) = LOWER(TRIM($1))
-        AND fu.ativo = true AND f.ativo = true
-      LIMIT 1;
-    `;
-
-    const result = await pool.query(query, [unidade.trim()]);
-    if (result.rows.length === 0) {
-      return res.json({ nome: null, matricula: null, email: null });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("❌ Erro em /api/aedes/focal-dossie:", err.message);
-    res.status(500).json({ error: "Erro ao buscar dados do focal técnico." });
-  }
-});
-
-/* ==========================================================================
-   SAÚDE DO SISTEMA
-========================================================================== */
-app.get("/api/health", (_req, res) => {
-  const dataBrasilia = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  res.json({ status: "ok", time: dataBrasilia });
-});
-
-// Tratadores Globais de Erro e Rotas Inexistentes
-app.use((_req, res) => res.status(404).json({ error: "Rota não encontrada no servidor." }));
-app.use((err, _req, res, _next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Erro crítico interno no servidor." });
-});
-
-// =========================================================================
-// MÓDULO EXTRA: GERAÇÃO DE RELATÓRIO EXECUTIVO EM PDF (ESTILO RMARKDOWN)
-// =========================================================================
-const fonts = {
-  Roboto: {
-    normal: 'Helvetica',
-    bold: 'Helvetica-Bold',
-    italics: 'Helvetica-Oblique',
-    bolditalics: 'Helvetica-BoldOblique'
-  }
-};
-
-const printer = new PdfPrinter(fonts);
-
-app.get("/api/aedes/relatorio-pdf", async (req, res) => {
-  try {
-    const { unidade, ano } = req.query;
-
-    // 1. Injeta a mesma lógica exata e precisa do seu endpoint "painel-dados"
-    let sql = `
-      SELECT 
-        COUNT(*) as total_registros,
-        SUM(CASE WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim' THEN 1 ELSE 0 END) as total_vistorias,
-        SUM(CASE WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim' AND LOWER(COALESCE(foco_encontrado,'')) = 'sim' THEN 1 ELSE 0 END) as total_focos,
-        SUM(CASE WHEN LOWER(COALESCE(vistoria_realizada,'')) = 'sim' AND LOWER(COALESCE(foco_encontrado,'')) = 'sim' AND LOWER(COALESCE(foco_remediado,'')) = 'sim' THEN 1 ELSE 0 END) as total_remediados
-      FROM aedes.fato_vistorias
-      WHERE 1=1
-    `;
-    const params = [];
-    let pIndex = 1;
-
-    // Filtros reativos baseados nos nomes de colunas que seu banco usa ('unidade_nome' e 'ano')
-    if (unidade && unidade.trim() !== "" && unidade !== "TODOS" && unidade !== "Todas as Unidades Operacionais" && unidade !== "TODAS") {
-      sql += ` AND LOWER(unidade_nome) = LOWER($${pIndex})`;
-      params.push(unidade.trim());
-      pIndex++;
-    }
-    if (ano && ano.trim() !== "" && ano !== "TODOS" && ano !== "Todos os Anos Combinados") {
-      sql += ` AND ano = $${pIndex}`;
-      params.push(parseInt(ano));
-      pIndex++;
-    }
-
-    const result = await pool.query(sql, params);
-    const dados = result.rows[0];
-
-    // Converte os resultados com segurança
-    const totalReg = parseInt(dados.total_registros || 0);
-    const totalVis = parseInt(dados.total_vistorias || 0);
-    const totalFoc = parseInt(dados.total_focos || 0);
-    const totalRem = parseInt(dados.total_remediados || 0);
-    
-    // Cálculo das taxas reais do programa
-    const txVistoria = totalReg > 0 ? ((totalVis / totalReg) * 100).toFixed(1) : "0.0";
-    const txRemediacao = totalFoc > 0 ? ((totalRem / totalFoc) * 100).toFixed(1) : "0.0";
-
-    const labelUnidade = params[0] ? unidade : 'Todas as Unidades';
-    const labelAno = ano && ano !== "TODOS" ? ano : 'Histórico Consolidado';
-
-    // 2. Definição do documento estruturado em PDF (Estilo RMarkdown/Flatly)
-    const docDefinition = {
-      pageSize: 'A4',
-      pageMargins: [40, 60, 40, 60],
-      content: [
-        { text: 'PROGRAMA AEDES — CENTRO ANALÍTICO CEDAE', style: 'header' },
-        { text: `Sumário de Diagnóstico Técnico e Operacional | Filtros: ${labelUnidade} — ${labelAno}`, style: 'subheader' },
-        { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, linewidth: 1.5, lineColor: '#0056b3' }] },
-        { text: '\n' },
-
-        { text: '1. Resumo Executivo dos Indicadores', style: 'sectionHeader' },
-        {
-          text: `Este documento apresenta o sumário analítico automatizado das atividades de monitoramento vetorial. No escopo selecionado pelos filtros aplicados em tempo real no painel corporativo, foram computados e processados um total de ${totalReg.toLocaleString('pt-BR')} registros de formulários de campo. Esta amostragem resultou em uma taxa de cobertura de vistorias efetivadas com sucesso de ${txVistoria}%.`,
-          style: 'bodyText'
-        },
-        { text: '\n' },
-
-        // Tabela de Métricas Alinhada
-        {
-          style: 'tableExample',
-          table: {
-            widths: ['*', '*'],
-            body: [
-              [
-                { text: 'Indicador Operacional', style: 'tableHeader' }, 
-                { text: 'Métrica Quantitativa', style: 'tableHeader' }
-              ],
-              ['Total de Registros Avaliados (Base Histórica + API)', `${totalReg.toLocaleString('pt-BR')} formulários`],
-              ['Vistorias Efetivadas com Sucesso (visitada)', `${totalVis.toLocaleString('pt-BR')} locais`],
-              ['Focos de Vetores Detectados em Inspeção', { text: `${totalFoc.toLocaleString('pt-BR')} ocorrências`, color: '#ef4444', bold: true }],
-              ['Focos Remediados pelas Equipes de Campo', `${totalRem.toLocaleString('pt-BR')} ações`],
-              ['Taxa de Eficácia de Remediação Preventiva', `${txRemediacao}% das ocorrências`]
-            ]
-          },
-          layout: {
-            fillColor: (rowIndex) => (rowIndex === 0) ? '#0056b3' : (rowIndex % 2 === 0) ? '#f8fafc' : null,
-            hLineColor: () => '#e2e8f0',
-            vLineColor: () => '#e2e8f0'
-          }
-        },
-        { text: '\n' },
-
-        { text: '2. Diagnóstico Técnico Operacional', style: 'sectionHeader' },
-        {
-          text: [
-            { text: 'Análise Crítica: ', bold: true },
-            `A relação de dados consolidados reflete diretamente o comportamento estatístico mapeado no painel de controle. `,
-            totalFoc > 0 ? `Com um volume de ${totalFoc} focos identificados pelas inspeções operacionais, a equipe conseguiu realizar ações de bloqueio e remediação imediata em ${totalRem} desses pontos. ` : 'Nenhum foco crítico latente foi retido sob os critérios do escopo selecionado. ',
-            `Historicamente, os gargalos operacionais e reincidências de focos não remediados concentram-se em fatores estruturais complexos, tais como calhas obstruídas de difícil acesso, reservatórios operacionais elevados sem cobertura adequada ou focos naturais volumosos em áreas de vegetação.`
-          ],
-          style: 'bodyText'
-        },
-        { text: '\n' },
-
-        { text: '3. Recomendações Técnicas', style: 'sectionHeader' },
-        {
-          ul: [
-            'Reforçar campanhas de limpeza em calhas e coberturas nos períodos que antecedem as semanas epidemiológicas críticas;',
-            'Padronizar as vistorias digitais via API para reduzir a incidência de campos não-informados no banco;',
-            'Garantir a distribuição contínua de insumos larvicidas para as frentes de trabalho das unidades com maiores taxas de positividade.'
-          ],
-          style: 'bodyText'
-        }
-      ],
-      styles: {
-        header: { fontSize: 15, bold: true, color: '#0056b3', letterSpacing: 0.5 },
-        subheader: { fontSize: 9, color: '#64748b', italics: true, margin: [0, 2, 0, 8] },
-        sectionHeader: { fontSize: 12, bold: true, color: '#0f172a', margin: [0, 12, 0, 6] },
-        bodyText: { fontSize: 10, color: '#334155', leading: 1.5, textAlign: 'justify' },
-        tableHeader: { bold: true, fontSize: 10, color: '#ffffff', alignment: 'left', margin: [5, 4, 5, 4] },
-        tableExample: { margin: [0, 5, 0, 15], fontSize: 9.5, color: '#334155' }
-      }
-    };
-
-    // 3. Transforma a estrutura e responde via Stream binário para download imediato
-    const pdfDoc = printer.createPdfKitDocument(docDefinition);
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=relatorio-aedes-${ano || 'consolidado'}.pdf`);
-    
-    pdfDoc.pipe(res);
-    pdfDoc.end();
-
-  } catch (err) {
-    console.error("❌ Erro ao fabricar PDF analítico:", err);
-    res.status(500).json({ error: "Falha ao gerar documento PDF automático." });
-  }
-});
-
-/* ==========================================================================
-   MODULO DE INTEGRAÇÃO - RECICLA CEDAE FASE 2 (SCHEMA: RECICLA)
-   CRS 2026 · Rotas Analíticas e de Consulta
-   ========================================================================== */
-// ... suas outras configurações do server.js ...
-app.use(express.json({ limit: "10mb" }));
-
-// 🟢 COLE O BLOCO DAS ROTAS DO RECICLA EXATAMENTE AQUI:
-
-app.get("/api/recicla/dashboard-dados", async (req, res) => {
-  try {
-    const queryKpis = `
-      SELECT 
-        (SELECT COUNT(*) FROM recicla.recicla2_cadastro)::int AS total_participantes,
-        COALESCE(SUM(pesagem), 0)::float AS somatorio_total
-      FROM recicla.recicla2_pesagens;
-    `;
-    const resKpis = await pool.query(queryKpis);
-
-    const queryDiretorias = `
-      SELECT 
-        COALESCE(NULLIF(TRIM(c.diretoria), ''), 'DMA / CRS') AS diretoria,
-        SUM(p.pesagem)::float AS "pesoTotal",
-        COUNT(DISTINCT p.participante_id)::int AS "totalParticipantes"
-      FROM recicla.recicla2_cadastro c
-      INNER JOIN recicla.recicla2_pesagens p ON c.id = p.participante_id
-      GROUP BY c.diretoria
-      ORDER BY "pesoTotal" DESC;
-    `;
-    const resDiretorias = await pool.query(queryDiretorias);
-
-    const queryReciclados = `
-      SELECT 
-        TO_CHAR(data_pesagem, 'YYYY-MM-DD') AS "Data",
-        'Papel/Reciclável' AS "Material",
-        SUM(pesagem)::float AS "Quantidade"
-      FROM recicla.recicla2_pesagens
-      GROUP BY data_pesagem
-      ORDER BY data_pesagem ASC
-      LIMIT 100;
-    `;
-    const resReciclados = await pool.query(queryReciclados);
-
-    res.json({
-      sucesso: true,
-      dados: {
-        kpis: resKpis.rows[0] || { total_participantes: 0, somatorio_total: 0 },
-        dadosDiretorias: resDiretorias.rows,
-        dadosReciclados: resReciclados.rows
-      }
-    });
-  } catch (err) {
-    console.error("❌ Erro na rota /api/recicla/dashboard-dados:", err.message);
-    res.status(500).json({ sucesso: false, error: "Erro interno no servidor." });
-  }
-});
-
-// Rota de participante individual
-app.get("/api/recicla/participante", async (req, res) => {
-  try {
-    const { id } = req.query;
-    if (!id) {
-      return res.status(400).json({ sucesso: false, error: "O parâmetro ID é obrigatório para consulta." });
-    }
-
-    const query = `
-      SELECT 
-        c.id, 
-        c.nome, 
-        COALESCE(NULLIF(TRIM(c.diretoria), ''), 'DMA / CRS') AS diretoria, 
-        COALESCE(SUM(p.pesagem), 0)::float AS somatorio_peso
-      FROM recicla.recicla2_cadastro c
-      LEFT JOIN recicla.recicla2_pesagens p ON c.id = p.participante_id
-      WHERE c.id = $1
-      GROUP BY c.id, c.nome, c.diretoria;
-    `;
-
-    const result = await pool.query(query, [parseInt(id)]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ sucesso: false, error: "Colaborador não localizado no banco de dados." });
-    }
-
-    res.json({
-      sucesso: true,
-      dados: result.rows[0]
-    });
-  } catch (err) {
-    console.error(`❌ Erro em /api/recicla/participante:`, err.message);
-    res.status(500).json({ sucesso: false, error: "Erro interno do servidor." });
-  }
-});
-
-// INICIALIZAÇÃO DO SERVIDOR
-// =========================================================================
+app.get("/api/health", (_req, res) => { res.json({ status: "ok", time: new Date().toLocaleString("pt-BR") }); });
+app.use((_req, res) => res.status(404).json({ error: "Rota não encontrada." }));
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
-  
-  // Executa a inicialização do banco de dados em segundo plano de forma segura
-  initSchema()
-    .then(() => {
-      console.log("🔋 Banco de dados totalmente sincronizado.");
-    })
-    .catch((err) => {
-      console.error("❌ Falha crítica ao inicializar esquemas no banco:", err.message);
-    });
+  initSchema().then(() => console.log("🔋 Banco de dados totalmente sincronizado."));
 });

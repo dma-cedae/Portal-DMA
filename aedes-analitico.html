@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAINEL ANALÍTICO | DMA</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --sidebar-width: 260px;
+      --dark-blue: #001d3d;
+      --teal-cedae: #0f766e;
+      --border-color: #e2e8f0;
+      --bg-gray: #f8fafc;
+      --danger-red: #ef4444;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: var(--bg-gray); display: flex; min-height: 100vh; }
+    
+    /* --- SIDEBAR --- */
+    .sidebar { 
+      width: var(--sidebar-width); background: var(--dark-blue); color: white; 
+      position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 100; 
+      box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
+    }
+    .sidebar__header { padding: 25px 20px; background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 15px; }
+    .logo-dma-estilizado { 
+      width: 45px; height: 45px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); 
+      border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+      color: white; font-weight: 900; font-size: 1.2rem; border: 2px solid rgba(255,255,255,0.2); 
+    }
+    .brand-name { display: flex; flex-direction: column; }
+    .brand-name b { font-size: 1.1rem; color: white; }
+    .brand-name span { font-size: 0.65rem; color: #22c55e; text-transform: uppercase; font-weight: bold; }
+    .sidebar__nav { flex: 1; padding: 20px 0; display: flex; flex-direction: column; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 25px; color: rgba(255,255,255,0.6); text-decoration: none; transition: 0.2s; font-size: 0.95rem; }
+    .nav-item:hover, .nav-item.active { color: white; background: rgba(255,255,255,0.05); border-left: 4px solid #22c55e; }
+
+    /* Main Content */
+    .main-content { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); padding: 40px; }
+    .page-header { margin-bottom: 30px; }
+    
+    .control-bar { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; gap: 15px; margin-bottom: 25px; align-items: center; }
+    .input-control { padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600; }
+    .btn-search { background: var(--teal-cedae); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    
+    .grid-dashboard { display: grid; grid-template-columns: 1fr 2fr; gap: 25px; margin-bottom: 25px; }
+    .card { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); }
+    
+    .tabela-report { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .tabela-report th { background: #f8fafc; padding: 12px; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid var(--border-color); }
+    .tabela-report td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    .badge-alert { background: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <div class="logo-dma-estilizado">DMA</div>
+      <div class="brand-name"><span>DEPARTAMENTO DE</span><b>MEIO AMBIENTE</b></div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="./area-tecnica.html" class="nav-item"><i class="fas fa-shield-alt"></i> Histórico de Registros</a>
+      <a href="./aedes-tecnico.html" class="nav-item active"><i class="fas fa-bug"></i> Módulo Aedes</a>
+       <a href="./aedes-analitico.html" class="nav-item active"><i class="fas fa-bug"></i> Pendências</a>
+      
+      <a href="./recicla-fase1.html" class="nav-item"><i class="fas fa-recycle"></i> Recicla fase 1</a>
+      <a href="./recicla-fase2.html" class="nav-item"><i class="fas fa-recycle"></i> Recicla fase 2</a>
+      <a href="./index.html" class="nav-item" style="margin-top: auto; color: #ff4d4d; border-left: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    </nav>
+  </aside>
+
+
+  <main class="main-content">
+    <header class="page-header">
+      <h1>Controle de Não envios</h1>
+      <p>Identificação de unidades operacionais com pendência de envio semanal e focos não remediados.</p>
+    </header>
+
+   <section class="control-bar">
+      <label for="txtAno">Ano:</label>
+      <input type="number" id="txtAno" class="input-control" value="2026" style="width: 90px;">
+      
+      <label for="selectMes">Mês:</label>
+      <select id="selectMes" class="input-control">
+        <option value="1">Janeiro</option>
+        <option value="2">Fevereiro</option>
+        <option value="3">Março</option>
+        <option value="4">Abril</option>
+        <option value="5">Maio</option>
+        <option value="6">Junho</option>
+        <option value="7" selected>Julho</option>
+        <option value="8">Agosto</option>
+        <option value="9">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+      </select>
+
+      <label for="selectSemanaMes">Semana do Mês:</label>
+      <select id="selectSemanaMes" class="input-control">
+        <option value="1">Semana 1 (Dias 01 a 07)</option>
+        <option value="2">Semana 2 (Dias 08 a 14)</option>
+        <option value="3">Semana 3 (Dias 15 a 21)</option>
+        <option value="4">Semana 4 (Dias 22 ao Fim)</option>
+      </select>
+      
+      <button id="btnProcessar" class="btn-search"><i class="fas fa-sync"></i> Processar Auditoria</button>
+      <span id="lblIntervaloVigente" style="margin-left: auto; font-weight: 700; color: var(--teal-cedae); background: #f0fdfa; padding: 8px 12px; border-radius: 6px; border: 1px dashed var(--teal-cedae);">Período: --/-- a --/--</span>
+    </section>
+
+    <div class="grid-dashboard">
+      <div class="card" style="display: flex; flex-direction: column; gap: 15px;">
+        <div>
+          <h3>Inadimplência Atual</h3>
+          <div style="font-size: 2.5rem; font-weight: bold; color: var(--danger-red); margin-top: 5px;" id="lblTotalPendentes">0</div>
+          <p style="color: #64748b; font-size: 0.85rem;">Unidades Não Entregaram</p>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid var(--border-color);">
+        
+        <!-- KPIs Volumétricos -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+          <div style="background: #f8fafc; padding: 10px; border-radius: 8px;">
+            <div style="font-weight: bold; font-size: 1.2rem; color: #0f172a;" id="lblQtdEntrou">0</div>
+            <span style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: bold;">Entregues</span>
+          </div>
+          <div style="background: #fff5f5; padding: 10px; border-radius: 8px;">
+            <div style="font-weight: bold; font-size: 1.2rem; color: #c53030;" id="lblQtdFocos">0</div>
+            <span style="font-size: 0.65rem; text-transform: uppercase; color: #9b2c2c; font-weight: bold;">Com Foco</span>
+          </div>
+          <div style="background: #f0fdf4; padding: 10px; border-radius: 8px;">
+            <div style="font-weight: bold; font-size: 1.2rem; color: #22c55e;" id="lblQtdRemediados">0</div>
+            <span style="font-size: 0.65rem; text-transform: uppercase; color: #15803d; font-weight: bold;">Remediados</span>
+          </div>
+        </div>
+
+        <!-- Container de Unidades Positivas e Motivos de Não Remediação -->
+        <div id="wrapperListaFocos" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); display: none;">
+          <h4 style="font-size: 0.8rem; text-transform: uppercase; color: #334155; margin-bottom: 8px;"><i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Focos & Remediações da Semana</h4>
+          <div id="listaUnidadesComFoco" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;">
+             <!-- Injetado dinamicamente via JS -->
+          </div>
+        </div>
+
+        <div style="max-width: 100%; margin-top: 5px;">
+          <canvas id="chartPendencias"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Lista de Unidades Inadimplentes</h3>
+        <table class="tabela-report">
+          <thead>
+            <tr>
+              <th>ID Unidade</th>
+              <th>Nome da Unidade Operacional</th>
+              <th>Responsável Técnico (Focal)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="corpoTabelaPendentes">
+            <tr>
+              <td colspan="4" style="text-align:center; color:#94a3b8;">Defina o ano e semana para processar a verificação.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="./js/pages/aedes-analitico.js" type="module"></script>
+</body>
+</html>

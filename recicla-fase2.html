@@ -13,11 +13,8 @@
 
   <style>
     /* ==========================================================================
-       DESIGN TOKENS — Identidade "Coleta Seletiva"
-       O azul CEDAE ancora a marca; verde, amarelo e marrom seguem o padrão
-       de cores da coleta seletiva (papel, vidro, metal e orgânico), que é a
-       própria linguagem do programa Recicla CEDAE.
-       ========================================================================== */
+        DESIGN TOKENS — Identidade "Coleta Seletiva"
+        ========================================================================== */
     :root{
       --azul-cedae: #0B4C8C;
       --azul-cedae-escuro: #073A6D;
@@ -74,16 +71,6 @@
       letter-spacing:0.02em;
     }
     .topbar__right-logos{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .cedae-saude-brand-box{
-      font-size:0.68rem;
-      font-weight:700;
-      color: var(--azul-cedae);
-      background: rgba(11,76,140,0.07);
-      border:1px solid rgba(11,76,140,0.18);
-      padding:5px 10px;
-      border-radius:20px;
-      letter-spacing:0.02em;
-    }
     .topbar__back-link{
       font-size:0.78rem;
       font-weight:700;
@@ -103,7 +90,7 @@
       background: linear-gradient(135deg, var(--azul-cedae-escuro) 0%, var(--azul-cedae) 62%, var(--azul-cedae-claro) 100%);
       position: relative;
       overflow:hidden;
-      padding: 56px 32px 0;
+      padding: 56px 32px 48px;
     }
     .hero-tech::before{
       content:"";
@@ -145,37 +132,6 @@
       margin:0;
     }
 
-    /* Legenda de coleta seletiva — elemento assinatura da página */
-    .legenda-coleta{
-      margin-top:26px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-    }
-    .legenda-item{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      background: rgba(255,255,255,0.1);
-      border:1px solid rgba(255,255,255,0.22);
-      padding:7px 12px 7px 8px;
-      border-radius:20px;
-      font-size:0.74rem;
-      font-weight:600;
-      color:#fff;
-    }
-    .ponto{
-      width:11px; height:11px;
-      border-radius:50%;
-      flex-shrink:0;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
-    }
-    .ponto--azul{ background: #fff; }
-    .ponto--verde{ background: var(--verde-vidro); }
-    .ponto--amarelo{ background: var(--amarelo-metal); }
-    .ponto--marrom{ background: var(--marrom-organico); }
-    
-
     .hero-tech__visual{
       display:flex; align-items:center; justify-content:center;
       position:relative;
@@ -188,30 +144,25 @@
     }
     .hero-selo-img{ width:180px; position:relative; filter: drop-shadow(0 12px 24px rgba(0,0,0,0.25)); }
 
-    /* Cartão de KPIs flutuando sobre o hero */
+    /* Cartão único de KPIs (Sede / Laranjal / Consolidado) */
     .hero-tech__kpi-section{ margin-top:40px; }
     .kpi-dashboard-grid{
       background: var(--creme-card);
-      border-radius: var(--raio) var(--raio) 0 0;
+      border-radius: var(--raio);
       box-shadow: var(--sombra);
       display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+      grid-template-columns: repeat(3, 1fr);
       overflow:hidden;
-      transform: translateY(1px);
     }
     .kpi-tech-card{
-      padding:24px 26px;
+      padding:22px 26px;
       display:flex;
       flex-direction:column;
       gap:6px;
-      border-left:4px solid var(--verde-vidro);
-      border-bottom: 4px solid transparent;
+      border-left:4px solid var(--azul-cedae);
+      border-right:1px solid var(--linha);
     }
-    .kpi-tech-card + .kpi-tech-card{ border-left-color: var(--amarelo-metal); border-left-width:1px; border-left:1px solid var(--linha); position:relative; }
-    .kpi-tech-card + .kpi-tech-card::before{
-      content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background: var(--amarelo-metal);
-    }
-    .kpi-tech-card__icon{ font-size:1.3rem; }
+    .kpi-tech-card:last-child{ border-right:none; }
     .kpi-tech-card__label{
       font-size:0.72rem;
       font-weight:700;
@@ -220,17 +171,15 @@
       color: var(--tinta-suave);
     }
     .kpi-tech-card__value{
-      font-size:1.9rem;
+      font-size:1.7rem;
       font-weight:700;
       color: var(--tinta);
     }
 
-    #fase2-db-status{
-      text-align:center;
-      font-size:0.72rem;
-      font-weight:600;
-      color: rgba(255,255,255,0.65);
-      padding: 10px 0 18px;
+    @media (max-width: 720px){
+      .kpi-dashboard-grid{ grid-template-columns: 1fr; }
+      .kpi-tech-card{ border-right:none; border-bottom:1px solid var(--linha); }
+      .kpi-tech-card:last-child{ border-bottom:none; }
     }
 
     /* ---------- MAIN ---------- */
@@ -246,11 +195,6 @@
     .secao-titulo{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
     .secao-titulo h2{ font-size:1.3rem; font-weight:700; color:var(--tinta); }
     .secao-titulo p{ margin:6px 0 0; font-size:0.85rem; color:var(--tinta-suave); max-width:520px; }
-    .dma-tag{
-      font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;
-      color: var(--verde-vidro); background: rgba(47,125,79,0.1); border:1px solid rgba(47,125,79,0.25);
-      padding:5px 12px; border-radius:20px; white-space:nowrap;
-    }
 
     .glass-panel{
       background: var(--creme-card);
@@ -288,70 +232,51 @@
       color: var(--azul-cedae); font-size:0.75rem; flex-shrink:0;
     }
 
-    /* Gráficos */
+    /* Gráficos: Sede e Laranjal lado a lado, Geral embaixo centralizado */
     .graficos-grid {
       display: flex;
-      justify-content: center;   /* Centraliza horizontalmente */
-      width: 100%;
+      flex-direction: column;
       gap: 20px;
+      width: 100%;
     }
-
+    .graficos-grid__linha-unidades {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+    .graficos-grid__linha-geral {
+      display: flex;
+      justify-content: center;
+    }
+    .graficos-grid__linha-geral .grafico-bloco-real {
+      width: 100%;
+      max-width: 460px;
+    }
     .grafico-bloco-real {
       background: var(--creme-card);
       border: 1px solid var(--linha);
       border-radius: var(--raio);
-      padding: 24px;              /* Aumentado levemente para dar mais respiro */
-      
-      /* Ajustes para deixar o card maior e centralizado */
-      width: 100%;                
-      max-width: 800px;           /* Aumentado de 500px para 800px */
-      margin: 0 auto;
+      padding: 20px 16px 8px;
       box-sizing: border-box;
+      display:flex;
+      flex-direction:column;
+      min-height: 400px;
     }
-
-    /* Garante que a div onde o JavaScript renderiza o gráfico ocupe 100% da largura */
-    #chart-recicla-diretorias {
-      width: 100%;
-      min-height: 400px;          /* Define uma altura mínima maior para o gráfico crescer proporcionalmente */
-    }
-
     .grafico-bloco-real h4 {
-      text-align: center; 
-      font-size: 1rem;            /* Aumentado o tamanho do título para acompanhar o novo tamanho do gráfico */
+      text-align: center;
+      font-size: 1rem;
       font-weight: 700;
-      color: var(--tinta); 
-      margin-bottom: 20px; 
+      color: var(--tinta);
+      margin-bottom: 4px;
       letter-spacing: 0.01em;
     }
-
-
-    .painel-titulo{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; gap:10px; flex-wrap:wrap; }
-    .painel-titulo h2{ font-size:1.1rem; font-weight:700; color:var(--tinta); display:flex; align-items:center; gap:8px; }
-
-    .tech-table{ width:100%; border-collapse:collapse; }
-    .tech-table thead th{
-      text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
-      color: var(--tinta-suave); border-bottom:2px solid var(--linha); padding:8px 6px;
+    .grafico-bloco-real > div[id^="chart-"]{
+      flex: 1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
-    .tech-table tbody td{ padding:10px 6px; border-bottom:1px solid var(--linha); font-size:0.85rem; color:var(--tinta); }
-    .tech-table tbody tr:last-child td{ border-bottom:none; }
-    .table-container-responsive{ overflow-x:auto; }
-
-    /* Cartões de categorias de coleta (substitui os brindes) */
-    .categorias-coleta-grid{ display:grid; gap:12px; }
-    .card-categoria{
-      display:flex; align-items:center; gap:14px;
-      background: var(--creme);
-      border:1px solid var(--linha);
-      border-radius:10px;
-      padding:12px 14px;
-    }
-    .card-categoria__ponto{
-      width:38px; height:38px; border-radius:50%; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center; color:#fff; font-size:1rem;
-    }
-    .card-categoria__texto h4{ font-size:0.88rem; font-weight:700; color:var(--tinta); }
-    .card-categoria__texto p{ margin:2px 0 0; font-size:0.76rem; color:var(--tinta-suave); line-height:1.4; }
 
     /* Console de consulta */
     .search-console-card{
@@ -364,15 +289,18 @@
     }
     .search-console-card h2{ color:#fff; }
     .input-glow-wrapper{
-      display:flex; gap:10px; max-width:460px; margin:0 auto; flex-wrap:wrap; justify-content:center;
+      display:flex; gap:10px; max-width:540px; margin:0 auto; flex-wrap:wrap; justify-content:center;
     }
-    .input-glow-wrapper input{
-      flex:1; min-width:220px;
+    .input-glow-wrapper input,
+    .input-glow-wrapper select {
+      flex:1; min-width:180px;
       padding:12px 16px; border-radius:10px; border:none;
       font-family:'Inter',sans-serif; font-size:0.88rem;
       background: rgba(255,255,255,0.95); color: var(--tinta);
     }
-    .input-glow-wrapper input:focus{ outline:2px solid var(--amarelo-metal); }
+    .input-glow-wrapper input:focus,
+    .input-glow-wrapper select:focus{ outline:2px solid var(--amarelo-metal); }
+    
     .btn--neon-action{
       background: var(--amarelo-metal); color: #2b1c05;
       border:none; padding:12px 20px; border-radius:10px;
@@ -389,17 +317,9 @@
       text-align:center;
     }
 
-    @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
-
     @media (max-width: 860px){
       .hero-tech__main-row{ grid-template-columns:1fr; }
       .hero-tech__visual{ display:none; }
-      .graficos-grid{ grid-template-columns:1fr; }
-    }
-
-    @media (prefers-reduced-motion: reduce){
-      html{ scroll-behavior:auto; }
-      *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
     }
   </style>
 </head>
@@ -418,9 +338,6 @@
     </div>
 
     <div class="topbar__right-logos">
-     <!-- <div class="cedae-saude-brand-box"><span>DMA</span></div>
-      <div class="cedae-saude-brand-box"><span>Assessoria de Meio Ambiente</span></div>
-      <div class="cedae-saude-brand-box"><span>DSU</span></div> -->
       <a href="index.html" class="topbar__back-link">
         <i class="fa-solid fa-home"></i> Portal DMA
       </a>
@@ -428,28 +345,19 @@
   </header>
 
   <!-- ==========================================================================
-       HERO — Apresentação Institucional + Legenda de Coleta Seletiva + KPIs
+       HERO
        ========================================================================== -->
   <section class="hero-tech">
     <div class="hero-tech__wrapper">
       <div class="hero-tech__main-row">
         <div class="hero-tech__content">
           <span class="hero-pretitle">Programa de Reciclagem Institucional 2026</span>
-          <h2 class="hero-main-title">RECICLA CEDAE — Prédio Sede</h2>
+          <h2 class="hero-main-title">RECICLA CEDAE</h2>
           <p class="hero-description">
             O programa RECICLA CEDAE promove a conscientização e a educação ambiental,
             incentivando a destinação correta dos resíduos recicláveis e orgânicos gerados
             pelos colaboradores no dia a dia da Companhia.
           </p>
-<!--   ADICIONAREMOS ESSE BLOCO QUANDO TIVERMOS OS DADOS DA DISTRIBUIÇÃO DE MATERIAS -- PODEMOS COLOCAR RELAÇÃO DE MATERIAL COM SITUAÇÃO EVITADA 
-          <div class="legenda-coleta">
-            <span class="legenda-item"><span class="ponto ponto--azul"></span> Papel &amp; Papelão</span>
-            <span class="legenda-item"><span class="ponto ponto--verde"></span> Vidro</span>
-            <span class="legenda-item"><span class="ponto ponto--amarelo"></span> Metal</span>
-            <span class="legenda-item"><span class="ponto ponto--marrom"></span> Orgânico</span>
-            <span class="legenda-item"><span class="ponto ponto--azul"></span> Plástico</span>
-            <span class="legenda-item"><span class="ponto ponto--amarelo"></span> Óleo de Cozinha</span>
-          </div> -->
         </div>
 
         <div class="hero-tech__visual">
@@ -459,24 +367,33 @@
         </div>
       </div>
 
+      <!-- KPIs em um único painel: Sede, Laranjal e Consolidado Geral -->
       <div class="hero-tech__kpi-section">
         <div class="kpi-dashboard-grid">
-          <div class="kpi-tech-card">
-            <span class="kpi-tech-card__icon"></span>
-            <span class="kpi-tech-card__label">Resíduos Reciclados</span>
-            <div class="kpi-tech-card__value" id="kpi-total-peso">—</div>
+
+          <!-- Prédio Sede -->
+          <div class="kpi-tech-card" style="border-left-color: var(--azul-cedae);">
+            <span class="kpi-tech-card__label">Prédio Sede</span>
+            <div class="kpi-tech-card__value" id="kpi-sede-peso">— kg</div>
+            <span style="font-size:0.75rem; color:var(--tinta-suave);" id="kpi-sede-part">— participantes</span>
           </div>
-          <div class="kpi-tech-card">
-            <span class="kpi-tech-card__icon"></span>
-            <span class="kpi-tech-card__label">Participantes Ativos</span>
-            <div class="kpi-tech-card__value" id="kpi-participantes">—</div>
+
+          <!-- Laranjal -->
+          <div class="kpi-tech-card" style="border-left-color: var(--verde-vidro);">
+            <span class="kpi-tech-card__label">Laranjal</span>
+            <div class="kpi-tech-card__value" id="kpi-laranjal-peso">— kg</div>
+            <span style="font-size:0.75rem; color:var(--tinta-suave);" id="kpi-laranjal-part">— participantes</span>
           </div>
+
+          <!-- Consolidado Geral -->
+          <div class="kpi-tech-card" style="border-left-color: var(--amarelo-metal);">
+            <span class="kpi-tech-card__label">Total Consolidado Geral</span>
+            <div class="kpi-tech-card__value" id="kpi-total-peso">— kg</div>
+            <span style="font-size:0.75rem; color:var(--tinta-suave);" id="kpi-participantes">— participantes</span>
+          </div>
+
         </div>
       </div>
-
-     <!--<div id="fase2-db-status">
-        <i class="fa-solid fa-spinner fa-spin"></i> Conectando à infraestrutura de dados...
-      </div> --> 
     </div>
   </section>
 
@@ -513,48 +430,62 @@
         </a>
       </div>
     </section>
- <!-- Consulta Individual -->
+
+    <!-- Consulta Individual (Única com seletor de Local) -->
     <section class="search-console-card" id="consulta">
-      <h2 style="font-size:1.4rem; font-weight:700; margin-bottom:8px;">
+      <h2 style="font-size:1.4rem; font-weight:700; margin-bottom:16px;">
         <i class="fa-solid fa-magnifying-glass-chart"></i> Consulte Sua Contribuição em kg
       </h2>
-      <!--<p style="color:rgba(255,255,255,0.78); font-size:0.85rem; margin:0 0 24px;">
-        Insira sua tag.
-      </p> -->
 
       <form id="form-consulta-recicla" class="input-glow-wrapper">
-        <input type="text" id="input-id-recicla" placeholder="Digite sua tag (Ex: 85)..." required>
+        <input type="number" id="input-id-recicla" placeholder="Digite seu ID (Ex: 1)..." required>
+        
+        <select id="input-local-recicla" required>
+          <option value="" disabled selected>Selecione o local...</option>
+          <option value="sede">Sede</option>
+          <option value="laranjal">Laranjal</option>
+        </select>
+
         <button type="submit" class="btn--neon-action">
           <i class="fa-solid fa-search"></i> Consultar kg
         </button>
       </form>
 
-      <div id="resultado-consulta-recicla" style="margin-top:24px; text-align:left; max-width:500px; margin-left:auto; margin-right:auto;">
+      <div id="resultado-consulta-recicla" style="margin-top:24px; text-align:left; max-width:540px; margin-left:auto; margin-right:auto;">
         <!-- Retorno assíncrono do servidor injetado aqui -->
       </div>
     </section>
-    <!-- Painel de Gráficos Analíticos -->
+
+    <!-- Painel de Gráficos Analíticos (3 Gráficos: Sede, Laranjal e Geral) -->
     <section class="glass-panel" id="analise-graficos">
       <div class="secao-titulo">
         <div>
-          <h2> Contribuição Por Diretoria </h2>
-         <!-- <p>Dados processados em tempo real, integrados com o ecossistema do servidor.</p> -->
+          <h2>Distribuição de Resíduos por Unidade e Geral</h2>
+          <p>Análise comparativa de desempenho entre Sede, Laranjal e o consolidado geral.</p>
         </div>
       </div>
 
       <div class="graficos-grid">
-        <div class="grafico-bloco-real">
-          <h4>Distribuição por Diretoria</h4>
-          <div id="chart-recicla-diretorias"></div>
+        <div class="graficos-grid__linha-unidades">
+          <div class="grafico-bloco-real">
+            <h4>Prédio Sede</h4>
+            <div id="chart-recicla-sede"></div>
+          </div>
+
+          <div class="grafico-bloco-real">
+            <h4>Laranjal</h4>
+            <div id="chart-recicla-laranjal"></div>
+          </div>
         </div>
-      <!--  <div class="grafico-bloco-real">
-          <h4>Meta Anual Atingida</h4>
-          <div id="chart-recicla-meta"></div>
-        </div> -->
+
+        <div class="graficos-grid__linha-geral">
+          <div class="grafico-bloco-real">
+            <h4>Consolidado Geral</h4>
+            <div id="chart-recicla-geral"></div>
+          </div>
+        </div>
       </div>
     </section>
-
-   
 
   </main>
 

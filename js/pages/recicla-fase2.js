@@ -1,7 +1,6 @@
 /**
  * ==========================================================================
- * RECICLA CEDAE FASE 2 - MÓDULO SCRIPT PRINCIPAL (FRONT-END)
- * CRS 2026 · Renderização de Dashboard Reativo & Integração via API
+ * js/modules/recicla/recicla-fase2.js
  * ==========================================================================
  */
 
@@ -9,21 +8,22 @@ import { ReciclaAPI } from "../modules/recicla/recicla-api.js";
 
 // ─── ESTADO GLOBAL DA APLICAÇÃO ─────────────────────────────────────────────
 const state = {
-  kpis: { total_participantes: 0, somatorio_total: 0 },
+  kpis: {
+    consolidado: { participantes: 0, pesagens: 0, pesoTotal: 0 },
+    porLocal: {}
+  },
   dadosDiretorias: [],
   dadosReciclados: [],
   charts: {}
 };
 
 // Meta anual de referência para o gráfico de progresso (kg).
-// Ajuste este valor conforme a meta oficial definida pela CRS.
 const META_ANUAL_KG = 5000;
 
-// Paleta baseada no padrão de cores da coleta seletiva (CONAMA):
-// azul = papel, verde = vidro, amarelo = metal, marrom = orgânico.
+// Paleta baseada no padrão de cores da coleta seletiva (CONAMA)
 const CORES_GRAFICO = ["#0B4C8C", "#2F7D4F", "#D99A2B", "#7C5233", "#3E7FC1", "#A9743B"];
 
-// ─── CATEGORIAS DE COLETA (conteúdo educativo, substitui o antigo catálogo de brindes) ──
+// ─── CATEGORIAS DE COLETA ────────────────────────────────────────────────
 const CATEGORIAS_COLETA = [
   { nome: "Papel & Papelão", cor: "#0B4C8C", icone: "fa-box-archive", desc: "Caixas, jornais e folhas de rascunho limpas e secas." },
   { nome: "Vidro", cor: "#2F7D4F", icone: "fa-wine-bottle", desc: "Garrafas e potes, preferencialmente sem tampa e enxaguados." },
@@ -35,9 +35,14 @@ const CATEGORIAS_COLETA = [
 const els = {
   kpiParticipantes: document.getElementById("kpi-participantes"),
   kpiTotalPeso: document.getElementById("kpi-total-peso"),
+  kpiSedePeso: document.getElementById("kpi-sede-peso"),
+  kpiSedePart: document.getElementById("kpi-sede-part"),
+  kpiLaranjalPeso: document.getElementById("kpi-laranjal-peso"),
+  kpiLaranjalPart: document.getElementById("kpi-laranjal-part"),
   fase2DbStatus: document.getElementById("fase2-db-status"),
   consultaForm: document.getElementById("form-consulta-recicla"),
   consultaId: document.getElementById("input-id-recicla"),
+  consultaLocal: document.getElementById("input-local-recicla"),
   consultaResultado: document.getElementById("resultado-consulta-recicla"),
   rankingCorpo: document.getElementById("corpo-ranking-diretorias"),
   categoriasColeta: document.getElementById("container-categorias-coleta")
@@ -58,19 +63,15 @@ async function loadData() {
       els.fase2DbStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Conectando ao Banco Central...`;
     }
 
-    const [dados, ranking, historico] = await Promise.all([
+    const [dadosDashboard, ranking, historico] = await Promise.all([
       ReciclaAPI.getDadosDashboard(),
       ReciclaAPI.getRankingDiretorias(),
       ReciclaAPI.getHistoricoPesagens()
     ]);
 
-    console.log("Resposta da API:", { dados, ranking, historico });
-
     state.kpis = {
-      total_participantes: dados.participantes || 0,
-      total_pesagens: dados.pesagens || 0,
-      somatorio_total: dados.pesoTotal || 0,
-      ultimaAtualizacao: dados.ultimaAtualizacao || null
+      consolidado: dadosDashboard.consolidado || { participantes: 0, pesagens: 0, pesoTotal: 0 },
+      porLocal: dadosDashboard.porLocal || {}
     };
 
     state.dadosDiretorias = Array.isArray(ranking) ? ranking : [];
@@ -95,11 +96,30 @@ async function loadData() {
 // ─── RENDERIZADORES DE COMPONENTES ──────────────────────────────────────────
 
 function renderKpis() {
-  if (els.kpiParticipantes) {
-    els.kpiParticipantes.innerText = formatInteger(state.kpis.total_participantes);
-  }
+  // Consolidado Geral
   if (els.kpiTotalPeso) {
-    els.kpiTotalPeso.innerText = `${formatFloat(state.kpis.somatorio_total)} kg`;
+    els.kpiTotalPeso.innerText = `${formatFloat(state.kpis.consolidado.pesoTotal)} kg`;
+  }
+  if (els.kpiParticipantes) {
+    els.kpiParticipantes.innerText = `${formatInteger(state.kpis.consolidado.participantes)} participantes`;
+  }
+
+  // Prédio Sede
+  const sede = state.kpis.porLocal.sede || { pesoTotal: 0, participantes: 0 };
+  if (els.kpiSedePeso) {
+    els.kpiSedePeso.innerText = `${formatFloat(sede.pesoTotal)} kg`;
+  }
+  if (els.kpiSedePart) {
+    els.kpiSedePart.innerText = `${formatInteger(sede.participantes)} participantes`;
+  }
+
+  // Laranjal
+  const laranjal = state.kpis.porLocal.laranjal || { pesoTotal: 0, participantes: 0 };
+  if (els.kpiLaranjalPeso) {
+    els.kpiLaranjalPeso.innerText = `${formatFloat(laranjal.pesoTotal)} kg`;
+  }
+  if (els.kpiLaranjalPart) {
+    els.kpiLaranjalPart.innerText = `${formatInteger(laranjal.participantes)} participantes`;
   }
 }
 
@@ -129,11 +149,12 @@ function renderRankingTable() {
   els.rankingCorpo.innerHTML = state.dadosDiretorias.map((d, index) => {
     const medalhas = ["🥇", "🥈", "🥉"];
     const rankVis = index < 3 ? `<span style="font-size:1.1rem;">${medalhas[index]}</span>` : `${index + 1}º`;
+    const localBadge = d.local ? `<span style="font-size: 0.75rem; background: #E4DDCC; padding: 2px 6px; border-radius: 4px; margin-left: 6px; color: #554C3F;">${escapeHtml(d.local)}</span>` : "";
 
     return `
       <tr>
         <td style="text-align: center; font-weight: bold;">${rankVis}</td>
-        <td style="font-weight: 600;">${escapeHtml(d.diretoria)}</td>
+        <td style="font-weight: 600;">${escapeHtml(d.diretoria)} ${localBadge}</td>
         <td style="text-align: center;">${formatInteger(d.totalParticipantes)}</td>
         <td style="text-align: right; font-weight: bold; color: var(--verde-vidro);">${formatFloat(d.pesoTotal)} kg</td>
       </tr>
@@ -141,92 +162,146 @@ function renderRankingTable() {
   }).join("");
 }
 
-// ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS) ──────────────────────────────────
+// ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS - 3 GRÁFICOS DE DISTRIBUIÇÃO) ───────
+
+/**
+ * Monta a configuração padrão de um donut chart, já tratando os problemas
+ * de sobreposição de rótulos (%) e legenda espremida:
+ *  - rótulos de % só aparecem em fatias com peso visual suficiente (>=4%);
+ *    fatias menores mostram o valor apenas na legenda, evitando texto cortado.
+ *  - legenda com espaçamento fixo entre itens e marcador redondo, mostrando
+ *    também o valor em kg ao lado do nome (não só a cor).
+ *  - traço branco entre fatias para separar visualmente cores parecidas.
+ */
+function buildDonutOptions({ series, labels, totalLabel, totalValueFormatter }) {
+  const total = series.reduce((acc, v) => acc + v, 0);
+
+  const options = {
+    series,
+    labels,
+    chart: {
+      type: "donut",
+      height: 300,
+      background: "transparent",
+      fontFamily: "'Inter', sans-serif"
+    },
+    colors: CORES_GRAFICO,
+    stroke: {
+      width: 2,
+      colors: ["#FFFFFF"]
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val) => (val >= 4 ? `${val.toFixed(1)}%` : ""),
+      style: {
+        fontSize: "12px",
+        fontWeight: 600,
+        colors: ["#FFFFFF"]
+      },
+      dropShadow: { enabled: false }
+    },
+    legend: {
+      position: "bottom",
+      horizontalAlign: "center",
+      fontSize: "12px",
+      labels: { colors: "#6B6255" },
+      markers: { width: 10, height: 10, radius: 10 },
+      itemMargin: { horizontal: 10, vertical: 5 },
+      formatter: (seriesName, opts) => {
+        const idx = opts.seriesIndex;
+        const val = opts.w.globals.series[idx];
+        return `${seriesName} — ${formatFloat(val)} kg`;
+      }
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "68%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: totalLabel || "Total",
+              color: "#6B6255",
+              fontSize: "13px",
+              formatter: totalValueFormatter || (() => `${formatFloat(total)} kg`)
+            },
+            value: {
+              fontSize: "18px",
+              fontWeight: 700,
+              color: "#262117"
+            }
+          }
+        }
+      }
+    },
+    tooltip: {
+      y: { formatter: (val) => `${formatFloat(val)} kg` }
+    },
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        chart: { height: 260 },
+        legend: { fontSize: "11px" }
+      }
+    }]
+  };
+
+  return options;
+}
+
 function renderCharts() {
-  // Destrói instâncias antigas se existirem para evitar vazamento de memória
-  ["diretoria", "historico", "meta"].forEach(key => {
+  ["sede", "laranjal", "geral"].forEach(key => {
     if (state.charts[key] && typeof state.charts[key].destroy === "function") {
       state.charts[key].destroy();
     }
   });
 
-  const elChartDir = document.getElementById("chart-recicla-diretorias");
-  const elChartHist = document.getElementById("chart-recicla-historico");
-  const elChartMeta = document.getElementById("chart-recicla-meta");
+  const elSede = document.getElementById("chart-recicla-sede");
+  const elLaranjal = document.getElementById("chart-recicla-laranjal");
+  const elGeral = document.getElementById("chart-recicla-geral");
 
-  const fontFamily = "'Inter', sans-serif";
+  // Filtros de dados por local
+  const dadosSede = state.dadosDiretorias.filter(d => d.local && d.local.toLowerCase() === "sede");
+  const dadosLaranjal = state.dadosDiretorias.filter(d => d.local && d.local.toLowerCase() === "laranjal");
 
-  // 1. Gráfico de Rosca — Distribuição por Diretoria
-  if (elChartDir && state.dadosDiretorias.length > 0) {
-    const optionsDir = {
+  // 1. Gráfico Sede
+  if (elSede && dadosSede.length > 0) {
+    state.charts.sede = new ApexCharts(elSede, buildDonutOptions({
+      series: dadosSede.map(d => d.pesoTotal),
+      labels: dadosSede.map(d => d.diretoria),
+      totalLabel: "Sede",
+      totalValueFormatter: () => `${formatFloat(state.kpis.porLocal.sede?.pesoTotal || 0)} kg`
+    }));
+    state.charts.sede.render();
+  } else if (elSede) {
+    elSede.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados na Sede</p>`;
+  }
+
+  // 2. Gráfico Laranjal
+  if (elLaranjal && dadosLaranjal.length > 0) {
+    state.charts.laranjal = new ApexCharts(elLaranjal, buildDonutOptions({
+      series: dadosLaranjal.map(d => d.pesoTotal),
+      labels: dadosLaranjal.map(d => d.diretoria),
+      totalLabel: "Laranjal",
+      totalValueFormatter: () => `${formatFloat(state.kpis.porLocal.laranjal?.pesoTotal || 0)} kg`
+    }));
+    state.charts.laranjal.render();
+  } else if (elLaranjal) {
+    elLaranjal.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados no Laranjal</p>`;
+  }
+
+  // 3. Gráfico Consolidado Geral
+  if (elGeral && state.dadosDiretorias.length > 0) {
+    state.charts.geral = new ApexCharts(elGeral, buildDonutOptions({
       series: state.dadosDiretorias.map(d => d.pesoTotal),
-      labels: state.dadosDiretorias.map(d => d.diretoria),
-      chart: { type: "donut", height: 260, background: "transparent", fontFamily },
-      colors: CORES_GRAFICO,
-      legend: { position: "bottom", labels: { colors: "#6B6255" }, fontSize: "12px" },
-      dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
-      stroke: { colors: ["#FFFFFF"] },
-      plotOptions: {
-        pie: { donut: { labels: { show: true, total: { show: true, label: "Total", color: "#6B6255", formatter: () => `${formatFloat(state.kpis.somatorio_total)} kg` } } } }
-      }
-    };
-    state.charts.diretoria = new ApexCharts(elChartDir, optionsDir);
-    state.charts.diretoria.render();
-  }
-
-  // 2. Gráfico de Área — Evolução Cronológica das Coletas
-  if (elChartHist && state.dadosReciclados.length > 0) {
-    const optionsHist = {
-      series: [{ name: "Massa Coletada", data: state.dadosReciclados.map(r => r.Quantidade) }],
-      chart: { type: "area", height: 260, toolbar: { show: false }, background: "transparent", fontFamily },
-      colors: ["#0B4C8C"],
-      dataLabels: { enabled: false },
-      stroke: { curve: "smooth", width: 3 },
-      fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05 } },
-      xaxis: {
-        categories: state.dadosReciclados.map(r => {
-          if (!r.Data) return "";
-          const partes = r.Data.split("-");
-          return partes.length === 3 ? `${partes[2]}/${partes[1]}` : r.Data;
-        }),
-        labels: { style: { colors: "#6B6255" } }
-      },
-      yaxis: { labels: { style: { colors: "#6B6255" }, formatter: (val) => `${val.toFixed(0)} kg` } },
-      grid: { borderColor: "#E4DDCC" },
-      tooltip: { theme: "light" }
-    };
-    state.charts.historico = new ApexCharts(elChartHist, optionsHist);
-    state.charts.historico.render();
-  }
-
-  // 3. Gráfico Radial — Progresso frente à Meta Anual
-  if (elChartMeta) {
-    const percentual = META_ANUAL_KG > 0
-      ? Math.min(100, (state.kpis.somatorio_total / META_ANUAL_KG) * 100)
-      : 0;
-
-    const optionsMeta = {
-      series: [Number(percentual.toFixed(1))],
-      chart: { type: "radialBar", height: 260, background: "transparent", fontFamily },
-      colors: ["#2F7D4F"],
-      plotOptions: {
-        radialBar: {
-          hollow: { size: "62%" },
-          dataLabels: {
-            name: { fontSize: "12px", color: "#6B6255", offsetY: -6 },
-            value: {
-              fontSize: "22px",
-              fontWeight: 700,
-              color: "#262117",
-              formatter: (val) => `${val}%`
-            }
-          }
-        }
-      },
-      labels: [`Meta de ${formatInteger(META_ANUAL_KG)} kg`]
-    };
-    state.charts.meta = new ApexCharts(elChartMeta, optionsMeta);
-    state.charts.meta.render();
+      labels: state.dadosDiretorias.map(d => `${d.diretoria} (${d.local || 'geral'})`),
+      totalLabel: "Total",
+      totalValueFormatter: () => `${formatFloat(state.kpis.consolidado.pesoTotal)} kg`
+    }));
+    state.charts.geral.render();
+  } else if (elGeral) {
+    elGeral.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados consolidados</p>`;
   }
 }
 
@@ -237,21 +312,31 @@ function bindConsulta() {
   els.consultaForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const id = String(els.consultaId?.value || "").trim();
-    if (!id || !els.consultaResultado) return;
+    const local = String(els.consultaLocal?.value || "").trim();
+
+    if (!id || !local || !els.consultaResultado) {
+      if (els.consultaResultado) {
+        els.consultaResultado.innerHTML = `
+          <div style="background: rgba(180,58,42,0.08); border: 1px solid #B43A2A; border-radius: 8px; padding: 10px; color: #B43A2A; font-size: 0.8rem; text-align: center;">
+            Informe o ID e selecione o local da consulta.
+          </div>`;
+      }
+      return;
+    }
 
     els.consultaResultado.innerHTML = `
       <div style="text-align:center; color: #6B6255; font-size: 0.8rem; padding: 10px;">
-        <i class="fa-solid fa-spinner fa-spin"></i> Consultando base de homologação...
+        <i class="fa-solid fa-spinner fa-spin"></i> Consultando base...
       </div>`;
 
-    const part = await ReciclaAPI.consultarParticipante(id);
+    const part = await ReciclaAPI.consultarParticipante(id, local);
 
     if (!part) {
       els.consultaResultado.innerHTML = `
         <div style="background: rgba(180,58,42,0.08); border: 1px solid #B43A2A; border-radius: 8px; padding: 14px; color: #B43A2A; font-size: 0.8rem; text-align: center; line-height: 1.4;">
           <i class="fa-solid fa-circle-xmark" style="font-size: 1.1rem; margin-bottom: 5px; display:block;"></i>
-          <strong>ID [${escapeHtml(id)}] não localizado!</strong><br>
-          Verifique o número digitado ou contate o suporte da CRS.
+          <strong>Participante ID [${escapeHtml(id)}] em [${escapeHtml(local)}] não localizado!</strong><br>
+          Verifique os dados informados.
         </div>`;
       return;
     }
@@ -261,7 +346,7 @@ function bindConsulta() {
         <strong style="font-size: 0.95rem; color: #2F7D4F; display:block; margin-bottom:8px; border-bottom:1px solid #E4DDCC; padding-bottom:4px;">
           <i class="fa-solid fa-user-check"></i> ${escapeHtml(part.nome)}
         </strong>
-        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>ID Interno:</strong> ${escapeHtml(part.id)}</p>
+        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>ID:</strong> ${escapeHtml(part.id)} | <strong>Local:</strong> ${escapeHtml(part.local)}</p>
         <p style="margin: 4px 0; font-size: 0.8rem;"><strong>Lotação:</strong> ${escapeHtml(part.diretoria)}</p>
         <div style="margin-top: 12px; background: #F5F1E7; padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 0.8rem; color: #6B6255;">Volume Acumulado:</span>

@@ -364,7 +364,7 @@ async function exportarParaExcel(dadosParaExportar) {
         const url = window.URL.createObjectURL(blob);
         const linkDownload = document.createElement('a');
         linkDownload.href = url;
-        linkDownload.download = `CEDAE_Aedes_FatoVistorias_Export.xlsx`;
+        linkDownload.download = `Aedes_Vistorias.xlsx`;
         linkDownload.click();
         
         window.URL.revokeObjectURL(url);

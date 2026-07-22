@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { pool } from "./js/db.js";
 import { initReciclaSchema } from "./js/db-recicla.js";
 import reciclaRoutes from "./js/recicla-routes.js";
+import aedesRoutes from './server/routes/aedes-routes.js'; 
 
 // 🟢 Necessário apenas para bibliotecas CommonJS
 import { createRequire } from "module";
@@ -36,7 +37,7 @@ app.use(express.json({
 // Rotas Módulos Externos
 // ───────────────────────────────────────────────────────────────
 app.use("/api/recicla", reciclaRoutes);
-
+app.use("/api/aedes", aedesRoutes);
 // ─── Inicialização do Banco ──────────────────────────────────────────────────
 async function initSchema() {
   try {

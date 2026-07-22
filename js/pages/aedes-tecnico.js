@@ -270,7 +270,7 @@ async function exportarParaExcel(dadosParaExportar) {
 
     try {
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Relatório Fato Vistorias');
+        const worksheet = workbook.addWorksheet('Tabela_Consolidada_Aedes');
 
         worksheet.columns = [
             { header: 'DATA REAL DE ENVIO', key: 'data_real_envio', width: 20 },

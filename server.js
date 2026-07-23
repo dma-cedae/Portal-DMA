@@ -26,11 +26,11 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors({
   origin: function (origin, callback) {
-    // 🔥 MELHORIA: Se não houver origin ou se vier de um ambiente local (localhost / 127.0.0.1), libera direto
+    // Se não houver origin (carregamento direto), se for local, ou se contiver o domínio oficial do GitHub Pages
     if (!origin || 
         origin.includes("localhost") || 
         origin.includes("127.0.0.1") || 
-        origin === process.env.CORS_ALLOWED_ORIGINS) {
+        origin.includes("dma-cedae.github.io")) { // 🔥 Procura o termo em vez de exigir igualdade exata
       return callback(null, true);
     }
     

@@ -38,21 +38,29 @@ app.use(express.json({
 // ───────────────────────────────────────────────────────────────
 app.use("/api/recicla", reciclaRoutes);
 app.use("/api/aedes", aedesRoutes);
-// ─── Inicialização do Banco ──────────────────────────────────────────────────
+
+/**
+ * ─── Inicialização do Banco de Dados: Módulo AEDES ──────────────────────────
+ */
 async function initSchema() {
   try {
+    // 1. Criação do Schema Isolado
     await pool.query(`CREATE SCHEMA IF NOT EXISTS aedes;`);
 
+    // 2. Tabela de Lotes (Agrupador dos Envios Semanais)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.lotes (
-        id               SERIAL PRIMARY KEY,
-        focal_nome       TEXT,
-        payload_completo JSONB,
-        total_registros  INTEGER, 
-        data_envio       TIMESTAMP DEFAULT NOW()
+        id                  SERIAL PRIMARY KEY,
+        focal_nome          TEXT,
+        total_registros     INTEGER DEFAULT 0,
+        unidades_vitoriadas JSONB,
+        payload_completo    JSONB,
+        data_envio          TIMESTAMP DEFAULT NOW()
       );
     `);
+    console.log("✅ Tabela aedes.lotes verificada.");
 
+    // 3. Tabela de Itens do Lote (Dados Brutos das Linhas da Matriz)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
         id                            SERIAL PRIMARY KEY,
@@ -73,7 +81,9 @@ async function initSchema() {
         id_referencia                 TEXT UNIQUE
       );
     `);
+    console.log("✅ Tabela aedes.vistorias_itens verificada.");
   
+    // 4. Tabela de Fatos (Mapeada de Forma Plana para Business Intelligence/Painéis)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.fato_vistorias (
         id                            SERIAL PRIMARY KEY,
@@ -98,30 +108,33 @@ async function initSchema() {
         id_referencia                 TEXT UNIQUE
       );
     `);
+    console.log("✅ Tabela aedes.fato_vistorias verificada.");
 
-    // Tabela de Focais
+    // 5. Tabela Cadastral de Agentes Focais
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focais (
-        focal_pk BIGSERIAL PRIMARY KEY,
-        matricula TEXT,
-        nome TEXT NOT NULL,
-        email TEXT UNIQUE,
-        ativo BOOLEAN DEFAULT true
+        focal_pk   BIGSERIAL PRIMARY KEY,
+        matricula  TEXT,
+        nome       TEXT NOT NULL,
+        email      TEXT UNIQUE,
+        ativo      BOOLEAN DEFAULT true
       );
     `);
+    console.log("✅ Tabela aedes.focais verificada.");
 
+    // 6. Tabela Correlacional (Vínculo N:M entre Agente e Unidades do Banco Externo)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focal_unidade (
         focal_unidade_pk BIGSERIAL PRIMARY KEY,
         focal_pk         BIGINT REFERENCES aedes.focais(focal_pk) ON DELETE CASCADE,
-        unidade_id       BIGINT, -- Relaciona com a tabela unidades externa
+        unidade_id       BIGINT, 
         ativo            BOOLEAN DEFAULT true,
         data_inicio      TIMESTAMP DEFAULT NOW()
       );
     `);
+    console.log("✅ Tabela aedes.focal_unidade verificada.");
 
-
-    // Views Analíticas (Garantindo que existam no Banco)
+    // 7. Views Analíticas para o Painel Gerencial
     await pool.query(`
       CREATE OR REPLACE VIEW aedes.vw_resumo_aedes AS
       SELECT 
@@ -131,12 +144,17 @@ async function initSchema() {
         COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) = 'sim' THEN 1 END) AS total_remediados
       FROM aedes.fato_vistorias;
     `);
+    console.log("✅ View aedes.vw_resumo_aedes sincronizada.");
 
-    console.log("✅ Estrutura de tabelas e Views do Módulo Aedes sincronizadas.");
-    await initReciclaSchema(); 
+    console.log("🚀 [AEDES] Toda a estrutura de dados foi inicializada com sucesso.");
+    
+    // Chama o módulo seguinte se houver
+    if (typeof initReciclaSchema === "function") {
+      await initReciclaSchema(); 
+    }
 
   } catch (err) {
-    console.error("❌ Erro no initSchema:", err.message);
+    console.error("❌ Erro crítico no initSchema (Módulo AEDES):", err.message);
   }
 }
 
@@ -495,67 +513,36 @@ app.get("/api/aedes/certificados", async (_req, res) => {
    ROTAS DE VISTORIAS (LOTES)
 ========================================================= */
 app.post("/api/aedes/lotes", async (req, res) => {
-  const client = await pool.connect();
   try {
-    const { cabecalho, dados } = req.body;
-    await client.query('BEGIN');
+    // 🟢 Extrai de dentro do objeto 'cabecalho' enviado pelo frontend
+    const cabecalho = req.body.cabecalho || {};
+    
+    // Pegamos os valores de dentro do cabecalho (respeitando o padrão total_registros vindo do front)
+    const focalNome = cabecalho.focal_nome || req.body.focal_nome || "Focal não identificado";
+    const totalRegistros = cabecalho.total_registros || req.body.totalRegistros || 0;
 
-    const loteRes = await client.query(
-      `INSERT INTO aedes.lotes (focal_nome, payload_completo, total_registros) 
-       VALUES ($1, $2, $3) RETURNING id`,
-      [cabecalho.focal_nome, JSON.stringify(req.body), dados.length]
+    // O payload completo é o corpo inteiro recebido da requisição
+    const payloadCompleto = req.body.payload_completo || req.body;
+
+    const result = await pool.query(
+      `INSERT INTO aedes.lotes (focal_nome, total_registros, payload_completo, data_envio)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING id;`,
+      [
+        focalNome,
+        totalRegistros,
+        JSON.stringify(payloadCompleto) // Força a serialização correta do objeto completo
+      ]
     );
-    const loteId = loteRes.rows[0].id;
 
-    const itemQuery = `
-      INSERT INTO aedes.vistorias_itens (
-        lote_id, id_referencia, unidade_id, unidade_nome, 
-        vistoria_realizada, foco_encontrado, foco_remediado, 
-        locais_foco, outros_local,
-        motivos_nao_vistoria, outros_motivo_nao_vistoria,
-        motivos_nao_remediacao, outros_motivo_nao_remediacao,
-        observacoes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      ON CONFLICT (id_referencia) DO UPDATE SET
-        lote_id = EXCLUDED.lote_id,
-        outros_local = EXCLUDED.outros_local,
-        outros_motivo_nao_vistoria = EXCLUDED.outros_motivo_nao_vistoria,
-        outros_motivo_nao_remediacao = EXCLUDED.outros_motivo_nao_remediacao,
-        observacoes = EXCLUDED.observacoes;
-    `;
-
-    const dataHoje = new Date().toISOString().split('T')[0].replace(/-/g, '');
-
-    for (const row of dados) {
-      const idReferencia = `${row[1].replace(/\s+/g, '')}_${dataHoje}`;
-  
-      await client.query(itemQuery, [
-        loteId,         // $1
-        idReferencia,   // $2
-        row[0],         // $3 - unidade_id
-        row[1],         // $4 - unidade_nome
-        row[2],         // $5 - vistoria_realizada
-        row[3],         // $6 - foco_encontrado
-        row[4],         // $7 - foco_remediado
-        JSON.stringify(row[5] || []),  // $8 - locais_foco
-        row[6],                        // $9 - outros_local
-        JSON.stringify(row[7] || []),  // $10 - motivos_nao_vistoria
-        row[8],                        // $11 - outros_motivo_nao_vistoria
-        JSON.stringify(row[9] || []),  // $12 - motivos_nao_remediacao
-        row[10],                       // $13 - outros_motivo_nao_remediacao
-        row[11]                        // $14 - observacoes
-      ]);
-    }
-
-    await client.query('COMMIT');
-    res.status(201).json({ ok: true, loteId });
+    console.log(`✅ Lote salvo com sucesso! ID no Banco: ${result.rows[0].id}`);
+    
+    // Retorna o formato exato esperado pelo `handleSubmitReport`
+    res.status(201).json({ ok: true, loteId: result.rows[0].id });
 
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error("❌ ERRO NO BANCO:", err.message);
-    res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
+    console.error("❌ Erro ao salvar lote no banco:", err.message);
+    res.status(400).json({ ok: false, error: "Falha ao gravar os dados no banco.", detalhe: err.message });
   }
 });
 

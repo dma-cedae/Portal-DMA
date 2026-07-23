@@ -1,12 +1,14 @@
 /**
  * Módulo de Comunicação API - AEDES-api.js
  */
+const API_BASE = "https://dma-aedes-api.onrender.com";
 
-const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+export const AedesAPI = {
+/*const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:3001" 
     : "https://dma-aedes-api.onrender.com";
 
-export const AedesAPI = {
+export const AedesAPI = {*/
 
     /**
      * Busca a lista de unidades operacionais cadastradas

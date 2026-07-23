@@ -301,6 +301,29 @@ function getStatusClass(s) { return s === "Pronto" ? "status-pill--success" : (s
  */
 function buildBatchPayload(dataRef) {
   const user = currentSession;
+  
+  // Mapeia as linhas da grid criando OBJETOS claros e explícitos
+  const dadosMapeados = gridRows.map(row => {
+    // Cria um ID único caso não exista na row, evitando conflitos no banco
+    const uniqueId = `ref_${Date.now()}_${row.unidadeId || 'unk'}`;
+    
+    return {
+      unidade_id: row.unidadeId,
+      unidade_nome: row.unidade,
+      vistoria_realizada: row.vistoriaRealizada || DASH_VALUE,
+      foco_encontrado: row.focoEncontrado || DASH_VALUE,
+      foco_remediado: row.focoRemediado || DASH_VALUE,
+      locais_foco: row.locaisFoco || [],
+      outros_local: safeTrim(row.outrosLocalFoco),
+      motivos_nao_vistoria: row.motivosNaoVistoria || [],
+      outros_motivos_nao_vistoria: safeTrim(row.outrosMotivoNaoVistoria),
+      motivos_nao_remediacao: row.motivosNaoRemediacao || [],
+      outros_motivos_nao_remediacao: safeTrim(row.outrosMotivoNaoRemediacao),
+      observacoes: safeTrim(row.observacoes) || DASH_VALUE,
+      id_referencia: row.idReferencia || uniqueId
+    };
+  });
+
   return {
     cabecalho: {
       focal_nome: user?.nome || "Não Identificado",
@@ -311,34 +334,9 @@ function buildBatchPayload(dataRef) {
       total_registros: gridRows.length,
       lote_id_cliente: createLocalId("lote")
     },
-    dados: gridRows.map(row => [
-      row.unidadeId,                             // 0: unidade_id [cite: 24, 64]
-      row.unidade,                               // 1: unidade_nome [cite: 24, 64]
-      row.vistoriaRealizada || DASH_VALUE,       // 2: vistoria_realizada 
-      row.focoEncontrado || DASH_VALUE,          // 3: foco_encontrado 
-      row.focoRemediado || DASH_VALUE,           // 4: foco_remediado 
-      row.locaisFoco || [],                      // 5: locais_foco (Array) 
-      safeTrim(row.outrosLocalFoco),             // 6: outros_local (NOVO) 
-      row.motivosNaoVistoria || [],              // 7: motivos_nao_vistoria (Array) 
-      safeTrim(row.outrosMotivoNaoVistoria),     // 8: outros_motivo_nao_vistoria (NOVO) 
-      row.motivosNaoRemediacao || [],            // 9: motivos_nao_remediacao (Array) 
-      safeTrim(row.outrosMotivoNaoRemediacao),   // 10: outros_motivo_nao_remediacao (NOVO) 
-      safeTrim(row.observacoes) || DASH_VALUE    // 11: observacoes [cite: 24, 66]
-    ])
+    dados: dadosMapeados // <-- Agora vai uma lista de objetos {} em vez de arrays []
   };
 }
-// listener do botão no final do arquivo para gerenciar o cursor
-document.addEventListener('DOMContentLoaded', () => {
-    const chk = document.getElementById('chkResponsabilidade');
-    const btn = document.getElementById('btnEnviarRelatorio');
-    
-    if (chk && btn) {
-        chk.addEventListener('change', () => { 
-            btn.disabled = !chk.checked;
-            btn.style.opacity = chk.checked ? "1" : "0.5"; 
-        });
-    }
-});
 async function handleSubmitReport(event) {
   if (event?.preventDefault) event.preventDefault();
   if (!document.getElementById('chkResponsabilidade').checked) return alert("Aceite o termo.");
@@ -346,11 +344,17 @@ async function handleSubmitReport(event) {
 
   const btn = document.getElementById("btnEnviarRelatorio");
   try {
-    btn.disabled = true; btn.innerText = "Enviando lote...";
+    btn.disabled = true; 
+    btn.innerText = "Enviando lote...";
+    
     const payload = buildBatchPayload(new Date());
     
-    const res = await fetch(`${window.AEDES_API_BASE_URL}/api/aedes/lotes`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+    // 🔍 DEBUG: Remova ou comente após descobrir o problema
+    console.log("📦 Payload gerado pelo Frontend:", JSON.stringify(payload, null, 2));
+    
+    const res = await fetch(`https://dma-aedes-api.onrender.com/api/aedes/lotes`, {
+      method: "POST", 
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
@@ -359,11 +363,22 @@ async function handleSubmitReport(event) {
       document.getElementById("successScreen").classList.remove("hidden");
       iniciarAnimacaoSucesso();
     } else {
-        throw new Error("Erro ao salvar lote.");
+      // 🟢 CAPTURA O ERRO REAL: Tenta ler a mensagem detalhada que a API devolveu
+      let mensagemErro = "Erro ao salvar lote no servidor.";
+      try {
+        const errorData = await res.json();
+        mensagemErro = errorData.error || errorData.detalhe || mensagemErro;
+      } catch (jsonErr) {
+        // Caso a resposta não seja um JSON válido
+        console.error("Não foi possível ler o JSON de erro do servidor:", jsonErr);
+      }
+      
+      throw new Error(mensagemErro);
     }
   } catch (e) {
     alert(e.message);
-    btn.disabled = false; btn.innerText = "Enviar relatório semanal";
+    btn.disabled = false; 
+    btn.innerText = "Enviar relatório semanal";
   }
 }
 

@@ -1,14 +1,13 @@
 /**
  * Módulo de Comunicação API - AEDES-api.js
  */
-const API_BASE = "https://dma-aedes-api.onrender.com";
 
-export const AedesAPI = {
-/*const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+// 🌐 Alterna dinamicamente a URL base dependendo de onde o frontend está rodando
+const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:3001" 
     : "https://dma-aedes-api.onrender.com";
 
-export const AedesAPI = {*/
+export const AedesAPI = {
 
     /**
      * Busca a lista de unidades operacionais cadastradas
@@ -39,7 +38,7 @@ export const AedesAPI = {*/
     },
 
     /**
-     * Envia as vistorias preenchidas no formulário Desktop (Lote de Inspeções)
+     * Envia as vistorias preenchidas no formulário (Lote de Inspeções)
      */
     async postLote(payload) {
         try {
@@ -49,9 +48,17 @@ export const AedesAPI = {*/
                 body: JSON.stringify(payload),
             });
 
+            // Se o backend responder com erro (Ex: 400 Bad Request)
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Erro ao salvar os dados no banco.");
+                let mensagemErro = "Erro ao salvar os dados no banco.";
+                try {
+                    const errorData = await response.json();
+                    mensagemErro = errorData.error || errorData.detalhe || mensagemErro;
+                } catch (jsonErr) {
+                    // Fallback caso a resposta de erro não seja um JSON válido
+                    console.error("Não foi possível decodificar o erro do servidor:", jsonErr);
+                }
+                throw new Error(mensagemErro);
             }
 
             return await response.json();
@@ -59,6 +66,7 @@ export const AedesAPI = {*/
             console.error("❌ AedesAPI.postLote:", error);
             throw error;
         }
+    
     },
 
     /**

@@ -2,7 +2,7 @@
  * ============================================================
  * Aedes · Área dos Focais · Vistoria semanal por grade
  * ------------------------------------------------------------
- * Versão Otimizada: Payload em Matriz para Alta Performance
+ * Versão Otimizada: Payload Estruturado para a Rota Concreta
  * ============================================================
  */
 
@@ -133,13 +133,8 @@ async function buildGridRows() {
 
     gridRows = unidadesFocal.map((itemSTG) => ({
       rowId: createLocalId("row"),
-      
-      // CORREÇÃO 1: O ID da unidade vindo do banco (u.unidade_id AS id)
       unidadeId: itemSTG.id || "S/M",
-      
-      // CORREÇÃO 2: Blindagem para ler o nome da unidade independente de como venha da API
       unidade: itemSTG.unidade_nome || itemSTG.nome_unidade || itemSTG.Unidade || "Unidade sem identificação",
-      
       statusLinha: "Pendente",
       vistoriaRealizada: "",
       motivosNaoVistoria: [],
@@ -158,6 +153,7 @@ async function buildGridRows() {
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center;">Erro: ${error.message}</td></tr>`;
   }
 }
+
 function getRowVisibility(row) {
   const vSim = row.vistoriaRealizada === "sim";
   const vNao = row.vistoriaRealizada === "nao";
@@ -267,9 +263,6 @@ function updateGridCheckboxGroup(rowId, groupKey, val, checked) {
   renderGrid();
 }
 
-/**
- * ESTADOS DE LIMPEZA
- */
 function applyNoVistoriaState(row) { row.focoEncontrado = row.focoRemediado = row.outrosLocalFoco = row.outrosMotivoNaoRemediacao = DASH_VALUE; row.locaisFoco = row.motivosNaoRemediacao = []; }
 function clearNoVistoriaState(row) { row.motivosNaoVistoria = []; row.outrosMotivoNaoVistoria = ""; }
 function applyNoFocoState(row) { row.focoRemediado = row.outrosLocalFoco = row.outrosMotivoNaoRemediacao = DASH_VALUE; row.locaisFoco = row.motivosNaoRemediacao = []; }
@@ -297,33 +290,10 @@ function hasValidGroupSelection(values, otherText) {
 function getStatusClass(s) { return s === "Pronto" ? "status-pill--success" : (s === "Pendente" ? "status-pill--muted" : "status-pill--danger"); }
 
 /**
- * ENVIO DE DADOS 
+ * ENVIO DE DADOS (Retornado à estrutura original com tratamento anti-null)
  */
 function buildBatchPayload(dataRef) {
   const user = currentSession;
-  
-  // Mapeia as linhas da grid criando OBJETOS claros e explícitos
-  const dadosMapeados = gridRows.map(row => {
-    // Cria um ID único caso não exista na row, evitando conflitos no banco
-    const uniqueId = `ref_${Date.now()}_${row.unidadeId || 'unk'}`;
-    
-    return {
-      unidade_id: row.unidadeId,
-      unidade_nome: row.unidade,
-      vistoria_realizada: row.vistoriaRealizada || DASH_VALUE,
-      foco_encontrado: row.focoEncontrado || DASH_VALUE,
-      foco_remediado: row.focoRemediado || DASH_VALUE,
-      locais_foco: row.locaisFoco || [],
-      outros_local: safeTrim(row.outrosLocalFoco),
-      motivos_nao_vistoria: row.motivosNaoVistoria || [],
-      outros_motivos_nao_vistoria: safeTrim(row.outrosMotivoNaoVistoria),
-      motivos_nao_remediacao: row.motivosNaoRemediacao || [],
-      outros_motivos_nao_remediacao: safeTrim(row.outrosMotivoNaoRemediacao),
-      observacoes: safeTrim(row.observacoes) || DASH_VALUE,
-      id_referencia: row.idReferencia || uniqueId
-    };
-  });
-
   return {
     cabecalho: {
       focal_nome: user?.nome || "Não Identificado",
@@ -334,9 +304,37 @@ function buildBatchPayload(dataRef) {
       total_registros: gridRows.length,
       lote_id_cliente: createLocalId("lote")
     },
-    dados: dadosMapeados // <-- Agora vai uma lista de objetos {} em vez de arrays []
+    dados: gridRows.map(row => [
+      row.unidadeId,                               // 0: unidade_id
+      row.unidade,                                 // 1: unidade_nome
+      row.vistoriaRealizada || DASH_VALUE,         // 2: vistoria_realizada
+      row.focoEncontrado || DASH_VALUE,            // 3: foco_encontrado
+      row.focoRemediado || DASH_VALUE,             // 4: foco_remediado
+      row.locaisFoco || [],                        // 5: locais_foco (Array)
+      safeTrim(row.outrosLocalFoco) || "-",        // 6: outros_local
+      row.motivosNaoVistoria || [],                // 7: motivos_nao_vistoria (Array)
+      safeTrim(row.outrosMotivoNaoVistoria) || "", // 8: outros_motivo_nao_vistoria
+      row.motivosNaoRemediacao || [],              // 9: motivos_nao_remediacao (Array)
+      safeTrim(row.outrosMotivoNaoRemediacao) || "-", // 10: outros_motivo_nao_remediacao
+      safeTrim(row.observacoes) || DASH_VALUE      // 11: observacoes
+    ])
   };
 }
+// Handler do Termo de Responsabilidade
+document.addEventListener('DOMContentLoaded', () => {
+    const chk = document.getElementById('chkResponsabilidade');
+    const btn = document.getElementById('btnEnviarRelatorio');
+    if (chk && btn) {
+        chk.addEventListener('change', () => { 
+            btn.disabled = !chk.checked;
+            btn.style.opacity = chk.checked ? "1" : "0.5"; 
+        });
+    }
+});
+
+/**
+ * SUBMIT DIRETOCONCRETO (Sem envelopamento e apontando para a rota original)
+ */
 async function handleSubmitReport(event) {
   if (event?.preventDefault) event.preventDefault();
   if (!document.getElementById('chkResponsabilidade').checked) return alert("Aceite o termo.");
@@ -347,32 +345,30 @@ async function handleSubmitReport(event) {
     btn.disabled = true; 
     btn.innerText = "Enviando lote...";
     
-    const payload = buildBatchPayload(new Date());
+    // 🟢 Gera a estrutura exata contendo { cabecalho, dados } na raiz
+    const payloadConcreto = buildBatchPayload(new Date());
     
-    // 🔍 DEBUG: Remova ou comente após descobrir o problema
-    console.log("📦 Payload gerado pelo Frontend:", JSON.stringify(payload, null, 2));
+    console.log("📦 Enviando payload plano para a rota oficial:", JSON.stringify(payloadConcreto, null, 2));
     
-    const res = await fetch(`https://dma-aedes-api.onrender.com/api/aedes/lotes`, {
-      method: "POST", 
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    // Altere a linha do fetch dentro de handleSubmitReport para:
+const res = await fetch("https://dma-aedes-api.onrender.com/api/aedes/lotes-provisorio", {
+  method: "POST", 
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payloadConcreto) 
+});
 
     if (res.ok) {
       document.querySelector('main').style.display = 'none';
       document.getElementById("successScreen").classList.remove("hidden");
       iniciarAnimacaoSucesso();
     } else {
-      // 🟢 CAPTURA O ERRO REAL: Tenta ler a mensagem detalhada que a API devolveu
       let mensagemErro = "Erro ao salvar lote no servidor.";
       try {
         const errorData = await res.json();
         mensagemErro = errorData.error || errorData.detalhe || mensagemErro;
       } catch (jsonErr) {
-        // Caso a resposta não seja um JSON válido
-        console.error("Não foi possível ler o JSON de erro do servidor:", jsonErr);
+        console.error("Não foi possível ler o erro JSON:", jsonErr);
       }
-      
       throw new Error(mensagemErro);
     }
   } catch (e) {
@@ -388,7 +384,7 @@ function iniciarAnimacaoSucesso() {
   setTimeout(() => { window.location.href = 'aedes.html'; }, 3000);
 }
 
-// Helpers
+// Helpers Gerais
 function createLocalId(p) { return `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`; }
 function escapeHtml(v) { return String(v ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
 function formatNumber(v) { return new Intl.NumberFormat("pt-BR").format(v); }
@@ -398,7 +394,6 @@ function isDashValue(v) { return safeTrim(v) === DASH_VALUE; }
 function normalizeFieldValue(f, v) { return f === "observacoes" ? v : (isDashValue(v) ? DASH_VALUE : safeTrim(v)); }
 function getIsoWeek(d) { const t = new Date(d.valueOf()); t.setDate(t.getDate() - ((d.getDay() + 6) % 7) + 3); const f = new Date(t.getFullYear(), 0, 4); return 1 + Math.round((t - (f.setDate(f.getDate() - ((f.getDay() + 6) % 7) + 3))) / 604800000); }
 function getIsoWeekYear(d) { const t = new Date(d.valueOf()); t.setDate(t.getDate() - ((d.getDay() + 6) % 7) + 3); return t.getFullYear(); }
-
 // Toggle botão enviar
 document.addEventListener('DOMContentLoaded', () => {
     const chk = document.getElementById('chkResponsabilidade');

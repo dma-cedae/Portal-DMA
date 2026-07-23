@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { pool } from "./js/db.js";
 import { initReciclaSchema } from "./js/db-recicla.js";
 import reciclaRoutes from "./js/recicla-routes.js";
+// Se aedesRoutes não contiver as rotas tratadas abaixo, mantenha-o apenas se necessário para outros endpoints.
 import aedesRoutes from './server/routes/aedes-routes.js'; 
 
 // 🟢 Necessário apenas para bibliotecas CommonJS
@@ -24,9 +25,20 @@ const PORT = process.env.PORT || 3001;
 // ───────────────────────────────────────────────────────────────
 
 app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  origin: function (origin, callback) {
+    // 🔥 MELHORIA: Se não houver origin ou se vier de um ambiente local (localhost / 127.0.0.1), libera direto
+    if (!origin || 
+        origin.includes("localhost") || 
+        origin.includes("127.0.0.1") || 
+        origin === process.env.CORS_ALLOWED_ORIGINS) {
+      return callback(null, true);
+    }
+    
+    callback(new Error("Bloqueado pelo CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 
 app.use(express.json({
@@ -37,17 +49,18 @@ app.use(express.json({
 // Rotas Módulos Externos
 // ───────────────────────────────────────────────────────────────
 app.use("/api/recicla", reciclaRoutes);
-app.use("/api/aedes", aedesRoutes);
+
+// Se houver rotas legadas em aedesRoutes elas rodam aqui, 
+// mas não entrarão em conflito com os caminhos explícitos abaixo.
+app.use("/api/aedes", aedesRoutes); 
 
 /**
  * ─── Inicialização do Banco de Dados: Módulo AEDES ──────────────────────────
  */
 async function initSchema() {
   try {
-    // 1. Criação do Schema Isolado
     await pool.query(`CREATE SCHEMA IF NOT EXISTS aedes;`);
 
-    // 2. Tabela de Lotes (Agrupador dos Envios Semanais)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.lotes (
         id                  SERIAL PRIMARY KEY,
@@ -60,7 +73,16 @@ async function initSchema() {
     `);
     console.log("✅ Tabela aedes.lotes verificada.");
 
-    // 3. Tabela de Itens do Lote (Dados Brutos das Linhas da Matriz)
+    // Coloque este bloco dentro do seu initSchema() junto com as outras tabelas
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS aedes.lotes_brutos (
+        id SERIAL PRIMARY KEY,
+        payload_recebido JSONB NOT NULL,
+        data_insercao TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log("✅ Tabela aedes.lotes_brutos (Payload Bruto) verificada.");
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.vistorias_itens (
         id                            SERIAL PRIMARY KEY,
@@ -83,7 +105,6 @@ async function initSchema() {
     `);
     console.log("✅ Tabela aedes.vistorias_itens verificada.");
   
-    // 4. Tabela de Fatos (Mapeada de Forma Plana para Business Intelligence/Painéis)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.fato_vistorias (
         id                            SERIAL PRIMARY KEY,
@@ -110,7 +131,6 @@ async function initSchema() {
     `);
     console.log("✅ Tabela aedes.fato_vistorias verificada.");
 
-    // 5. Tabela Cadastral de Agentes Focais
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focais (
         focal_pk   BIGSERIAL PRIMARY KEY,
@@ -122,7 +142,6 @@ async function initSchema() {
     `);
     console.log("✅ Tabela aedes.focais verificada.");
 
-    // 6. Tabela Correlacional (Vínculo N:M entre Agente e Unidades do Banco Externo)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS aedes.focal_unidade (
         focal_unidade_pk BIGSERIAL PRIMARY KEY,
@@ -134,7 +153,6 @@ async function initSchema() {
     `);
     console.log("✅ Tabela aedes.focal_unidade verificada.");
 
-    // 7. Views Analíticas para o Painel Gerencial
     await pool.query(`
       CREATE OR REPLACE VIEW aedes.vw_resumo_aedes AS
       SELECT 
@@ -148,7 +166,6 @@ async function initSchema() {
 
     console.log("🚀 [AEDES] Toda a estrutura de dados foi inicializada com sucesso.");
     
-    // Chama o módulo seguinte se houver
     if (typeof initReciclaSchema === "function") {
       await initReciclaSchema(); 
     }
@@ -159,10 +176,9 @@ async function initSchema() {
 }
 
 /* =========================================================
-   ⭐ ROTAS DO NOVO COMPONENTE DE AUDITORIA SEMANAL
+    ⭐ ROTAS DO NOVO COMPONENTE DE AUDITORIA SEMANAL
 ========================================================= */
 
-// 1. ROTA DE IDENTIFICAÇÃO DE INADIMPLÊNCIA E MÉTRICAS POR SEMANA DO MÊS (ATUALIZADA)
 app.get("/api/aedes/nao-enviados", async (req, res) => {
   try {
     const { ano, mes, semana_mes } = req.query;
@@ -174,11 +190,9 @@ app.get("/api/aedes/nao-enviados", async (req, res) => {
     const m = parseInt(mes);
     const s = parseInt(semana_mes);
 
-    // Define o intervalo de dias reais baseado na semana do mês escolhida
     let diaInicio = 1 + (s - 1) * 7;
     let diaFim = s * 7;
     if (s === 4) {
-      // Se for a última semana do mês, estende até o último dia do mês correspondente
       diaFim = new Date(a, m, 0).getDate();
     }
 
@@ -186,7 +200,6 @@ app.get("/api/aedes/nao-enviados", async (req, res) => {
     const dataFimStr = `${a}-${String(m).padStart(2, '0')}-${String(diaFim).padStart(2, '0')} 23:59:59`;
     const intervaloTexto = `${String(diaInicio).padStart(2, '0')}/${String(m).padStart(2, '0')} a ${String(diaFim).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
 
-    // Query 1: Unidades que NÃO enviaram neste intervalo de datas
     const sqlNaoEnviados = `
       SELECT 
         u.unidade_id, u.nome_unidade,
@@ -203,20 +216,17 @@ app.get("/api/aedes/nao-enviados", async (req, res) => {
       ORDER BY u.nome_unidade ASC;
     `;
 
-   // Query 2: Contadores volumétricos + Detalhes de Focos e Não Remediações (ATUALIZADA)
     const sqlMetricas = `
       SELECT 
         COUNT(*)::int AS qtd_entrou,
         COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' THEN 1 END)::int AS qtd_focos,
         COUNT(CASE WHEN LOWER(TRIM(foco_encontrado)) = 'sim' AND LOWER(TRIM(foco_remediado)) = 'sim' THEN 1 END)::int AS qtd_remediados,
         
-        -- Detalhes das Unidades com Foco e situação
         COALESCE(
           JSON_AGG(
             JSON_BUILD_OBJECT(
               'unidade', unidade_nome,
               'remediado', LOWER(TRIM(foco_remediado)),
-              -- Captura a justificativa de não remediação se houver pendência
               'motivo_nao_remediado', COALESCE(NULLIF(motivos_nao_remediacao, ''), NULLIF(outros_motivos_nao_remediacao, ''), '-')
             )
           ) FILTER (WHERE LOWER(TRIM(foco_encontrado)) = 'sim'), 
@@ -244,10 +254,9 @@ app.get("/api/aedes/nao-enviados", async (req, res) => {
 });
 
 /* =========================================================
-   ⭐ RETORNO DAS ROTAS DAS VIEWS (DASHBOARD PIZZA/GRAFICOS)[cite: 1]
+    ⭐ RETORNO DAS ROTAS DAS VIEWS (DASHBOARD PIZZA/GRAFICOS)
 ========================================================= */
 
-// 2. Rota de Motivos de Não Vistoria (Gráfico de Pizza)[cite: 1]
 app.get("/api/aedes/views/motivos-nao-vistoria", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM aedes.vw_motivos_nao_vistoria ORDER BY quantidade DESC`);
@@ -257,7 +266,6 @@ app.get("/api/aedes/views/motivos-nao-vistoria", async (req, res) => {
   }
 });
 
-// 3. Rota de Motivos de Não Remediação (Gráfico de Pizza)[cite: 1]
 app.get("/api/aedes/views/motivos-nao-remediacao", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM aedes.vw_motivos_nao_remediacao ORDER BY quantidade DESC`);
@@ -267,7 +275,6 @@ app.get("/api/aedes/views/motivos-nao-remediacao", async (req, res) => {
   }
 });
 
-// 4. Rota de Locais de Foco Encontrados (Gráfico de Barras/Pizza)[cite: 1]
 app.get("/api/aedes/views/locais-foco", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM aedes.vw_locais_foco ORDER BY quantidade DESC`);
@@ -277,7 +284,6 @@ app.get("/api/aedes/views/locais-foco", async (req, res) => {
   }
 });
 
-// 5. KPIs Gerais do Resumo (Vistorias, Focos, Remediados)[cite: 1]
 app.get("/api/aedes/resumo", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM aedes.vw_resumo_aedes`);
@@ -287,12 +293,11 @@ app.get("/api/aedes/resumo", async (req, res) => {
   }
 });
 
-// 6. Rota Limpa e Principal do Painel de Dados Operacionais[cite: 1]
 app.get("/api/aedes/painel-dados", async (req, res) => {
   try {
     const { unidade, ano, mes, semana } = req.query;
     let query = `
-      SELECT origins, lote_id, data_registro, ano, mes, semana, unidade_id, unidade_nome, 
+      SELECT origem, lote_id, data_registro, ano, mes, semana, unidade_id, unidade_nome, 
              vistoria_realizada, foco_encontrado, foco_remediado, motivos_nao_vistoria, 
              motivos_nao_remediacao, locais_foco, observacoes
       FROM aedes.fato_vistorias WHERE 1=1
@@ -312,14 +317,13 @@ app.get("/api/aedes/painel-dados", async (req, res) => {
     res.status(500).json({ error: "Erro interno no servidor.", detalhe: err.message });
   }
 });
-// 5. Exportações Fake/Estruturadas (CSV e PDF) para download no Frontend
+
 app.get("/api/aedes/export/csv", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM aedes.vistorias_itens`);
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=relatorio-aedes.csv');
     
-    // Converte de forma simples para CSV string
     const campos = ["id", "unidade_nome", "vistoria_realizada", "foco_encontrado", "foco_remediado", "data_registro"];
     let csvContent = campos.join(",") + "\n";
     result.rows.forEach(row => {
@@ -332,8 +336,6 @@ app.get("/api/aedes/export/csv", async (req, res) => {
 });
 
 app.get("/api/aedes/export/pdf", async (req, res) => {
-  // Como a geração de PDF pesada roda melhor no cliente (com pdfmake ou jspdf)
-  // Deixamos a rota pronta retornando a estrutura que o front precisa para montar o PDF
   try {
     const result = await pool.query(`SELECT unidade_nome, vistoria_realizada, foco_encontrado FROM aedes.vistorias_itens`);
     res.json({ titulo: "Relatório Analítico de Vistorias - AEDES", emitidoEm: new Date(), dados: result.rows });
@@ -342,12 +344,10 @@ app.get("/api/aedes/export/pdf", async (req, res) => {
   }
 });
 
-
 /* =========================================================
-   ROTAS DE FOCAIS (Ajustadas para o Dashboard)
+    ROTAS DE FOCAIS
 ========================================================= */
 
-// 🟢 ROTA PRINCIPAL: Usada pelo getFocais() do seu front-end
 app.get("/api/aedes/focais", async (_req, res) => {
   try {
     const result = await pool.query(`
@@ -360,7 +360,6 @@ app.get("/api/aedes/focais", async (_req, res) => {
   }
 });
 
-// Rota Detalhada (com Join na importação)
 app.get("/api/aedes/focais/lista", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -385,7 +384,6 @@ app.get("/api/aedes/focais/lista", async (req, res) => {
   }
 });
 
-// Login do Focal
 app.get("/api/aedes/focais/login", async (req, res) => {
   try {
     const { email, matricula } = req.query;
@@ -407,7 +405,7 @@ app.get("/api/aedes/focais/login", async (req, res) => {
 });
 
 /* =========================================================
-   BASE CONSOLIDADA
+    BASE CONSOLIDADA
 ========================================================= */
 app.get("/api/aedes/base", async (req, res) => {
   try {
@@ -442,9 +440,6 @@ app.get("/api/aedes/base", async (req, res) => {
   }
 });
 
-// 🟢 ADICIONE ESTA ROTA DE VOLTA NO SEU SERVER.JS
-
-// Rota de Consolidado: Fornece a base histórica e atual para a tela técnica
 app.get("/api/aedes/consolidado", async (req, res) => {
   try {
     const query = `
@@ -468,98 +463,65 @@ app.get("/api/aedes/consolidado", async (req, res) => {
     `;
     
     const result = await pool.query(query);
-
-    res.json({
-      sucesso: true,
-      dados: result.rows
-    });
+    res.json({ sucesso: true, dados: result.rows });
   } catch (err) {
-    console.error("❌ Erro crítico na rota /api/aedes/consolidado:", err.message);
-    res.status(500).json({ 
-      sucesso: false, 
-      error: "Erro ao consultar a tabela física no banco de dados.",
-      details: err.message 
-    });
+    res.status(500).json({ sucesso: false, error: "Erro ao consultar banco.", details: err.message });
   }
 });
 
-/* =========================================================
-   CERTIFICADOS (CONSOLIDADO - VIEW MATERIALIZADA)
-========================================================= */
 app.get("/api/aedes/certificados", async (_req, res) => {
   try {
-    // Busca os dados congelados e homologados direto da View Materializada
     const result = await pool.query(`
-      SELECT 
-        unidade,
-        mes,
-        ano,
-        total_vistorias,
-        cobertura_semanal_completa,
-        focos_nao_remediados
+      SELECT unidade, mes, ano, total_vistorias, cobertura_semanal_completa, focos_nao_remediados
       FROM aedes.mv_certificados_consolidados
       ORDER BY ano DESC, mes DESC, unidade ASC;
     `);
-
-    // Como a View já devolve os dados tipados e formatados, enviamos direto!
     res.json(result.rows);
   } catch (err) {
-    console.error("❌ Erro ao buscar certificados na view consolidada:", err.message);
-    res.status(500).json({ error: "Erro interno ao processar os dados de elegibilidade." });
+    res.status(500).json({ error: "Erro interno ao processar certificados." });
   }
 });
 
 /* =========================================================
-   ROTAS DE VISTORIAS (LOTES)
+    🛠️ ROTA PROVISÓRIA: SALVA O PAYLOAD PLANO EXATAMENTE COMO ENVIADO
 ========================================================= */
-app.post("/api/aedes/lotes", async (req, res) => {
+app.post('/api/aedes/lotes-provisorio', async (req, res) => {
   try {
-    // 🟢 Extrai de dentro do objeto 'cabecalho' enviado pelo frontend
-    const cabecalho = req.body.cabecalho || {};
-    
-    // Pegamos os valores de dentro do cabecalho (respeitando o padrão total_registros vindo do front)
-    const focalNome = cabecalho.focal_nome || req.body.focal_nome || "Focal não identificado";
-    const totalRegistros = cabecalho.total_registros || req.body.totalRegistros || 0;
+    // Se o corpo vier vazio, rejeita
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: 'Payload vazio não pode ser processado.' });
+    }
 
-    // O payload completo é o corpo inteiro recebido da requisição
-    const payloadCompleto = req.body.payload_completo || req.body;
+    console.log("📦 Recebendo payload plano na rota provisória...");
 
-    const result = await pool.query(
-      `INSERT INTO aedes.lotes (focal_nome, total_registros, payload_completo, data_envio)
-       VALUES ($1, $2, $3, NOW())
-       RETURNING id;`,
-      [
-        focalNome,
-        totalRegistros,
-        JSON.stringify(payloadCompleto) // Força a serialização correta do objeto completo
-      ]
-    );
+    // Query direta inserindo o objeto req.body completo no formato JSONB
+    const queryText = `
+      INSERT INTO aedes.lotes_brutos (payload_recebido)
+      VALUES ($1)
+      RETURNING id, data_insercao;
+    `;
 
-    console.log(`✅ Lote salvo com sucesso! ID no Banco: ${result.rows[0].id}`);
-    
-    // Retorna o formato exato esperado pelo `handleSubmitReport`
-    res.status(201).json({ ok: true, loteId: result.rows[0].id });
+    const resultado = await pool.query(queryText, [JSON.stringify(req.body)]);
 
-  } catch (err) {
-    console.error("❌ Erro ao salvar lote no banco:", err.message);
-    res.status(400).json({ ok: false, error: "Falha ao gravar os dados no banco.", detalhe: err.message });
+    console.log(`✅ JSON plano persistido na lotes_brutos! ID: ${resultado.rows[0].id}`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Payload bruto gravado com sucesso sem conversões!',
+      id: resultado.rows[0].id,
+      data_insercao: resultado.rows[0].data_insercao
+    });
+
+  } catch (error) {
+    console.error('❌ Erro crítico ao salvar no dump bruto:', error);
+    return res.status(500).json({
+      error: 'Falha interna ao armazenar o JSON bruto.',
+      detalhe: error.message
+    });
   }
 });
-
-app.get("/api/aedes/lotes", async (_req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT id, focal_nome, total_registros, data_envio, payload_completo 
-      FROM aedes.lotes ORDER BY data_envio DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: "Erro ao buscar lotes." });
-  }
-});
-
 /* =========================================================
-   DEMAIS ROTAS ACESSÓRIAS E RECURSOS
+    DEMAIS ROTAS ACESSÓRIAS
 ========================================================= */
 app.get("/api/unidades", async (_req, res) => {
   try {

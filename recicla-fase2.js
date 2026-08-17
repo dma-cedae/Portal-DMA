@@ -20,12 +20,8 @@ const state = {
 // Meta anual de referência para o gráfico de progresso (kg).
 const META_ANUAL_KG = 5000;
 
-// Paleta multicolorida para os gráficos individuais
-const CORES_GRAFICO = ["#1076db", "#11bd59", "#ffaf25", "#d3e01d", "#4e98e2", "#ee2737"];
-
-// Cores específicas para o Consolidado
-const COR_SEDE_CONSOLIDADO = "#51c751"; // cedae verde gay 
-const COR_LARANJAL_CONSOLIDADO = "#0091d8"; // cedae azul gay 
+// Paleta baseada no padrão de cores da coleta seletiva (CONAMA)
+const CORES_GRAFICO = ["#0B4C8C", "#2F7D4F", "#D99A2B", "#7C5233", "#3E7FC1", "#A9743B"];
 
 // ─── CATEGORIAS DE COLETA ────────────────────────────────────────────────
 const CATEGORIAS_COLETA = [
@@ -78,7 +74,7 @@ async function loadData() {
       porLocal: dadosDashboard.porLocal || {}
     };
 
-    state.dadosDiretorias = Array.isArray(ranking) ? agruparDadosDiretorias(ranking) : [];
+    state.dadosDiretorias = Array.isArray(ranking) ? ranking : [];
     state.dadosReciclados = Array.isArray(historico) ? historico : [];
 
     renderKpis();
@@ -97,39 +93,10 @@ async function loadData() {
   }
 }
 
-/**
- * Agrupa registros duplicados pela combinação de 'diretoria' + 'local'
- */
-function agruparDadosDiretorias(dados) {
-  const mapa = new Map();
-
-  dados.forEach(item => {
-    if (!item.diretoria) return;
-
-    const diretoria = String(item.diretoria).trim();
-    const local = String(item.local || "geral").trim();
-    const chave = `${diretoria.toLowerCase()}_${local.toLowerCase()}`;
-
-    if (!mapa.has(chave)) {
-      mapa.set(chave, {
-        diretoria,
-        local,
-        totalParticipantes: Number(item.totalParticipantes) || 0,
-        pesoTotal: Number(item.pesoTotal) || 0
-      });
-    } else {
-      const atual = mapa.get(chave);
-      atual.totalParticipantes += Number(item.totalParticipantes) || 0;
-      atual.pesoTotal += Number(item.pesoTotal) || 0;
-    }
-  });
-
-  return Array.from(mapa.values()).sort((a, b) => b.pesoTotal - a.pesoTotal);
-}
-
 // ─── RENDERIZADORES DE COMPONENTES ──────────────────────────────────────────
 
 function renderKpis() {
+  // Consolidado Geral
   if (els.kpiTotalPeso) {
     els.kpiTotalPeso.innerText = `${formatFloat(state.kpis.consolidado.pesoTotal)} kg`;
   }
@@ -137,6 +104,7 @@ function renderKpis() {
     els.kpiParticipantes.innerText = `${formatInteger(state.kpis.consolidado.participantes)} participantes`;
   }
 
+  // Prédio Sede
   const sede = state.kpis.porLocal.sede || { pesoTotal: 0, participantes: 0 };
   if (els.kpiSedePeso) {
     els.kpiSedePeso.innerText = `${formatFloat(sede.pesoTotal)} kg`;
@@ -145,6 +113,7 @@ function renderKpis() {
     els.kpiSedePart.innerText = `${formatInteger(sede.participantes)} participantes`;
   }
 
+  // Laranjal
   const laranjal = state.kpis.porLocal.laranjal || { pesoTotal: 0, participantes: 0 };
   if (els.kpiLaranjalPeso) {
     els.kpiLaranjalPeso.innerText = `${formatFloat(laranjal.pesoTotal)} kg`;
@@ -187,72 +156,98 @@ function renderRankingTable() {
         <td style="text-align: center; font-weight: bold;">${rankVis}</td>
         <td style="font-weight: 600;">${escapeHtml(d.diretoria)} ${localBadge}</td>
         <td style="text-align: center;">${formatInteger(d.totalParticipantes)}</td>
-        <td style="text-align: right; font-weight: bold; color: var(--verde-vidro, #2F7D4F);">${formatFloat(d.pesoTotal)} kg</td>
+        <td style="text-align: right; font-weight: bold; color: var(--verde-vidro);">${formatFloat(d.pesoTotal)} kg</td>
       </tr>
     `;
   }).join("");
 }
 
-// ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS) ───────────────────────────────────
+// ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS - 3 GRÁFICOS DE DISTRIBUIÇÃO) ───────
 
 /**
- * Configuração para gráficos individuais com paleta multicolorida por barra
+ * Monta a configuração padrão de um donut chart, já tratando os problemas
+ * de sobreposição de rótulos (%) e legenda espremida:
+ *  - rótulos de % só aparecem em fatias com peso visual suficiente (>=4%);
+ *    fatias menores mostram o valor apenas na legenda, evitando texto cortado.
+ *  - legenda com espaçamento fixo entre itens e marcador redondo, mostrando
+ *    também o valor em kg ao lado do nome (não só a cor).
+ *  - traço branco entre fatias para separar visualmente cores parecidas.
  */
-function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
-  return {
-    series: [{
-      name: "Volume Reciclado",
-      data: seriesData
-    }],
+function buildDonutOptions({ series, labels, totalLabel, totalValueFormatter }) {
+  const total = series.reduce((acc, v) => acc + v, 0);
+
+  const options = {
+    series,
+    labels,
     chart: {
-      type: "bar",
-      height: height,
-      toolbar: {
-        show: true,
-        tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true }
-      },
+      type: "donut",
+      height: 300,
       background: "transparent",
       fontFamily: "'Inter', sans-serif"
     },
-    colors: CORES_GRAFICO, // Cores variadas para cada barra
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: "45%",
-        borderRadius: 6,
-        distributed: true, // Distribui as cores da lista nas barras
-        dataLabels: { position: "top" }
-      }
+    colors: CORES_GRAFICO,
+    stroke: {
+      width: 2,
+      colors: ["#FFFFFF"]
     },
     dataLabels: {
       enabled: true,
-      textAnchor: "start",
-      formatter: (val) => `${formatFloat(val)} kg`,
-      offsetY: -12,
+      formatter: (val) => (val >= 4 ? `${val.toFixed(1)}%` : ""),
       style: {
-        fontSize: "10px",
+        fontSize: "12px",
         fontWeight: 600,
-        colors: ["#262117"]
+        colors: ["#FFFFFF"]
+      },
+      dropShadow: { enabled: false }
+    },
+    legend: {
+      position: "bottom",
+      horizontalAlign: "center",
+      fontSize: "12px",
+      labels: { colors: "#6B6255" },
+      markers: { width: 10, height: 10, radius: 10 },
+      itemMargin: { horizontal: 10, vertical: 5 },
+      formatter: (seriesName, opts) => {
+        const idx = opts.seriesIndex;
+        const val = opts.w.globals.series[idx];
+        return `${seriesName} — ${formatFloat(val)} kg`;
       }
     },
-    legend: { show: false },
-    xaxis: {
-      categories: categories,
-      labels: {
-        rotate: -45,
-        rotateAlways: true,
-        style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 }
-      },
-      axisBorder: { show: false },
-      axisTicks: { show: false }
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "68%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: totalLabel || "Total",
+              color: "#6B6255",
+              fontSize: "13px",
+              formatter: totalValueFormatter || (() => `${formatFloat(total)} kg`)
+            },
+            value: {
+              fontSize: "18px",
+              fontWeight: 700,
+              color: "#262117"
+            }
+          }
+        }
+      }
     },
-    yaxis: {
-      labels: { formatter: (val) => formatFloat(val) },
-      title: { text: "Peso (kg)", style: { color: "#6B6255", fontSize: "11px", fontWeight: 500 } }
+    tooltip: {
+      y: { formatter: (val) => `${formatFloat(val)} kg` }
     },
-    grid: { borderColor: "#E4DDCC", strokeDashArray: 4 },
-    tooltip: { y: { formatter: (val) => `${formatFloat(val)} kg` } }
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        chart: { height: 260 },
+        legend: { fontSize: "11px" }
+      }
+    }]
   };
+
+  return options;
 }
 
 function renderCharts() {
@@ -266,113 +261,44 @@ function renderCharts() {
   const elLaranjal = document.getElementById("chart-recicla-laranjal");
   const elGeral = document.getElementById("chart-recicla-geral");
 
+  // Filtros de dados por local
   const dadosSede = state.dadosDiretorias.filter(d => d.local && d.local.toLowerCase() === "sede");
   const dadosLaranjal = state.dadosDiretorias.filter(d => d.local && d.local.toLowerCase() === "laranjal");
 
-  // 1. Gráfico Sede (Multicolorido)
+  // 1. Gráfico Sede
   if (elSede && dadosSede.length > 0) {
-    state.charts.sede = new ApexCharts(elSede, buildBarOptionsIndividual({
-      seriesData: dadosSede.map(d => d.pesoTotal),
-      categories: dadosSede.map(d => d.diretoria)
+    state.charts.sede = new ApexCharts(elSede, buildDonutOptions({
+      series: dadosSede.map(d => d.pesoTotal),
+      labels: dadosSede.map(d => d.diretoria),
+      totalLabel: "Sede",
+      totalValueFormatter: () => `${formatFloat(state.kpis.porLocal.sede?.pesoTotal || 0)} kg`
     }));
     state.charts.sede.render();
   } else if (elSede) {
     elSede.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados na Sede</p>`;
   }
 
-  // 2. Gráfico Laranjal (Multicolorido)
+  // 2. Gráfico Laranjal
   if (elLaranjal && dadosLaranjal.length > 0) {
-    state.charts.laranjal = new ApexCharts(elLaranjal, buildBarOptionsIndividual({
-      seriesData: dadosLaranjal.map(d => d.pesoTotal),
-      categories: dadosLaranjal.map(d => d.diretoria)
+    state.charts.laranjal = new ApexCharts(elLaranjal, buildDonutOptions({
+      series: dadosLaranjal.map(d => d.pesoTotal),
+      labels: dadosLaranjal.map(d => d.diretoria),
+      totalLabel: "Laranjal",
+      totalValueFormatter: () => `${formatFloat(state.kpis.porLocal.laranjal?.pesoTotal || 0)} kg`
     }));
     state.charts.laranjal.render();
   } else if (elLaranjal) {
     elLaranjal.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados no Laranjal</p>`;
   }
 
-  // 3. Gráfico Consolidado Geral (Prédio Sede: Roxo | Laranjal: Laranja Forte)
+  // 3. Gráfico Consolidado Geral
   if (elGeral && state.dadosDiretorias.length > 0) {
-    const todasDiretorias = [...new Set(state.dadosDiretorias.map(d => d.diretoria))];
-
-    // Ordenar diretorias pelo peso total acumulado
-    todasDiretorias.sort((a, b) => {
-      const pesoA = state.dadosDiretorias.filter(d => d.diretoria === a).reduce((acc, curr) => acc + curr.pesoTotal, 0);
-      const pesoB = state.dadosDiretorias.filter(d => d.diretoria === b).reduce((acc, curr) => acc + curr.pesoTotal, 0);
-      return pesoB - pesoA;
-    });
-
-    const dadosSedeGeral = todasDiretorias.map(dir => {
-      const item = state.dadosDiretorias.find(d => d.diretoria === dir && d.local.toLowerCase() === "sede");
-      return item ? item.pesoTotal : 0;
-    });
-
-    const dadosLaranjalGeral = todasDiretorias.map(dir => {
-      const item = state.dadosDiretorias.find(d => d.diretoria === dir && d.local.toLowerCase() === "laranjal");
-      return item ? item.pesoTotal : 0;
-    });
-
-    state.charts.geral = new ApexCharts(elGeral, {
-      series: [
-        { name: "Prédio Sede", data: dadosSedeGeral },
-        { name: "Laranjal", data: dadosLaranjalGeral }
-      ],
-      chart: {
-        type: "bar",
-        height: 420,
-        toolbar: {
-          show: true,
-          tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true }
-        },
-        background: "transparent",
-        fontFamily: "'Inter', sans-serif"
-      },
-      colors: [COR_SEDE_CONSOLIDADO, COR_LARANJAL_CONSOLIDADO], // Roxo e Laranja
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: "60%",
-          borderRadius: 4,
-          dataLabels: { position: "top" }
-        }
-      },
-      dataLabels: {
-        enabled: true,
-        textAnchor: "start",
-        formatter: (val) => (val > 0 ? `${formatFloat(val)} kg` : ""), // Omite rótulos zerados
-        offsetY: -15,
-        style: {
-          fontSize: "9px",
-          fontWeight: 600,
-          colors: ["#262117"]
-        }
-      },
-      legend: {
-        show: true,
-        position: "bottom",
-        horizontalAlign: "center",
-        fontSize: "12px",
-        labels: { colors: "#6B6255" },
-        markers: { width: 12, height: 12, radius: 12 },
-        itemMargin: { horizontal: 15, vertical: 5 }
-      },
-      xaxis: {
-        categories: todasDiretorias,
-        labels: {
-          rotate: -45,
-          rotateAlways: true,
-          style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 }
-        },
-        axisBorder: { show: false },
-        axisTicks: { show: false }
-      },
-      yaxis: {
-        labels: { formatter: (val) => formatFloat(val) },
-        title: { text: "Peso (kg)", style: { color: "#6B6255", fontSize: "11px", fontWeight: 500 } }
-      },
-      grid: { borderColor: "#E4DDCC", strokeDashArray: 4 },
-      tooltip: { y: { formatter: (val) => `${formatFloat(val)} kg` } }
-    });
+    state.charts.geral = new ApexCharts(elGeral, buildDonutOptions({
+      series: state.dadosDiretorias.map(d => d.pesoTotal),
+      labels: state.dadosDiretorias.map(d => `${d.diretoria} (${d.local || 'geral'})`),
+      totalLabel: "Total",
+      totalValueFormatter: () => `${formatFloat(state.kpis.consolidado.pesoTotal)} kg`
+    }));
     state.charts.geral.render();
   } else if (elGeral) {
     elGeral.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados consolidados</p>`;

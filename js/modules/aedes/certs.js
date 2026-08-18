@@ -532,7 +532,7 @@ export function buildCertificateHTML({ unidadeNome, ano, mes, total }) {
           Documento gerado eletronicamente pelo Portal DMA
         </div>
         <div class="footer-right">
-          <span class="cert-id">Nº ${escapeHtml(certId)}</span>
+         <!-- <span class="cert-id">Nº ${escapeHtml(certId)}</span> -->
           Emitido em ${escapeHtml(dataGeracao)}<br />
           Válido para o período de referência indicado
         </div>

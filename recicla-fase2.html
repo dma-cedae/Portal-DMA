@@ -5,17 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recicla CEDAE · Fase 2</title>
 
+  <!-- Fontes & Ícones -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Montserrat:wght@400;600;700;800&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Biblioteca de Gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
+ 
   <style>
     /* ==========================================================================
-        DESIGN TOKENS — Identidade "Coleta Seletiva"
-        ========================================================================== */
-    :root{
+       DESIGN TOKENS & VARIÁVEIS CROMÁTICAS
+       ========================================================================== */
+    :root {
       --azul-cedae: #0B4C8C;
       --azul-cedae-escuro: #073A6D;
       --azul-cedae-claro: #3E7FC1;
@@ -29,304 +32,421 @@
       --tinta: #262117;
       --tinta-suave: #6B6255;
 
+      --azul-cedaenet: #0066b2;      
+      --verde-cedaenet: #74b62e;      
+      --azul-escuro-cedae: #004d88;
+      --fundo-cards: rgba(255, 255, 255, 0.08);
+
       --sombra: 0 10px 30px -12px rgba(38, 33, 23, 0.18);
       --raio: 14px;
     }
 
-    *{ box-sizing: border-box; }
-    html{ scroll-behavior: smooth; }
-    body{
-      margin:0;
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    
+    body {
+      margin: 0;
       background: var(--creme);
       color: var(--tinta);
       font-family: 'Inter', sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    h1,h2,h3,h4{ font-family: 'Space Grotesk', sans-serif; margin:0; }
-    .num, .kpi-valor, .tabela-massa{ font-family: 'JetBrains Mono', monospace; }
-    a{ text-decoration:none; color:inherit; }
+
+    h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
+    .num, .kpi-valor, .tabela-massa { font-family: 'JetBrains Mono', monospace; }
+    a { text-decoration: none; color: inherit; }
 
     /* ---------- TOPBAR ---------- */
-    .topbar{
-      background:#fff;
-      border-bottom:1px solid var(--linha);
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--linha);
       padding: 14px 32px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      gap:12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
       position: sticky;
-      top:0;
+      top: 0;
       z-index: 40;
     }
-    .topbar__left{ display:flex; align-items:center; gap:14px; }
-    .logo-cedae{ height:34px; display:block; }
-    .dma-tag-line{
-      font-size:0.72rem;
+    .topbar__left { display: flex; align-items: center; gap: 14px; }
+    .logo-cedae { height: 34px; display: block; }
+    .dma-tag-line {
+      font-size: 0.72rem;
       color: var(--tinta-suave);
-      border-left:1px solid var(--linha);
-      padding-left:14px;
-      font-weight:600;
-      letter-spacing:0.02em;
+      border-left: 1px solid var(--linha);
+      padding-left: 14px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
     }
-    .topbar__right-logos{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .topbar__back-link{
-      font-size:0.78rem;
-      font-weight:700;
-      color:#fff;
+    .topbar__right-logos { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .topbar__back-link {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fff;
       background: var(--azul-cedae);
-      padding:8px 16px;
-      border-radius:20px;
-      display:flex;
-      align-items:center;
-      gap:6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
       transition: background .2s ease;
     }
-    .topbar__back-link:hover{ background: var(--azul-cedae-escuro); }
+    .topbar__back-link:hover { background: var(--azul-cedae-escuro); }
 
-    /* ---------- HERO ---------- */
-    .hero-tech{
-      background: linear-gradient(135deg, var(--azul-cedae-escuro) 0%, var(--azul-cedae) 62%, var(--azul-cedae-claro) 100%);
-      position: relative;
-      overflow:hidden;
-      padding: 56px 32px 48px;
+    /* ---------- HERO CORPORATIVO ---------- */
+    .hero-tech-v3 {
+      background-color: var(--azul-cedaenet); 
+      padding: 50px 24px;
+      font-family: 'Ubuntu', sans-serif;
     }
-    .hero-tech::before{
-      content:"";
-      position:absolute; inset:0;
-      background-image: radial-gradient(circle at 85% 20%, rgba(255,255,255,0.14), transparent 45%);
-      pointer-events:none;
+    .hero-tech__wrapper-v3 {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 40px;
+      align-items: center;
     }
-    .hero-tech__wrapper{ max-width:1180px; margin:0 auto; position:relative; }
-    .hero-tech__main-row{
-      display:grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap:32px;
-      align-items:center;
+    .hero-tech__left-side { color: #ffffff; }
+    .hero-pretitle-v3 {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 6px;
+      font-family: 'Montserrat', sans-serif;
     }
-    .hero-pretitle{
-      display:inline-block;
-      font-size:0.72rem;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
+    .hero-main-title-v3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: clamp(2.2rem, 4vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      margin: 0 0 14px 0;
+      text-transform: uppercase;
+    }
+    .title-divider-v3 {
+      width: 60px;
+      height: 4px;
+      background-color: var(--verde-cedaenet);
+      margin-bottom: 20px;
+      border-radius: 2px;
+    }
+    .hero-description-v3 {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.95);
+      max-width: 580px;
+      margin-bottom: 35px;
+    }
+
+    /* MINI KPIS E ECO KPIS */
+.kpi-mini-container-v3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.kpi-mini-card-v3 {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.flex-kpi-blue { border-left: 4px solid #0056b3; } /* Azul escuro para destacar no fundo branco */
+.flex-kpi-green { border-left: 4px solid var(--verde-cedaenet); }
+.flex-kpi-orange { border-left: 4px solid #e67e22; }
+
+.kpi-mini-label-v3 {
+  display: block;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #475569; /* Cinza escuro */
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.kpi-mini-val-v3 {
+  font-family: 'Ubuntu', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a; /* Preto/Chumbo */
+}
+.kpi-mini-sub-v3 {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b; /* Cinza médio */
+  margin-top: 2px;
+}
+/* Impacto Ambiental (Cálculo Macro Automatizado) 
+    .eco-kpi-container-v3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .eco-kpi-card-v3 {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .eco-kpi-icon-v3 {
+      font-size: 1.6rem;
+      color: var(--verde-cedaenet);
+      background: rgba(255, 255, 255, 0.9);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .eco-kpi-icon-v3 .fa-droplet { color: #0066b2; }
+    .eco-kpi-label-v3 {
+      display: block;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
       color: rgba(255,255,255,0.75);
-      border:1px solid rgba(255,255,255,0.3);
-      padding:5px 12px;
-      border-radius:20px;
-      margin-bottom:16px;
+      letter-spacing: 0.04em;
     }
-    .hero-main-title{
-      color:#fff;
-      font-size: clamp(2rem, 4vw, 2.9rem);
-      font-weight:700;
-      line-height:1.1;
-      margin-bottom:14px;
+    .eco-kpi-val-v3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 1px;
     }
-    .hero-description{
-      color: rgba(255,255,255,0.86);
-      font-size:0.95rem;
-      line-height:1.65;
-      max-width: 560px;
-      margin:0;
+    .eco-calculo-legenda-v3 {
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      border-left: 3px solid rgba(255, 255, 255, 0.3);
     }
+    .eco-calculo-legenda-v3 p {
+      margin: 0;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.75);
+    }
+    .eco-calculo-legenda-v3 p i { margin-right: 4px; color: var(--verde-cedaenet); }*/
 
-    .hero-tech__visual{
-      display:flex; align-items:center; justify-content:center;
-      position:relative;
+    /* WIDGET DE CONSULTA (COLUNA DIREITA) */
+    .hero-tech__right-side-v3 { display: flex; justify-content: flex-end; }
+    .widget-combo-container-v3 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      width: 100%;
+      max-width: 560px;   /* era 460px */
     }
-    .hero-glow{
-      position:absolute;
-      width:220px; height:220px;
-      background: radial-gradient(circle, rgba(255,255,255,0.35), transparent 70%);
-      filter: blur(10px);
+    .widget-top-logo-area-v3 { width: 100%; display: flex; justify-content: center; }
+    .widget-top-logo-area-v3 .hero-selo-img-v3 { width: 280px; height: 220px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2)); }
+    
+    .widget-container-complete-v3 {
+      background: #ffffff;
+      border-radius: 12px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
     }
-    .hero-selo-img{ width:180px; position:relative; filter: drop-shadow(0 12px 24px rgba(0,0,0,0.25)); }
+    .widget-brand-header-v3 { background-color: #f7f9fc; border-bottom: 1px solid #eef2f7; padding: 18px 20px; }
+    .brand-text-v3 { display: flex; flex-direction: column; }
+    .brand-text-v3 span { font-size: 0.65rem; font-weight: 700; color: var(--verde-cedaenet); letter-spacing: 0.06em; }
+    .brand-text-v3 strong { font-size: 1rem; color: var(--azul-escuro-cedae); font-family: 'Montserrat', sans-serif; font-weight: 700; }
+    .widget-body-v3 { padding: 20px; }
+    .widget-instructions-v3 { font-size: 0.8rem; line-height: 1.4; color: #555555; margin: 0 0 16px 0; }
+    
+    .form-vertical-stack-v3 { display: flex; flex-direction: column; gap: 12px; }
+    .input-group-v3 { position: relative; }
+    .input-icon-v3 {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888888;
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+    .form-vertical-stack-v3 input,
+    .form-vertical-stack-v3 select {
+      width: 100%;
+      padding: 12px 12px 12px 36px;
+      border-radius: 6px;
+      border: 1px solid #ccd5df;
+      font-size: 0.85rem;
+      font-family: 'Ubuntu', sans-serif;
+      color: #333333;
+      background: #ffffff;
+    }
+    .form-vertical-stack-v3 input:focus,
+    .form-vertical-stack-v3 select:focus {
+      outline: none;
+      border-color: var(--azul-cedaenet);
+      box-shadow: 0 0 0 3px rgba(0, 102, 178, 0.1);
+    }
+    .btn-consultar-v3 {
+      background-color: var(--verde-cedaenet);
+      color: #ffffff;
+      border: none;
+      padding: 14px;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.2s;
+    }
+    .btn-consultar-v3:hover { background-color: #639d24; }
+    .resultado-dinamico-container-v3 { margin-top: 14px; }
 
-    /* Cartão único de KPIs (Sede / Laranjal / Consolidado) */
-    .hero-tech__kpi-section{ margin-top:40px; }
-    .kpi-dashboard-grid{
-      background: var(--creme-card);
-      border-radius: var(--raio);
-      box-shadow: var(--sombra);
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      overflow:hidden;
-    }
-    .kpi-tech-card{
-      padding:22px 26px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      border-left:4px solid var(--azul-cedae);
-      border-right:1px solid var(--linha);
-    }
-    .kpi-tech-card:last-child{ border-right:none; }
-    .kpi-tech-card__label{
-      font-size:0.72rem;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:0.04em;
-      color: var(--tinta-suave);
-    }
-    .kpi-tech-card__value{
-      font-size:1.7rem;
-      font-weight:700;
-      color: var(--tinta);
-    }
-
-    @media (max-width: 720px){
-      .kpi-dashboard-grid{ grid-template-columns: 1fr; }
-      .kpi-tech-card{ border-right:none; border-bottom:1px solid var(--linha); }
-      .kpi-tech-card:last-child{ border-bottom:none; }
-    }
-
-    /* ---------- MAIN ---------- */
-    .module-page{
-      max-width:1180px;
-      margin:0 auto;
+    /* ---------- ESTRUTURA PRINCIPAL ---------- */
+    .module-page {
+      max-width: 1400px;      /* era 1180px — acompanha a largura do hero */
+      margin: 0 auto;
       padding: 40px 32px 60px;
-      display:flex;
-      flex-direction:column;
-      gap:28px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
     }
+    .secao-titulo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+    .secao-titulo h2 { font-size: 1.3rem; font-weight: 700; color: var(--tinta); }
+    .secao-titulo p { margin: 4px 0 0; font-size: 0.85rem; color: var(--tinta-suave); max-width: 520px; }
 
-    .secao-titulo{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
-    .secao-titulo h2{ font-size:1.3rem; font-weight:700; color:var(--tinta); }
-    .secao-titulo p{ margin:6px 0 0; font-size:0.85rem; color:var(--tinta-suave); max-width:520px; }
-
-    .glass-panel{
+    .glass-panel {
       background: var(--creme-card);
-      border:1px solid var(--linha);
+      border: 1px solid var(--linha);
       border-radius: var(--raio);
       box-shadow: var(--sombra);
       padding: 26px 28px;
     }
 
-    /* Documentos */
-    .documentos-grid-compact{ display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap:16px; }
-    .documento-btn-card{
-      display:flex; align-items:center; gap:14px;
-      background: var(--creme-card);
-      border:1px solid var(--linha);
-      border-radius: var(--raio);
-      padding:16px;
-      transition: transform .18s ease, box-shadow .18s ease;
-    }
-    .documento-btn-card:hover{ transform: translateY(-3px); box-shadow: var(--sombra); }
-    .doc-preview-thumbnail{
-      width:52px; height:52px; border-radius:10px;
-      background: var(--azul-cedae);
-      display:flex; align-items:center; justify-content:center;
-      color:#fff; font-size:1.3rem; flex-shrink:0;
-    }
-    .doc-preview-thumbnail.secondary-thumb{ background: var(--marrom-organico); }
-    .doc-info-box{ flex:1; }
-    .documento-card-title{ font-size:0.92rem; font-weight:700; color:var(--tinta); }
-    .documento-card-desc{ font-size:0.76rem; color:var(--tinta-suave); margin:4px 0 0; line-height:1.4; }
-    .action-circle-btn{
-      width:32px; height:32px; border-radius:50%;
-      background: var(--creme); border:1px solid var(--linha);
-      display:flex; align-items:center; justify-content:center;
-      color: var(--azul-cedae); font-size:0.75rem; flex-shrink:0;
-    }
-
-    /* Gráficos: Sede e Laranjal lado a lado, Geral embaixo centralizado */
-    .graficos-grid {
+    /* DOCUMENTOS INLINE ROW */
+    .secao-titulo-documentos {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 100%;
-    }
-    .graficos-grid__linha-unidades {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 20px;
-      align-items: stretch;
-    }
-    .graficos-grid__linha-geral {
-      display: flex;
-      justify-content: center;
-    }
-    .graficos-grid__linha-geral .grafico-bloco-real {
-      width: 100%;
-      max-width: 460px;
-    }
-    .grafico-bloco-real {
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 12px 18px;
       background: var(--creme-card);
       border: 1px solid var(--linha);
       border-radius: var(--raio);
-      padding: 20px 16px 8px;
-      box-sizing: border-box;
-      display:flex;
-      flex-direction:column;
-      min-height: 400px;
-    }
-    .grafico-bloco-real h4 {
-      text-align: center;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--tinta);
-      margin-bottom: 4px;
-      letter-spacing: 0.01em;
-    }
-    .grafico-bloco-real > div[id^="chart-"]{
-      flex: 1;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    /* Console de consulta */
-    .search-console-card{
-      background: linear-gradient(135deg, var(--azul-cedae-escuro), var(--azul-cedae));
-      border-radius: var(--raio);
-      padding: 34px 30px;
-      text-align:center;
-      color:#fff;
       box-shadow: var(--sombra);
     }
-    .search-console-card h2{ color:#fff; }
-    .input-glow-wrapper{
-      display:flex; gap:10px; max-width:540px; margin:0 auto; flex-wrap:wrap; justify-content:center;
+    .documentos-inline-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .documento-btn-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid var(--linha);
+      padding: 8px 14px;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--tinta);
+      transition: all 0.2s ease;
     }
-    .input-glow-wrapper input,
-    .input-glow-wrapper select {
-      flex:1; min-width:180px;
-      padding:12px 16px; border-radius:10px; border:none;
-      font-family:'Inter',sans-serif; font-size:0.88rem;
-      background: rgba(255,255,255,0.95); color: var(--tinta);
+    .documento-btn-inline i:first-child { color: var(--azul-cedae); font-size: 0.95rem; }
+    .documento-btn-inline.secondary-inline i:first-child { color: var(--marrom-organico); }
+    .documento-btn-inline:hover {
+      background: var(--azul-cedae);
+      color: #fff;
+      border-color: var(--azul-cedae);
+      transform: translateY(-1px);
     }
-    .input-glow-wrapper input:focus,
-    .input-glow-wrapper select:focus{ outline:2px solid var(--amarelo-metal); }
-    
-    .btn--neon-action{
-      background: var(--amarelo-metal); color: #2b1c05;
-      border:none; padding:12px 20px; border-radius:10px;
-      font-weight:700; font-size:0.85rem; cursor:pointer;
-      display:flex; align-items:center; gap:8px;
-      transition: background .2s ease, transform .15s ease;
-    }
-    .btn--neon-action:hover{ background:#c88b23; transform: translateY(-1px); }
-
-    /* Footer */
-    footer{
-      background: var(--azul-cedae-escuro);
-      padding: 22px 20px;
-      text-align:center;
+    .documento-btn-inline.secondary-inline:hover {
+      background: var(--marrom-organico);
+      color: #fff;
+      border-color: var(--marrom-organico);
     }
 
-    @media (max-width: 860px){
-      .hero-tech__main-row{ grid-template-columns:1fr; }
-      .hero-tech__visual{ display:none; }
+    /* BLOCOS DE GRÁFICOS */
+.graficos-grid { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 24px; 
+  width: 100%; 
+}
+
+.graficos-grid__linha-unidades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.graficos-grid__linha-geral { 
+  display: block; 
+  width: 100%; 
+}
+
+.grafico-bloco-real {
+  background: var(--creme-card);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 24px 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 460px;
+}
+
+.grafico-bloco-real h4 {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--tinta);
+  margin-top: 0;
+  margin-bottom: 20px;
+  letter-spacing: 0.01em;
+}
+
+/* Garante que o ApexCharts ocupe 100% da largura útil */
+.grafico-bloco-real > div[id^="chart-"] {
+  width: 100% !important;
+  flex: 1;
+}
+    footer { background: var(--azul-cedae-escuro); padding: 22px 20px; text-align: center; }
+
+    /* RESPONSIVIDADE */
+    @media (max-width: 920px) {
+    .hero-tech__wrapper-v3 {
+      max-width: 1400px;      /* era 1200px */
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;   /* era 1.3fr 1fr — deixa o widget um pouco maior */
+      gap: 56px;               /* era 40px — respira mais */
+      align-items: center;
+    }
+      .hero-tech__right-side-v3 { justify-content: center; }
+    }
+    @media (max-width: 580px) {
+      .kpi-mini-container-v3, .eco-kpi-container-v3 { grid-template-columns: 1fr; gap: 10px; }
+      .hero-main-title-v3 { font-size: 2.2rem; }
+      .secao-titulo-documentos { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
 
   <!-- ==========================================================================
-       TOPBAR
+        TOPBAR
        ========================================================================== -->
   <header class="topbar">
     <div class="topbar__left">
@@ -345,118 +465,138 @@
   </header>
 
   <!-- ==========================================================================
-       HERO
+        HERO CORPORATIVO V3 - CONTEXTO E CONSULTA
        ========================================================================== -->
-  <section class="hero-tech">
-    <div class="hero-tech__wrapper">
-      <div class="hero-tech__main-row">
-        <div class="hero-tech__content">
-          <span class="hero-pretitle">Programa de Reciclagem Institucional 2026</span>
-          <h2 class="hero-main-title">RECICLA CEDAE</h2>
-          <p class="hero-description">
-            O programa RECICLA CEDAE promove a conscientização e a educação ambiental,
+  <section class="hero-tech-v3">
+    <div class="hero-tech__wrapper-v3">
+    
+      <!-- COLUNA DA ESQUERDA: KPIS + DESTAQUES AMBIENTAIS -->
+      <div class="hero-tech__left-side">
+        <span class="hero-pretitle-v3">PROGRAMA DE RECICLAGEM INSTITUCIONAL 2026</span>
+        <h2 class="hero-main-title-v3">RECICLA CEDAE</h2>
+        <div class="title-divider-v3"></div>
+        <p class="hero-description-v3">
+          O programa RECICLA CEDAE promove a conscientização e a educação ambiental,
             incentivando a destinação correta dos resíduos recicláveis e orgânicos gerados
-            pelos colaboradores no dia a dia da Companhia.
-          </p>
+            pelos colaboradores no dia a dia.
+        </p>
+
+        <!-- Acumulado Macro por Unidades -->
+        <div class="kpi-mini-container-v3">
+          <div class="kpi-mini-card-v3 flex-kpi-blue">
+            <span class="kpi-mini-label-v3">PRÉDIO SEDE</span>
+            <div class="kpi-mini-val-v3" id="kpi-sede-peso">-- kg</div>
+            <span class="kpi-mini-sub-v3" id="kpi-sede-part">-- part.</span>
+          </div>
+          <div class="kpi-mini-card-v3 flex-kpi-green">
+            <span class="kpi-mini-label-v3">LARANJAL</span>
+            <div class="kpi-mini-val-v3" id="kpi-laranjal-peso">-- kg</div>
+            <span class="kpi-mini-sub-v3" id="kpi-laranjal-part">-- part.</span>
+          </div>
+          <div class="kpi-mini-card-v3 flex-kpi-orange">
+            <span class="kpi-mini-label-v3">CONSOLIDADO GERAL</span>
+            <div class="kpi-mini-val-v3" id="kpi-total-peso">-- kg</div>
+            <span class="kpi-mini-sub-v3" id="kpi-participantes">-- participantes</span>
+          </div>
+        </div>
+        <!-- Impacto Ambiental (Cálculo Macro Automatizado)
+        <div class="eco-kpi-container-v3">
+          <div class="eco-kpi-card-v3">
+            <div class="eco-kpi-icon-v3"><i class="fa-solid fa-droplet"></i></div>
+            <div>
+              <span class="eco-kpi-label-v3">ÁGUA POUPADA (TOTAL COMPANHIA)</span>
+              <div class="eco-kpi-val-v3" id="eco-total-agua">-- Litros</div>
+            </div>
+          </div>
+          <div class="eco-kpi-card-v3">
+            <div class="eco-kpi-icon-v3"><i class="fa-solid fa-tree"></i></div>
+            <div>
+              <span class="eco-kpi-label-v3">PRESERVAÇÃO FLORESTAL</span>
+              <div class="eco-kpi-val-v3" id="eco-total-arvores">-- Árvores</div>
+            </div>
+          </div>
         </div>
 
-        <div class="hero-tech__visual">
-          <div class="hero-glow"></div>
-          <img src="assets/recicla-transp.png" alt="Selo Recicla CEDAE" class="hero-selo-img"
-               onerror="this.src='https://cdn-icons-png.flaticon.com/512/3253/3253245.png';">
+        Fatores de Conversão Oficiais
+        <div class="eco-calculo-legenda-v3">
+          <p><i class="fa-solid fa-circle-info"></i> <strong>Como calculamos o impacto?</strong> Cada 1 kg reciclado poupa 20L de água industrial. Cada 50 kg de papel/recicláveis evitam o corte de 1 árvore comercial adulta.</p>
+        </div>
+        -->
+      </div><!-- fecha .hero-tech__left-side AQUI, fora do comentário -->
+
+      <!-- COLUNA DA DIREITA: SELO + WIDGET DE CONSULTA INDIVIDUAL -->
+      <div class="hero-tech__right-side-v3">
+        <div class="widget-combo-container-v3">
+          
+          <div class="widget-top-logo-area-v3">
+            <img src="assets/recicla-transp.png" alt="Selo Recicla CEDAE" class="hero-selo-img-v3"
+                 onerror="this.src='https://cdn-icons-png.flaticon.com/512/3253/3253245.png';">
+          </div>
+
+          <div class="widget-container-complete-v3">
+            <div class="widget-brand-header-v3">
+              <div class="brand-text-v3">
+             <!--   <span>SISTEMA DE METAS</span>  -->
+                <strong>CONSULTA DE IMPACTO</strong>
+              </div>
+            </div>
+
+            <div class="widget-body-v3">
+              <p class="widget-instructions-v3">Consulte sua massa acumulada e veja os brindes liberados para retirada:</p>
+              
+              <form id="form-consulta-recicla" class="form-vertical-stack-v3">
+                <div class="input-group-v3">
+                  <i class="fa-solid fa-id-card input-icon-v3"></i>
+                  <input type="number" id="input-id-recicla" placeholder="Digite seu ID de Colaborador..." required>
+                </div>
+                
+                <div class="input-group-v3">
+                  <i class="fa-solid fa-location-dot input-icon-v3"></i>
+                  <select id="input-local-recicla" required>
+                    <option value="" disabled selected>Selecione a Unidade...</option>
+                    <option value="sede">Prédio Sede</option>
+                    <option value="laranjal">Laranjal</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn-consultar-v3">
+                  <i class="fa-solid fa-magnifying-glass"></i> CONSULTAR BRINDES E METAS
+                </button>
+              </form>
+
+              <div id="resultado-consulta-recicla" class="resultado-dinamico-container-v3"></div>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- KPIs em um único painel: Sede, Laranjal e Consolidado Geral -->
-      <div class="hero-tech__kpi-section">
-        <div class="kpi-dashboard-grid">
-
-          <!-- Prédio Sede -->
-          <div class="kpi-tech-card" style="border-left-color: var(--azul-cedae);">
-            <span class="kpi-tech-card__label">Prédio Sede</span>
-            <div class="kpi-tech-card__value" id="kpi-sede-peso">— kg</div>
-            <span style="font-size:0.75rem; color:var(--tinta-suave);" id="kpi-sede-part">— participantes</span>
-          </div>
-
-          <!-- Laranjal -->
-          <div class="kpi-tech-card" style="border-left-color: var(--verde-vidro);">
-            <span class="kpi-tech-card__label">Laranjal</span>
-            <div class="kpi-tech-card__value" id="kpi-laranjal-peso">— kg</div>
-            <span style="font-size:0.75rem; color:var(--tinta-suave);" id="kpi-laranjal-part">— participantes</span>
-          </div>
-
-          <!-- Consolidado Geral -->
-          <div class="kpi-tech-card" style="border-left-color: var(--amarelo-metal);">
-            <span class="kpi-tech-card__label">Total Consolidado Geral</span>
-            <div class="kpi-tech-card__value" id="kpi-total-peso">— kg</div>
-            <span style="font-size:0.75rem; color:var(--tinta-suave);" id="kpi-participantes">— participantes</span>
-          </div>
-
-        </div>
-      </div>
     </div>
   </section>
 
   <!-- ==========================================================================
-       CONTEÚDO PRINCIPAL
+        CONTEÚDO ANALÍTICO E PAINEL DE GRÁFICOS
        ========================================================================== -->
   <main class="module-page">
-
+    
     <!-- Documentação Técnica -->
-    <section id="documentos-corporativos">
-      <div class="secao-titulo">
-        <div>
-          <h2>Documentação do Programa</h2>
-          <p>Materiais de apoio para a triagem correta e as regras oficiais da Fase 2.</p>
-        </div>
+    <section id="documentos-corporativos" class="secao-titulo-documentos">
+      <div>
+        <h2 style="font-size: 1.1rem; font-weight: 700; margin: 0;"><i class="fa-solid fa-folder-open"></i> Documentação do Programa</h2>
       </div>
-      <div class="documentos-grid-compact">
-        <a href="assets/cartilhaRecicla2.pdf" target="_blank" class="documento-btn-card">
-          <div class="doc-preview-thumbnail"><i class="fa-regular fa-file-pdf"></i></div>
-          <div class="doc-info-box">
-            <h3 class="documento-card-title">Guia de Resíduos</h3>
-            <p class="documento-card-desc">Instruções para segregação correta de materiais recicláveis.</p>
-          </div>
-          <span class="action-circle-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+      <div class="documentos-inline-row">
+        <a href="assets/cartilhaRecicla2.pdf" target="_blank" class="documento-btn-inline">
+          <i class="fa-regular fa-file-pdf"></i> Guia de Resíduos
+          <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.65rem; margin-left:4px;"></i>
         </a>
-
-        <a href="assets/RegrasReciclaCEDAE_2026.pdf" target="_blank" class="documento-btn-card">
-          <div class="doc-preview-thumbnail secondary-thumb"><i class="fa-regular fa-file-pdf"></i></div>
-          <div class="doc-info-box">
-            <h3 class="documento-card-title">Documento Técnico</h3>
-            <p class="documento-card-desc">Edital RECICLA CEDAE 2026.</p>
-          </div>
-          <span class="action-circle-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+        <a href="assets/RegrasReciclaCEDAE_2026.pdf" target="_blank" class="documento-btn-inline secondary-inline">
+          <i class="fa-regular fa-file-pdf"></i> Documento Técnico (Edital 2026)
+          <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.65rem; margin-left:4px;"></i>
         </a>
       </div>
     </section>
-
-    <!-- Consulta Individual (Única com seletor de Local) -->
-    <section class="search-console-card" id="consulta">
-      <h2 style="font-size:1.4rem; font-weight:700; margin-bottom:16px;">
-        <i class="fa-solid fa-magnifying-glass-chart"></i> Consulte Sua Contribuição em kg
-      </h2>
-
-      <form id="form-consulta-recicla" class="input-glow-wrapper">
-        <input type="number" id="input-id-recicla" placeholder="Digite seu ID (Ex: 1)..." required>
-        
-        <select id="input-local-recicla" required>
-          <option value="" disabled selected>Selecione o local...</option>
-          <option value="sede">Sede</option>
-          <option value="laranjal">Laranjal</option>
-        </select>
-
-        <button type="submit" class="btn--neon-action">
-          <i class="fa-solid fa-search"></i> Consultar kg
-        </button>
-      </form>
-
-      <div id="resultado-consulta-recicla" style="margin-top:24px; text-align:left; max-width:540px; margin-left:auto; margin-right:auto;">
-        <!-- Retorno assíncrono do servidor injetado aqui -->
-      </div>
-    </section>
-
-    <!-- Painel de Gráficos Analíticos (3 Gráficos: Sede, Laranjal e Geral) -->
+    
+      <!-- Painel de Gráficos Analíticos (3 Gráficos: Sede, Laranjal e Geral) -->
     <section class="glass-panel" id="analise-graficos">
       <div class="secao-titulo">
         <div>
@@ -486,11 +626,11 @@
         </div>
       </div>
     </section>
-
+    
   </main>
 
   <!-- ==========================================================================
-       RODAPÉ
+        RODAPÉ
        ========================================================================== -->
   <footer>
     <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
@@ -504,6 +644,7 @@
     </p>
   </footer>
 
+  <!-- Script da Fase 2 -->
   <script src="js/pages/recicla-fase2.js" type="module"></script>
 </body>
 </html>

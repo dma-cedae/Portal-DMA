@@ -17,23 +17,12 @@ const state = {
   charts: {}
 };
 
-// Meta anual de referência para o gráfico de progresso (kg).
-const META_ANUAL_KG = 5000;
-
 // Paleta multicolorida para os gráficos individuais
 const CORES_GRAFICO = ["#0e32a7", "#158f05", "#ffdb3c", "#8b5731", "#3a9cff", "#f52929"];
 
 // Cores específicas para o Consolidado
-const COR_SEDE_CONSOLIDADO = "#0059ff"; // Roxo para Prédio Sede
-const COR_LARANJAL_CONSOLIDADO = "#f88b0e"; // Laranja Forte para Laranjal
-
-// ─── CATEGORIAS DE COLETA ────────────────────────────────────────────────
-const CATEGORIAS_COLETA = [
-  { nome: "Papel & Papelão", cor: "#0B4C8C", icone: "fa-box-archive", desc: "Caixas, jornais e folhas de rascunho limpas e secas." },
-  { nome: "Vidro", cor: "#2F7D4F", icone: "fa-wine-bottle", desc: "Garrafas e potes, preferencialmente sem tampa e enxaguados." },
-  { nome: "Metal", cor: "#D99A2B", icone: "fa-jar", desc: "Latas de alumínio e aço, tampas e clipes metálicos." },
-  { nome: "Orgânico", cor: "#7C5233", icone: "fa-seedling", desc: "Restos de alimentos e borra de café para compostagem." }
-];
+const COR_SEDE_CONSOLIDADO = "#0059ff"; // Azul Sede
+const COR_LARANJAL_CONSOLIDADO = "#f88b0e"; // Laranja Laranjal
 
 // ─── MAPEAMENTO DE ELEMENTOS DO DOM ─────────────────────────────────────────
 const els = {
@@ -58,9 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
   bindConsulta();
 });
 
-/**
- * Busca a carga consolidada do banco e dispara a interface
- */
 async function loadData() {
   try {
     if (els.fase2DbStatus) {
@@ -97,9 +83,6 @@ async function loadData() {
   }
 }
 
-/**
- * Agrupa registros duplicados pela combinação de 'diretoria' + 'local'
- */
 function agruparDadosDiretorias(dados) {
   const mapa = new Map();
 
@@ -154,73 +137,67 @@ function renderKpis() {
   }
 }
 
-function renderCategoriasColeta() {
-  if (!els.categoriasColeta) return;
-  els.categoriasColeta.innerHTML = CATEGORIAS_COLETA.map(c => `
-    <div class="card-categoria">
-      <div class="card-categoria__ponto" style="background:${c.cor};">
-        <i class="fa-solid ${c.icone}"></i>
-      </div>
-      <div class="card-categoria__texto">
-        <h4>${c.nome}</h4>
-        <p>${c.desc}</p>
-      </div>
-    </div>
-  `).join("");
-}
-
 function renderRankingTable() {
   if (!els.rankingCorpo) return;
 
   if (state.dadosDiretorias.length === 0) {
-    els.rankingCorpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#6B6255; font-size:0.85rem; padding: 20px;">Nenhuma pesagem computada neste ciclo.</td></tr>`;
+    els.rankingCorpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">Nenhum registro encontrado</td></tr>`;
     return;
   }
 
-  els.rankingCorpo.innerHTML = state.dadosDiretorias.map((d, index) => {
-    const medalhas = ["🥇", "🥈", "🥉"];
-    const rankVis = index < 3 ? `<span style="font-size:1.1rem;">${medalhas[index]}</span>` : `${index + 1}º`;
-    const localBadge = d.local ? `<span style="font-size: 0.75rem; background: #E4DDCC; padding: 2px 6px; border-radius: 4px; margin-left: 6px; color: #554C3F;">${escapeHtml(d.local)}</span>` : "";
+  els.rankingCorpo.innerHTML = state.dadosDiretorias.map((item, index) => `
+    <tr>
+      <td><strong>#${index + 1}</strong></td>
+      <td>${escapeHtml(item.diretoria)}</td>
+      <td><span class="badge badge-${item.local.toLowerCase()}">${escapeHtml(item.local.toUpperCase())}</span></td>
+      <td style="text-align:right;"><strong>${formatFloat(item.pesoTotal)} kg</strong></td>
+    </tr>
+  `).join("");
+}
 
-    return `
-      <tr>
-        <td style="text-align: center; font-weight: bold;">${rankVis}</td>
-        <td style="font-weight: 600;">${escapeHtml(d.diretoria)} ${localBadge}</td>
-        <td style="text-align: center;">${formatInteger(d.totalParticipantes)}</td>
-        <td style="text-align: right; font-weight: bold; color: var(--verde-vidro, #2F7D4F);">${formatFloat(d.pesoTotal)} kg</td>
-      </tr>
-    `;
-  }).join("");
+function renderCategoriasColeta() {
+  if (!els.categoriasColeta) return;
+
+  // Agrupa resíduos por tipo a partir do histórico de pesagens
+  const totaisPorCategoria = state.dadosReciclados.reduce((acc, item) => {
+    const cat = item.categoria || item.tipoResiduo || "Geral";
+    acc[cat] = (acc[cat] || 0) + (Number(item.peso) || 0);
+    return acc;
+  }, {});
+
+  const categorias = Object.keys(totaisPorCategoria);
+  if (categorias.length === 0) {
+    els.categoriasColeta.innerHTML = `<p style="color:#888; text-align:center;">Sem dados de categorias registrados.</p>`;
+    return;
+  }
+
+  els.categoriasColeta.innerHTML = categorias.map(cat => `
+    <div class="card-categoria" style="padding:12px; border:1px solid #e0e0e0; border-radius:8px;">
+      <span style="font-weight:600; display:block;">${escapeHtml(cat)}</span>
+      <strong style="color:#0066b2; font-size:1.1rem;">${formatFloat(totaisPorCategoria[cat])} kg</strong>
+    </div>
+  `).join("");
 }
 
 // ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS) ───────────────────────────────────
 
-/**
- * Configuração para gráficos individuais com paleta multicolorida por barra
- */
 function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
   return {
-    series: [{
-      name: "Volume Reciclado",
-      data: seriesData
-    }],
+    series: [{ name: "Volume Reciclado", data: seriesData }],
     chart: {
       type: "bar",
       height: height,
-      toolbar: {
-        show: true,
-        tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true }
-      },
+      toolbar: { show: true, tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
       background: "transparent",
       fontFamily: "'Inter', sans-serif"
     },
-    colors: CORES_GRAFICO, // Cores variadas para cada barra
+    colors: CORES_GRAFICO,
     plotOptions: {
       bar: {
         horizontal: false,
         columnWidth: "45%",
         borderRadius: 6,
-        distributed: true, // Distribui as cores da lista nas barras
+        distributed: true,
         dataLabels: { position: "top" }
       }
     },
@@ -229,20 +206,12 @@ function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
       textAnchor: "start",
       formatter: (val) => `${formatFloat(val)} kg`,
       offsetY: -12,
-      style: {
-        fontSize: "10px",
-        fontWeight: 600,
-        colors: ["#262117"]
-      }
+      style: { fontSize: "10px", fontWeight: 600, colors: ["#262117"] }
     },
     legend: { show: false },
     xaxis: {
       categories: categories,
-      labels: {
-        rotate: -45,
-        rotateAlways: true,
-        style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 }
-      },
+      labels: { rotate: -45, rotateAlways: true, style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 } },
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
@@ -269,7 +238,6 @@ function renderCharts() {
   const dadosSede = state.dadosDiretorias.filter(d => d.local && d.local.toLowerCase() === "sede");
   const dadosLaranjal = state.dadosDiretorias.filter(d => d.local && d.local.toLowerCase() === "laranjal");
 
-  // 1. Gráfico Sede (Multicolorido)
   if (elSede && dadosSede.length > 0) {
     state.charts.sede = new ApexCharts(elSede, buildBarOptionsIndividual({
       seriesData: dadosSede.map(d => d.pesoTotal),
@@ -280,7 +248,6 @@ function renderCharts() {
     elSede.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados na Sede</p>`;
   }
 
-  // 2. Gráfico Laranjal (Multicolorido)
   if (elLaranjal && dadosLaranjal.length > 0) {
     state.charts.laranjal = new ApexCharts(elLaranjal, buildBarOptionsIndividual({
       seriesData: dadosLaranjal.map(d => d.pesoTotal),
@@ -291,11 +258,9 @@ function renderCharts() {
     elLaranjal.innerHTML = `<p style="text-align:center; color:#6B6255; font-size:0.8rem; padding:40px;">Sem dados no Laranjal</p>`;
   }
 
-  // 3. Gráfico Consolidado Geral (Prédio Sede: Roxo | Laranjal: Laranja Forte)
   if (elGeral && state.dadosDiretorias.length > 0) {
     const todasDiretorias = [...new Set(state.dadosDiretorias.map(d => d.diretoria))];
 
-    // Ordenar diretorias pelo peso total acumulado
     todasDiretorias.sort((a, b) => {
       const pesoA = state.dadosDiretorias.filter(d => d.diretoria === a).reduce((acc, curr) => acc + curr.pesoTotal, 0);
       const pesoB = state.dadosDiretorias.filter(d => d.diretoria === b).reduce((acc, curr) => acc + curr.pesoTotal, 0);
@@ -320,32 +285,25 @@ function renderCharts() {
       chart: {
         type: "bar",
         height: 420,
-        toolbar: {
-          show: true,
-          tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true }
-        },
+        toolbar: { show: true, tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
         background: "transparent",
         fontFamily: "'Inter', sans-serif"
       },
-      colors: [COR_SEDE_CONSOLIDADO, COR_LARANJAL_CONSOLIDADO], // Roxo e Laranja
+      colors: [COR_SEDE_CONSOLIDADO, COR_LARANJAL_CONSOLIDADO],
       plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: "60%",
-          borderRadius: 4,
-          dataLabels: { position: "top" }
-        }
+            bar: {
+        horizontal: false,
+        columnWidth: "40%", // Reduzido de 60% para 40% para afastar as barras agrupadas
+        borderRadius: 4,
+        dataLabels: { position: "top" }
+      }
       },
       dataLabels: {
         enabled: true,
         textAnchor: "start",
-        formatter: (val) => (val > 0 ? `${formatFloat(val)} kg` : ""), // Omite rótulos zerados
+        formatter: (val) => (val > 0 ? `${formatFloat(val)} kg` : ""),
         offsetY: -15,
-        style: {
-          fontSize: "9px",
-          fontWeight: 600,
-          colors: ["#262117"]
-        }
+        style: { fontSize: "9px", fontWeight: 600, colors: ["#262117"] }
       },
       legend: {
         show: true,
@@ -358,11 +316,7 @@ function renderCharts() {
       },
       xaxis: {
         categories: todasDiretorias,
-        labels: {
-          rotate: -45,
-          rotateAlways: true,
-          style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 }
-        },
+        labels: { rotate: -45, rotateAlways: true, style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 } },
         axisBorder: { show: false },
         axisTicks: { show: false }
       },
@@ -379,54 +333,90 @@ function renderCharts() {
   }
 }
 
-// ─── GERENCIADOR EVENTO DA CONSULTA INDIVIDUAL ──────────────────────────────
 function bindConsulta() {
   if (!els.consultaForm) return;
 
   els.consultaForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const id = String(els.consultaId?.value || "").trim();
-    const local = String(els.consultaLocal?.value || "").trim();
+    const id = els.consultaId.value.trim();
+    const local = els.consultaLocal.value.trim();
 
-    if (!id || !local || !els.consultaResultado) {
-      if (els.consultaResultado) {
+    els.consultaResultado.innerHTML = `<p style='color:#333; font-size:0.85rem;'><i class='fa-solid fa-spinner fa-spin'></i> Calculando pegada ecológica...</p>`;
+
+    try {
+      const participante = await ReciclaAPI.consultarParticipante(id, local);
+
+      if (!participante) {
         els.consultaResultado.innerHTML = `
-          <div style="background: rgba(180,58,42,0.08); border: 1px solid #B43A2A; border-radius: 8px; padding: 10px; color: #B43A2A; font-size: 0.8rem; text-align: center;">
-            Informe o ID e selecione o local da consulta.
+          <div style="background:#B43A2A; color:#fff; padding:12px; border-radius:8px; font-size:0.85rem; font-weight:600;">
+            ❌ Colaborador não localizado na unidade ${escapeHtml(local.toUpperCase())} ou sem pesagens ativas.
           </div>`;
+        return;
       }
-      return;
-    }
 
-    els.consultaResultado.innerHTML = `
-      <div style="text-align:center; color: #6B6255; font-size: 0.8rem; padding: 10px;">
-        <i class="fa-solid fa-spinner fa-spin"></i> Consultando base...
-      </div>`;
+      const peso = Number(participante.somatorio || 0);
+      const litrosAgua = (peso * 20).toFixed(0);
+      const arvoresSalvas = (peso * 0.02).toFixed(2);
 
-    const part = await ReciclaAPI.consultarParticipante(id, local);
+      const metas = [
+        { kg: 5, nome: "Brinde 5 kg" },
+        { kg: 10, nome: "Brinde 10 kg" },
+        { kg: 25, nome: "Brinde 25 kg" },
+        { kg: 50, nome: "Brinde 50 kg" }
+      ];
 
-    if (!part) {
+      let htmlBrindes = "";
+      let temDireitoAAlgum = false;
+
+      metas.forEach(meta => {
+        if (peso >= meta.kg) {
+          temDireitoAAlgum = true;
+          htmlBrindes += `
+            <div style="color: #74b62e; font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+              <i class="fa-solid fa-circle-check" style="font-size:1.1rem;"></i> ${meta.nome} ✔️
+            </div>`;
+        } else {
+          const falta = (meta.kg - peso).toFixed(2);
+          htmlBrindes += `
+            <div style="color: #666; font-size: 1.05rem; display: flex; align-items: center; gap: 10px; opacity: 0.75;">
+              <i class="fa-regular fa-circle" style="font-size:1.1rem;"></i> ${meta.nome} <span style="font-size: 0.9rem; color:#999;">(Faltam ${falta.toLocaleString('pt-BR')} kg)</span>
+            </div>`;
+        }
+      });
+
+      const statusGeralBrindes = temDireitoAAlgum
+        ? `<div style="background: #eef9e6; border: 1px solid #d4edb8; color: #437413; font-weight: 700; padding: 16px; border-radius: 8px; font-size: 1rem; text-align: center;"><i class="fa-solid fa-gift"></i> Você tem brinde(s) liberado(s) para resgate!</div>`
+        : `<div style="background: #fff8eb; border: 1px solid #ffe8cc; color: #b26a00; font-weight: 600; padding: 16px; border-radius: 8px; font-size: 1rem; text-align: center;"><i class="fa-solid fa-hourglass-half"></i> Faltam poucos quilos para seu primeiro brinde!</div>`;
+
       els.consultaResultado.innerHTML = `
-        <div style="background: rgba(180,58,42,0.08); border: 1px solid #B43A2A; border-radius: 8px; padding: 14px; color: #B43A2A; font-size: 0.8rem; text-align: center; line-height: 1.4;">
-          <i class="fa-solid fa-circle-xmark" style="font-size: 1.1rem; margin-bottom: 5px; display:block;"></i>
-          <strong>Participante ID [${escapeHtml(id)}] em [${escapeHtml(local)}] não localizado!</strong><br>
-          Verifique os dados informados.
-        </div>`;
-      return;
-    }
+        <div style="background:#ffffff; border-radius:10px; padding:24px; margin-top:18px; border: 1px solid #ccd5df; text-align:left; color:#333;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #eef2f7; padding-bottom:16px; margin-bottom:20px; gap:12px;">
+            <div>
+              <h4 style="margin:0; font-size:1.5rem; line-height:1.2; color:#004d88; font-family:'Montserrat',sans-serif; text-transform:uppercase; font-weight:800;">${escapeHtml(participante.nome)}</h4>
+              <p style="margin:6px 0 0; font-size:1rem; color:#666;">Unidade: <strong>${escapeHtml(participante.local.toUpperCase())}</strong></p>
+            </div>
+            <div style="text-align:right; flex-shrink:0;">
+              <span style="font-size:2rem; font-weight:700; color:#0066b2; font-family:'Ubuntu',sans-serif; white-space:nowrap;">${peso.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} kg</span>
+            </div>
+          </div>
 
-    els.consultaResultado.innerHTML = `
-      <div style="background: #fff; border: 1px solid #2F7D4F; border-radius: 8px; padding: 14px; color: #262117; box-shadow: 0 4px 12px rgba(0,0,0,0.08); animation: fadeIn 0.3s ease;">
-        <strong style="font-size: 0.95rem; color: #2F7D4F; display:block; margin-bottom:8px; border-bottom:1px solid #E4DDCC; padding-bottom:4px;">
-          <i class="fa-solid fa-user-check"></i> ${escapeHtml(part.nome)}
-        </strong>
-        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>ID:</strong> ${escapeHtml(part.id)} | <strong>Local:</strong> ${escapeHtml(part.local)}</p>
-        <p style="margin: 4px 0; font-size: 0.8rem;"><strong>Lotação:</strong> ${escapeHtml(part.diretoria)}</p>
-        <div style="margin-top: 12px; background: #F5F1E7; padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.8rem; color: #6B6255;">Volume Acumulado:</span>
-          <strong style="font-size: 1.25rem; color: #2F7D4F;">${formatFloat(part.somatorio)} kg</strong>
+       
+          <div style="margin-top:16px; border-top: 2px dashed #ccd5df; padding-top:18px;">
+            <h5 style="margin: 0 0 14px 0; font-size:0.95rem; font-weight:700; text-transform:uppercase; color:#888; letter-spacing:0.04em;">Resgate de Brindes:</h5>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:18px;">
+              ${htmlBrindes}
+            </div>
+            ${statusGeralBrindes}
+          </div>
         </div>
-      </div>`;
+      `;
+    } catch (err) {
+      console.error("Erro na consulta de participante:", err);
+      els.consultaResultado.innerHTML = `
+        <div style="background:#B43A2A; color:#fff; padding:12px; border-radius:8px; font-size:0.85rem;">
+          ❌ Falha ao processar dados de impacto ecológico.
+        </div>`;
+    }
   });
 }
 

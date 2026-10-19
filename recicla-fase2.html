@@ -143,6 +143,110 @@
       margin-bottom: 35px;
     }
 
+/* ==========================================================================
+   CARD DE AGENDA · REUNIÃO MENSAL (versão compacta com destaque)
+   ========================================================================== */
+.card-agenda-recicla-v2 {
+  margin-top: 18px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1.5px solid var(--verde-cedaenet);
+  border-left-width: 5px;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 0 0 3px rgba(116, 182, 46, 0.15);
+}
+
+.banner-reuniao-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- Cabeçalho ---------- */
+.banner-reuniao-header h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+}
+
+.subtitulo-banner {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ---------- Pílulas ---------- */
+.banner-reuniao-info {
+  display: grid;
+  grid-template-columns: 1.25fr 0.9fr 1fr;
+  gap: 10px;
+}
+
+.info-pill-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  border-left: 4px solid var(--verde-cedaenet);
+  padding: 9px 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
+  min-width: 0;
+}
+
+.info-pill-item i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  font-size: 0.9rem;
+}
+
+.info-pill-item > div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.info-pill-item strong {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.info-pill-item span {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Cor de destaque por pílula (borda lateral + ícone) */
+.info-pill-item:nth-child(1) { border-left-color: var(--verde-cedaenet); }
+.info-pill-item:nth-child(1) i { background: rgba(116, 182, 46, 0.18); color: #4e8a1a; }
+
+.info-pill-item:nth-child(2) { border-left-color: var(--amarelo-metal); }
+.info-pill-item:nth-child(2) i { background: rgba(217, 154, 43, 0.18); color: #a86f0f; }
+
+.info-pill-item:nth-child(3) { border-left-color: var(--azul-cedae-claro); }
+.info-pill-item:nth-child(3) i { background: rgba(62, 127, 193, 0.15); color: var(--azul-cedae); }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 920px) {
+  .banner-reuniao-info { grid-template-columns: 1fr; }
+}
+
     /* MINI KPIS E ECO KPIS */
 .kpi-mini-container-v3 {
   display: grid;
@@ -499,6 +603,46 @@
             <span class="kpi-mini-sub-v3" id="kpi-participantes">-- participantes</span>
           </div>
         </div>
+          <!-- CARD DE AGENDA / REUNIÃO MENSAL -->
+<div class="card-agenda-recicla-v2">
+  <div class="banner-reuniao-content">
+    
+    <!-- LADO ESQUERDO: TÍTULO E NÚCLEO DA REUNIÃO -->
+    <div class="banner-reuniao-header">
+      <h2>REUNIÃO MENSAL</h2>
+      <p class="subtitulo-banner">Acompanhamento dos Resultados e Entrega de Brindes do Programa</p>
+    </div>
+
+    <!-- LADO DIREITO: DADOS DE DATA, HORA E LOCAL -->
+    <div class="banner-reuniao-info">
+      <div class="info-pill-item">
+        <i class="fa-regular fa-calendar-days"></i>
+        <div>
+          <strong>Dia 23/10/2026</strong>
+          <span>Sexta-feira</span>
+        </div>
+      </div>
+
+      <div class="info-pill-item">
+        <i class="fa-regular fa-clock"></i>
+        <div>
+          <strong>às 14:30</strong>
+          <span>MANANCIAL</span>
+        </div>
+      </div>
+
+      <div class="info-pill-item destaque-local">
+        <i class="fa-solid fa-location-dot"></i>
+        <div>
+          <strong>Prédio Sede</strong>
+          <span>Presencial</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
         <!-- Impacto Ambiental (Cálculo Macro Automatizado)
         <div class="eco-kpi-container-v3">
           <div class="eco-kpi-card-v3">

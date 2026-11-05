@@ -1,0 +1,55 @@
+esse é codigo que deve ser incluido na 699 do recicla-fase2.html para apresentar a agenda de reunião mensal  
+
+ <!-- AGENDA UNIFICADA · REUNIÃO MENSAL -->
+        <div class="card-agenda-recicla-v2">
+          <div class="banner-reuniao-header">
+            <h2>REUNIÃO MENSAL</h2>
+            <p class="subtitulo-banner">Acompanhamento dos Resultados e Entrega de Brindes do Programa</p>
+          </div>
+
+          <div class="agenda-tabela"> 
+            <!-- Cabeçalho das colunas (aparece uma única vez) -->
+            <div class="agenda-cabecalho">
+              <span>Unidade</span>
+              <span>Data</span>
+              <span>Horário</span>
+              <span>Local</span>
+            </div> 
+            
+            <!-- Laranjal -->
+            <div class="agenda-linha agenda-linha--laranjal">
+              <div class="agenda-col agenda-col--unidade" data-label="Unidade">
+                <strong>LARANJAL</strong>
+                <small>Presencial</small>
+              </div>
+              <div class="agenda-col" data-label="Data">
+                <strong>20/10</strong>
+                <small>Terça-feira</small>
+              </div>
+              <div class="agenda-col" data-label="Horário">
+                <strong>10:00</strong>
+              </div>
+              <div class="agenda-col" data-label="Local">
+                <strong>Auditório</strong>
+              </div>
+            </div>
+
+            <!-- Prédio Sede -->
+            <div class="agenda-linha agenda-linha--sede">
+              <div class="agenda-col agenda-col--unidade" data-label="Unidade">
+                <strong>PRÉDIO SEDE</strong>
+                <small>Presencial</small>
+              </div>
+              <div class="agenda-col" data-label="Data">
+                <strong>23/10</strong>
+                <small>Sexta-feira</small>
+              </div>
+              <div class="agenda-col" data-label="Horário">
+                <strong>14:30</strong>
+              </div>
+              <div class="agenda-col" data-label="Local">
+                <strong>Manancial</strong>
+              </div>
+            </div>
+          </div> 
+        </div>

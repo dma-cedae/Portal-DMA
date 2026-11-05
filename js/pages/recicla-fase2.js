@@ -182,36 +182,48 @@ function renderCategoriasColeta() {
 // ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS) ───────────────────────────────────
 
 function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
+  const isMobile = window.innerWidth <= 768;
+
   return {
     series: [{ name: "Volume Reciclado", data: seriesData }],
     chart: {
       type: "bar",
-      height: height,
-      toolbar: { show: true, tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
+      height: isMobile ? 320 : height,
+      toolbar: { show: false },
       background: "transparent",
       fontFamily: "'Inter', sans-serif"
     },
-    colors: CORES_GRAFICO,
+    // Paleta de cores atribuída a cada barra individualmente
+    colors: CORES_GRAFICO, 
     plotOptions: {
       bar: {
-        horizontal: false,
+        horizontal: isMobile, // Barra horizontal no mobile, vertical no desktop
         columnWidth: "45%",
+        barHeight: "55%",
         borderRadius: 6,
-        distributed: true,
+        distributed: true, // ⚠️ OBRIGATÓRIO: Garante uma cor diferente para cada categoria
         dataLabels: { position: "top" }
       }
     },
     dataLabels: {
       enabled: true,
-      textAnchor: "start",
+      textAnchor: isMobile ? "start" : "middle",
       formatter: (val) => `${formatFloat(val)} kg`,
-      offsetY: -12,
-      style: { fontSize: "10px", fontWeight: 600, colors: ["#262117"] }
+      offsetY: isMobile ? 0 : -12,
+      style: { 
+        fontSize: isMobile ? "10px" : "11px", 
+        fontWeight: 600, 
+        colors: ["#262117"] 
+      }
     },
-    legend: { show: false },
+    legend: { show: false }, // Esconde a legenda automática gerada pelo 'distributed'
     xaxis: {
       categories: categories,
-      labels: { rotate: -45, rotateAlways: true, style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 } },
+      labels: {
+        rotate: isMobile ? 0 : -45,
+        rotateAlways: !isMobile,
+        style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 }
+      },
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
@@ -223,7 +235,6 @@ function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
     tooltip: { y: { formatter: (val) => `${formatFloat(val)} kg` } }
   };
 }
-
 function renderCharts() {
   ["sede", "laranjal", "geral"].forEach(key => {
     if (state.charts[key] && typeof state.charts[key].destroy === "function") {

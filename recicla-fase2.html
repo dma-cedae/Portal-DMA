@@ -14,559 +14,633 @@
   <!-- Biblioteca de Gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
  
-  <style>
-    /* ==========================================================================
-       DESIGN TOKENS & VARIÁVEIS CROMÁTICAS
-       ========================================================================== */
-    :root {
-      --azul-cedae: #0B4C8C;
-      --azul-cedae-escuro: #073A6D;
-      --azul-cedae-claro: #3E7FC1;
-      --verde-vidro: #2F7D4F;
-      --amarelo-metal: #D99A2B;
-      --marrom-organico: #7C5233;
+<style>
+  /* ==========================================================================
+     DESIGN TOKENS & VARIÁVEIS CROMÁTICAS
+     ========================================================================== */
+  :root {
+    --azul-cedae: #0B4C8C;
+    --azul-cedae-escuro: #073A6D;
+    --azul-cedae-claro: #3E7FC1;
+    --verde-vidro: #2F7D4F;
+    --amarelo-metal: #D99A2B;
+    --marrom-organico: #7C5233;
 
-      --creme: #F5F1E7;
-      --creme-card: #FFFFFF;
-      --linha: #E4DDCC;
-      --tinta: #262117;
-      --tinta-suave: #6B6255;
+    --creme: #F4F6F9; /* Fundo estilo feed moderno */
+    --creme-card: #FFFFFF;
+    --linha: #E2E8F0;
+    --tinta: #1E293B;
+    --tinta-suave: #64748B;
 
-      --azul-cedaenet: #0066b2;      
-      --verde-cedaenet: #74b62e;      
-      --azul-escuro-cedae: #004d88;
-      --fundo-cards: rgba(255, 255, 255, 0.08);
+    --azul-cedaenet: #0066b2;      
+    --verde-cedaenet: #74b62e;      
+    --azul-escuro-cedae: #004d88;
+    --fundo-cards: rgba(255, 255, 255, 0.08);
 
-      --sombra: 0 10px 30px -12px rgba(38, 33, 23, 0.18);
-      --raio: 14px;
-    }
-
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    
-    body {
-      margin: 0;
-      background: var(--creme);
-      color: var(--tinta);
-      font-family: 'Inter', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
-    .num, .kpi-valor, .tabela-massa { font-family: 'JetBrains Mono', monospace; }
-    a { text-decoration: none; color: inherit; }
-
-    /* ---------- TOPBAR ---------- */
-    .topbar {
-      background: #fff;
-      border-bottom: 1px solid var(--linha);
-      padding: 14px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      position: sticky;
-      top: 0;
-      z-index: 40;
-    }
-    .topbar__left { display: flex; align-items: center; gap: 14px; }
-    .logo-cedae { height: 34px; display: block; }
-    .dma-tag-line {
-      font-size: 0.72rem;
-      color: var(--tinta-suave);
-      border-left: 1px solid var(--linha);
-      padding-left: 14px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-    .topbar__right-logos { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .topbar__back-link {
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: #fff;
-      background: var(--azul-cedae);
-      padding: 8px 16px;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background .2s ease;
-    }
-    .topbar__back-link:hover { background: var(--azul-cedae-escuro); }
-
-    /* ---------- HERO CORPORATIVO ---------- */
-    .hero-tech-v3 {
-      background-color: var(--azul-cedaenet); 
-      padding: 50px 24px;
-      font-family: 'Ubuntu', sans-serif;
-    }
-    .hero-tech__wrapper-v3 {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 40px;
-      align-items: center;
-    }
-    .hero-tech__left-side { color: #ffffff; }
-    .hero-pretitle-v3 {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 6px;
-      font-family: 'Montserrat', sans-serif;
-    }
-    .hero-main-title-v3 {
-      font-family: 'Montserrat', sans-serif;
-      font-size: clamp(2.2rem, 4vw, 3.2rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      line-height: 1.05;
-      margin: 0 0 14px 0;
-      text-transform: uppercase;
-    }
-    .title-divider-v3 {
-      width: 60px;
-      height: 4px;
-      background-color: var(--verde-cedaenet);
-      margin-bottom: 20px;
-      border-radius: 2px;
-    }
-    .hero-description-v3 {
-      font-size: 1rem;
-      line-height: 1.6;
-      color: rgba(255, 255, 255, 0.95);
-      max-width: 580px;
-      margin-bottom: 35px;
-    }
-
-/* ==========================================================================
-   AGENDA · REUNIÃO MENSAL (tabela unificada)
-   ========================================================================== */
-.card-agenda-recicla-v2 {
-  margin-top: 18px;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1.5px solid var(--verde-cedaenet);
-  border-left-width: 5px;
-  border-radius: 10px;
-  padding: 16px 18px;
-  box-shadow: 0 0 0 3px rgba(116, 182, 46, 0.15);
-}
-
-.banner-reuniao-header h2 {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #fff;
-  margin: 0;
-}
-
-.subtitulo-banner {
-  margin: 4px 0 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.92);
-}
-
-/* ---------- Tabela ---------- */
-.agenda-tabela {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Mesma grade no cabeçalho e nas linhas = colunas sempre alinhadas */
-.agenda-cabecalho,
-.agenda-linha {
-  display: grid;
-  grid-template-columns: 1.3fr 1fr 0.8fr 1fr;
-  column-gap: 12px;
-  align-items: center;
-}
-
-.agenda-cabecalho {
-  padding: 0 12px 0 16px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.agenda-linha {
-  background: #fff;
-  border-radius: 8px;
-  border-left: 5px solid var(--verde-cedaenet);
-  padding: 10px 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
-}
-
-.agenda-linha--laranjal { border-left-color: var(--verde-cedaenet); }
-.agenda-linha--sede     { border-left-color: var(--azul-cedae-claro); }
-
-.agenda-col {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-  min-width: 0;
-}
-
-.agenda-col strong {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.agenda-col small {
-  margin-top: 2px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-/* Nome da unidade colorido, para identificar rápido */
-.agenda-linha--laranjal .agenda-col--unidade strong { color: #4e8a1a; }
-.agenda-linha--sede .agenda-col--unidade strong     { color: var(--azul-cedae); }
-
-/* Data e horário em destaque (o que mais causa confusão) */
-.agenda-col[data-label="Data"] strong,
-.agenda-col[data-label="Horário"] strong {
-  font-size: 1.05rem;
-}
-
-/* ---------- Mobile: cada linha vira um bloco 2x2 com rótulos ---------- */
-@media (max-width: 580px) {
-  .agenda-cabecalho { display: none; }
-
-  .agenda-linha {
-    grid-template-columns: 1fr 1fr;
-    row-gap: 10px;
+    --sombra: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
+    --sombra-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+    --raio: 16px;
+    --raio-sm: 10px;
   }
 
-  .agenda-col::before {
-    content: attr(data-label);
+  * { 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html { 
+    scroll-behavior: smooth; 
+  }
+  
+  body {
+    margin: 0;
+    background: var(--creme);
+    color: var(--tinta);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
+  .num, .kpi-valor, .tabela-massa { font-family: 'JetBrains Mono', monospace; }
+  a { text-decoration: none; color: inherit; }
+
+  /* ==========================================================================
+     TOPBAR NAVEGAÇÃO STICKY
+     ========================================================================== */
+  .topbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--linha);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  }
+  .topbar__left { display: flex; align-items: center; gap: 12px; }
+  .logo-cedae { height: 32px; display: block; object-fit: contain; }
+  .dma-tag-line {
+    font-size: 0.72rem;
+    color: var(--tinta-suave);
+    border-left: 1px solid var(--linha);
+    padding-left: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .topbar__right-logos { display: flex; align-items: center; gap: 10px; }
+  .topbar__back-link {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--azul-cedae);
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    touch-action: manipulation;
+  }
+  .topbar__back-link:active,
+  .topbar__back-link:hover { background: var(--azul-cedae-escuro); transform: scale(0.98); }
+
+  /* ==========================================================================
+     HERO CORPORATIVO & FEED LAYOUT
+     ========================================================================== */
+  .hero-tech-v3 {
+    background: linear-gradient(135deg, var(--azul-cedaenet) 0%, var(--azul-escuro-cedae) 100%);
+    padding: 36px 20px 48px;
+    font-family: 'Ubuntu', sans-serif;
+  }
+  .hero-tech__wrapper-v3 {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 36px;
+    align-items: start;
+  }
+  .hero-tech__left-side { color: #ffffff; }
+  
+  .hero-pretitle-v3 {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 6px;
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.6rem;
+  }
+  .hero-main-title-v3 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    margin: 0 0 12px 0;
+    text-transform: uppercase;
+  }
+  .title-divider-v3 {
+    width: 50px;
+    height: 4px;
+    background-color: var(--verde-cedaenet);
+    margin-bottom: 16px;
+    border-radius: 2px;
+  }
+  .hero-description-v3 {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.92);
+    max-width: 580px;
+    margin-bottom: 28px;
+  }
+
+  /* ==========================================================================
+     MINI KPIS (CARROSSEL TOUCH EM DISPOSITIVOS MÓVEIS)
+     ========================================================================== */
+  .kpi-mini-container-v3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .kpi-mini-card-v3 {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--raio-sm);
+    padding: 14px;
+    box-shadow: var(--sombra-card);
+    transition: transform 0.2s ease;
+  }
+  .flex-kpi-blue { border-left: 4px solid #0056b3; }
+  .flex-kpi-green { border-left: 4px solid var(--verde-cedaenet); }
+  .flex-kpi-orange { border-left: 4px solid #e67e22; }
+
+  .kpi-mini-label-v3 {
+    display: block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .kpi-mini-val-v3 {
+    font-family: 'Ubuntu', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.1;
+  }
+  .kpi-mini-sub-v3 {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 4px;
+  }
+
+  /* ==========================================================================
+     AGENDA · REUNIÃO MENSAL
+     ========================================================================== */
+  .card-agenda-recicla-v2 {
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid var(--verde-cedaenet);
+    border-left-width: 5px;
+    border-radius: var(--raio-sm);
+    padding: 16px 18px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .banner-reuniao-header h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+    margin: 0;
+  }
+  .subtitulo-banner {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .agenda-tabela {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .agenda-cabecalho,
+  .agenda-linha {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 0.8fr 1fr;
+    column-gap: 12px;
+    align-items: center;
+  }
+
+  .agenda-cabecalho {
+    padding: 0 12px 0 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #94a3b8;
-    margin-bottom: 2px;
+    color: rgba(255, 255, 255, 0.75);
   }
-}
 
+  .agenda-linha {
+    background: #ffffff;
+    border-radius: var(--raio-sm);
+    border-left: 4px solid var(--verde-cedaenet);
+    padding: 12px 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
 
-    /* MINI KPIS E ECO KPIS */
-.kpi-mini-container-v3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-.kpi-mini-card-v3 {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 16px 14px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-.flex-kpi-blue { border-left: 4px solid #0056b3; } /* Azul escuro para destacar no fundo branco */
-.flex-kpi-green { border-left: 4px solid var(--verde-cedaenet); }
-.flex-kpi-orange { border-left: 4px solid #e67e22; }
+  .agenda-linha--laranjal { border-left-color: var(--verde-cedaenet); }
+  .agenda-linha--sede { border-left-color: var(--azul-cedae-claro); }
 
-.kpi-mini-label-v3 {
-  display: block;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #475569; /* Cinza escuro */
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}
-.kpi-mini-val-v3 {
-  font-family: 'Ubuntu', sans-serif;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #0f172a; /* Preto/Chumbo */
-}
-.kpi-mini-sub-v3 {
-  display: block;
-  font-size: 0.75rem;
-  color: #64748b; /* Cinza médio */
-  margin-top: 2px;
-}
-/* Impacto Ambiental (Cálculo Macro Automatizado) 
-    .eco-kpi-container-v3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
-    .eco-kpi-card-v3 {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px dashed rgba(255, 255, 255, 0.25);
-      border-radius: 8px;
-      padding: 14px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .eco-kpi-icon-v3 {
-      font-size: 1.6rem;
-      color: var(--verde-cedaenet);
-      background: rgba(255, 255, 255, 0.9);
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .eco-kpi-icon-v3 .fa-droplet { color: #0066b2; }
-    .eco-kpi-label-v3 {
-      display: block;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.62rem;
-      font-weight: 700;
-      color: rgba(255,255,255,0.75);
-      letter-spacing: 0.04em;
-    }
-    .eco-kpi-val-v3 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-top: 1px;
-    }
-    .eco-calculo-legenda-v3 {
-      margin-top: 16px;
-      padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 6px;
-      border-left: 3px solid rgba(255, 255, 255, 0.3);
-    }
-    .eco-calculo-legenda-v3 p {
-      margin: 0;
-      font-size: 0.75rem;
-      line-height: 1.4;
-      color: rgba(255, 255, 255, 0.75);
-    }
-    .eco-calculo-legenda-v3 p i { margin-right: 4px; color: var(--verde-cedaenet); }*/
+  .agenda-col {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    min-width: 0;
+  }
 
-    /* WIDGET DE CONSULTA (COLUNA DIREITA) */
-    .hero-tech__right-side-v3 { display: flex; justify-content: flex-end; }
-    .widget-combo-container-v3 {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 18px;
-      width: 100%;
-      max-width: 560px;   /* era 460px */
-    }
-    .widget-top-logo-area-v3 { width: 100%; display: flex; justify-content: center; }
-    .widget-top-logo-area-v3 .hero-selo-img-v3 { width: 280px; height: 220px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2)); }
-    
-    .widget-container-complete-v3 {
-      background: #ffffff;
-      border-radius: 12px;
-      width: 100%;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-      overflow: hidden;
-    }
-    .widget-brand-header-v3 { background-color: #f7f9fc; border-bottom: 1px solid #eef2f7; padding: 18px 20px; }
-    .brand-text-v3 { display: flex; flex-direction: column; }
-    .brand-text-v3 span { font-size: 0.65rem; font-weight: 700; color: var(--verde-cedaenet); letter-spacing: 0.06em; }
-    .brand-text-v3 strong { font-size: 1rem; color: var(--azul-escuro-cedae); font-family: 'Montserrat', sans-serif; font-weight: 700; }
-    .widget-body-v3 { padding: 20px; }
-    .widget-instructions-v3 { font-size: 0.8rem; line-height: 1.4; color: #555555; margin: 0 0 16px 0; }
-    
-    .form-vertical-stack-v3 { display: flex; flex-direction: column; gap: 12px; }
-    .input-group-v3 { position: relative; }
-    .input-icon-v3 {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #888888;
-      font-size: 0.85rem;
-      pointer-events: none;
-    }
-    .form-vertical-stack-v3 input,
-    .form-vertical-stack-v3 select {
-      width: 100%;
-      padding: 12px 12px 12px 36px;
-      border-radius: 6px;
-      border: 1px solid #ccd5df;
-      font-size: 0.85rem;
-      font-family: 'Ubuntu', sans-serif;
-      color: #333333;
-      background: #ffffff;
-    }
-    .form-vertical-stack-v3 input:focus,
-    .form-vertical-stack-v3 select:focus {
-      outline: none;
-      border-color: var(--azul-cedaenet);
-      box-shadow: 0 0 0 3px rgba(0, 102, 178, 0.1);
-    }
-    .btn-consultar-v3 {
-      background-color: var(--verde-cedaenet);
-      color: #ffffff;
-      border: none;
-      padding: 14px;
-      border-radius: 6px;
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 700;
-      font-size: 0.82rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: background-color 0.2s;
-    }
-    .btn-consultar-v3:hover { background-color: #639d24; }
-    .resultado-dinamico-container-v3 { margin-top: 14px; }
+  .agenda-col strong {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
 
-    /* ---------- ESTRUTURA PRINCIPAL ---------- */
-    .module-page {
-      max-width: 1400px;      /* era 1180px — acompanha a largura do hero */
-      margin: 0 auto;
-      padding: 40px 32px 60px;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
-    .secao-titulo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-    .secao-titulo h2 { font-size: 1.3rem; font-weight: 700; color: var(--tinta); }
-    .secao-titulo p { margin: 4px 0 0; font-size: 0.85rem; color: var(--tinta-suave); max-width: 520px; }
+  .agenda-col small {
+    margin-top: 2px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+  }
 
-    .glass-panel {
-      background: var(--creme-card);
-      border: 1px solid var(--linha);
-      border-radius: var(--raio);
-      box-shadow: var(--sombra);
-      padding: 26px 28px;
-    }
+  .agenda-linha--laranjal .agenda-col--unidade strong { color: #4e8a1a; }
+  .agenda-linha--sede .agenda-col--unidade strong { color: var(--azul-cedae); }
 
-    /* DOCUMENTOS INLINE ROW */
-    .secao-titulo-documentos {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-      padding: 12px 18px;
-      background: var(--creme-card);
-      border: 1px solid var(--linha);
-      border-radius: var(--raio);
-      box-shadow: var(--sombra);
-    }
-    .documentos-inline-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .documento-btn-inline {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #fff;
-      border: 1px solid var(--linha);
-      padding: 8px 14px;
-      border-radius: 30px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--tinta);
-      transition: all 0.2s ease;
-    }
-    .documento-btn-inline i:first-child { color: var(--azul-cedae); font-size: 0.95rem; }
-    .documento-btn-inline.secondary-inline i:first-child { color: var(--marrom-organico); }
-    .documento-btn-inline:hover {
-      background: var(--azul-cedae);
-      color: #fff;
-      border-color: var(--azul-cedae);
-      transform: translateY(-1px);
-    }
-    .documento-btn-inline.secondary-inline:hover {
-      background: var(--marrom-organico);
-      color: #fff;
-      border-color: var(--marrom-organico);
-    }
+  .agenda-col[data-label="Data"] strong,
+  .agenda-col[data-label="Horário"] strong {
+    font-size: 1rem;
+  }
 
-    /* BLOCOS DE GRÁFICOS */
-.graficos-grid { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 24px; 
-  width: 100%; 
-}
+  /* ==========================================================================
+     WIDGET DE CONSULTA DE BRINDES (COLUNA DIREITA / CARD DO FEED)
+     ========================================================================== */
+  .hero-tech__right-side-v3 { 
+    display: flex; 
+    justify-content: center; 
+    width: 100%;
+  }
 
-.graficos-grid__linha-unidades {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 24px;
-  width: 100%;
-}
+  .widget-combo-container-v3 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
 
-.graficos-grid__linha-geral { 
-  display: block; 
-  width: 100%; 
-}
+  .widget-top-logo-area-v3 { 
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
+  }
 
-.grafico-bloco-real {
-  background: var(--creme-card);
-  border: 1px solid var(--linha);
-  border-radius: var(--raio);
-  padding: 24px 20px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  min-height: 460px;
-}
+  .widget-top-logo-area-v3 .hero-selo-img-v3 { 
+    width: 220px; 
+    height: auto; 
+    max-height: 160px;
+    object-fit: contain; 
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25)); 
+  }
 
-.grafico-bloco-real h4 {
-  text-align: center;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--tinta);
-  margin-top: 0;
-  margin-bottom: 20px;
-  letter-spacing: 0.01em;
-}
+  .widget-container-complete-v3 {
+    background: #ffffff;
+    border-radius: var(--raio);
+    width: 100%;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
 
-/* Garante que o ApexCharts ocupe 100% da largura útil */
-.grafico-bloco-real > div[id^="chart-"] {
-  width: 100% !important;
-  flex: 1;
-}
-    footer { background: var(--azul-cedae-escuro); padding: 22px 20px; text-align: center; }
+  .widget-brand-header-v3 { 
+    background-color: #f8fafc; 
+    border-bottom: 1px solid #eef2f7; 
+    padding: 16px 20px; 
+  }
 
-    /* RESPONSIVIDADE */
-    @media (max-width: 920px) {
+  .brand-text-v3 strong { 
+    font-size: 1rem; 
+    color: var(--azul-escuro-cedae); 
+    font-family: 'Montserrat', sans-serif; 
+    font-weight: 800; 
+    letter-spacing: 0.02em;
+  }
+
+  .widget-body-v3 { padding: 20px; }
+  .widget-instructions-v3 { font-size: 0.85rem; line-height: 1.4; color: #475569; margin: 0 0 16px 0; }
+
+  .form-vertical-stack-v3 { display: flex; flex-direction: column; gap: 12px; }
+  .input-group-v3 { position: relative; }
+  
+  .input-icon-v3 {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+
+  .form-vertical-stack-v3 input,
+  .form-vertical-stack-v3 select {
+    width: 100%;
+    min-height: 48px; /* Altura tátil otimizada para toque */
+    padding: 12px 14px 12px 40px;
+    border-radius: var(--raio-sm);
+    border: 1.5px solid #cbd5e1;
+    font-size: 0.95rem;
+    font-family: 'Ubuntu', sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    touch-action: manipulation;
+  }
+
+  .form-vertical-stack-v3 input:focus,
+  .form-vertical-stack-v3 select:focus {
+    outline: none;
+    border-color: var(--azul-cedaenet);
+    box-shadow: 0 0 0 3px rgba(0, 102, 178, 0.15);
+  }
+
+  .btn-consultar-v3 {
+    background-color: var(--verde-cedaenet);
+    color: #ffffff;
+    border: none;
+    min-height: 48px; /* Otimizado para toque no celular */
+    padding: 12px;
+    border-radius: var(--raio-sm);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    touch-action: manipulation;
+  }
+
+  .btn-consultar-v3:active {
+    transform: scale(0.98);
+    background-color: #639d24;
+  }
+
+  .resultado-dinamico-container-v3 { margin-top: 14px; }
+
+  /* ==========================================================================
+     CONTEÚDO PRINCIPAL (STREAM / FEED DE CARDS)
+     ========================================================================== */
+  .module-page {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 24px 20px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .glass-panel {
+    background: var(--creme-card);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 24px;
+  }
+
+  .secao-titulo { 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 16px; 
+    flex-wrap: wrap; 
+    margin-bottom: 20px; 
+  }
+
+  .secao-titulo h2 { font-size: 1.25rem; font-weight: 700; color: var(--tinta); }
+  .secao-titulo p { margin: 4px 0 0; font-size: 0.85rem; color: var(--tinta-suave); max-width: 520px; }
+
+  /* DOCUMENTOS INLINE ROW (CARD DE DOCUMENTOS DO FEED) */
+  .secao-titulo-documentos {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--creme-card);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra-card);
+  }
+
+  .documentos-inline-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  
+  .documento-btn-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f8fafc;
+    border: 1px solid var(--linha);
+    padding: 10px 16px;
+    min-height: 42px;
+    border-radius: 30px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--tinta);
+    transition: all 0.2s ease;
+    touch-action: manipulation;
+  }
+
+  .documento-btn-inline i:first-child { color: var(--azul-cedae); font-size: 1rem; }
+  .documento-btn-inline.secondary-inline i:first-child { color: var(--marrom-organico); }
+
+  .documento-btn-inline:active,
+  .documento-btn-inline:hover {
+    background: var(--azul-cedae);
+    color: #ffffff;
+    border-color: var(--azul-cedae);
+  }
+  .documento-btn-inline:active i:first-child,
+  .documento-btn-inline:hover i:first-child { color: #ffffff; }
+
+  /* ==========================================================================
+     BLOCOS DE GRÁFICOS RESPONSIVOS
+     ========================================================================== */
+  .graficos-grid { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+    width: 100%; 
+  }
+
+  .graficos-grid__linha-unidades {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    width: 100%;
+  }
+
+  .graficos-grid__linha-geral { 
+    display: block; 
+    width: 100%; 
+  }
+
+  .grafico-bloco-real {
+    background: var(--creme-card);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-sm);
+    padding: 20px 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 400px;
+  }
+
+  .grafico-bloco-real h4 {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--tinta);
+    margin: 0 0 16px 0;
+  }
+
+  .grafico-bloco-real > div[id^="chart-"] {
+    width: 100% !important;
+    flex: 1;
+  }
+
+  /* RODAPÉ CORPORATIVO */
+  footer { 
+    background: var(--azul-cedae-escuro); 
+    padding: 24px 20px; 
+    text-align: center; 
+  }
+
+  /* ==========================================================================
+     PERFORMANCE FEED MOBILE (TANTOS SMARTPHONES QUANTO TABLETS)
+     ========================================================================== */
+  @media (max-width: 920px) {
+    .topbar { padding: 10px 16px; }
+    .dma-tag-line { display: none; } /* Otimiza espaço no cabeçalho */
+
+    .hero-tech-v3 { padding: 24px 16px 36px; }
+
+    /* Transforma o Hero em uma única coluna vertical estilo Feed */
     .hero-tech__wrapper-v3 {
-      max-width: 1400px;      /* era 1200px */
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;   /* era 1.3fr 1fr — deixa o widget um pouco maior */
-      gap: 56px;               /* era 40px — respira mais */
-      align-items: center;
+      grid-template-columns: 1fr;
+      gap: 24px;
     }
-      .hero-tech__right-side-v3 { justify-content: center; }
+
+    .hero-main-title-v3 { font-size: 2rem; }
+    .hero-description-v3 { margin-bottom: 20px; font-size: 0.9rem; }
+
+    /* CARROSSEL HORIZONTAL DE KPIS COM SWIPE / SNAP NO CELULAR */
+    .kpi-mini-container-v3 {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 8px;
+      gap: 10px;
+      -webkit-overflow-scrolling: touch;
     }
-    @media (max-width: 580px) {
-      .kpi-mini-container-v3, .eco-kpi-container-v3 { grid-template-columns: 1fr; gap: 10px; }
-      .hero-main-title-v3 { font-size: 2.2rem; }
-      .secao-titulo-documentos { flex-direction: column; align-items: flex-start; }
+    .kpi-mini-card-v3 {
+      flex: 0 0 82%;
+      scroll-snap-align: start;
     }
-  </style>
-</head>
-<body>
+
+    /* AGENDA REORGANIZADA PARA O CELULAR (CARDS 2x2 TOUCH) */
+    .agenda-cabecalho { display: none; }
+
+    .agenda-tabela { gap: 10px; }
+
+    .agenda-linha {
+      grid-template-columns: 1fr 1fr;
+      row-gap: 12px;
+      column-gap: 8px;
+      padding: 14px;
+    }
+
+    .agenda-col::before {
+      content: attr(data-label);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    /* WIDGET E GRÁFICOS AJUSTADOS EM CARDS DE FEED */
+    .widget-top-logo-area-v3 .hero-selo-img-v3 { width: 170px; }
+
+    .module-page {
+      padding: 16px 12px 36px;
+      gap: 16px;
+    }
+
+    .glass-panel { padding: 16px; }
+
+    .secao-titulo-documentos {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .documentos-inline-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .documento-btn-inline {
+      justify-content: center;
+      width: 100%;
+    }
+
+    .graficos-grid__linha-unidades {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .grafico-bloco-real {
+      min-height: 330px;
+      padding: 16px 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .kpi-mini-card-v3 { flex: 0 0 88%; }
+    .hero-main-title-v3 { font-size: 1.75rem; }
+  }
+</style>
 
   <!-- ==========================================================================
         TOPBAR
@@ -623,59 +697,7 @@
           </div>
         </div>
                   <!-- AGENDA UNIFICADA · REUNIÃO MENSAL -->
-        <div class="card-agenda-recicla-v2">
-          <div class="banner-reuniao-header">
-            <h2>REUNIÃO MENSAL</h2>
-            <p class="subtitulo-banner">Acompanhamento dos Resultados e Entrega de Brindes do Programa</p>
-          </div>
-
-          <div class="agenda-tabela">
-            <!-- Cabeçalho das colunas (aparece uma única vez) -->
-            <div class="agenda-cabecalho">
-              <span>Unidade</span>
-              <span>Data</span>
-              <span>Horário</span>
-              <span>Local</span>
-            </div>
-
-            <!-- Laranjal -->
-            <div class="agenda-linha agenda-linha--laranjal">
-              <div class="agenda-col agenda-col--unidade" data-label="Unidade">
-                <strong>LARANJAL</strong>
-                <small>Presencial</small>
-              </div>
-              <div class="agenda-col" data-label="Data">
-                <strong>20/10</strong>
-                <small>Terça-feira</small>
-              </div>
-              <div class="agenda-col" data-label="Horário">
-                <strong>10:00</strong>
-              </div>
-              <div class="agenda-col" data-label="Local">
-                <strong>Auditório</strong>
-              </div>
-            </div>
-
-            <!-- Prédio Sede -->
-            <div class="agenda-linha agenda-linha--sede">
-              <div class="agenda-col agenda-col--unidade" data-label="Unidade">
-                <strong>PRÉDIO SEDE</strong>
-                <small>Presencial</small>
-              </div>
-              <div class="agenda-col" data-label="Data">
-                <strong>23/10</strong>
-                <small>Sexta-feira</small>
-              </div>
-              <div class="agenda-col" data-label="Horário">
-                <strong>14:30</strong>
-              </div>
-              <div class="agenda-col" data-label="Local">
-                <strong>Manancial</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      
 
         <!-- Impacto Ambiental (Cálculo Macro Automatizado)
         <div class="eco-kpi-container-v3">

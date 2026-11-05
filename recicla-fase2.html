@@ -160,48 +160,54 @@
   }
 
   /* ==========================================================================
-     MINI KPIS (CARROSSEL TOUCH EM DISPOSITIVOS MÓVEIS)
+     MINI KPIS (HERO DESTAQUES - DESKTOP & MOBILE)
      ========================================================================== */
   .kpi-mini-container-v3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: 14px;
+    width: 100%;
+    margin-top: 10px;
   }
+
   .kpi-mini-card-v3 {
-    background: #ffffff;
+    background: #ffffff; /* Fundo branco garantido para alto contraste */
     border: 1px solid #e2e8f0;
     border-radius: var(--raio-sm);
-    padding: 14px;
-    box-shadow: var(--sombra-card);
+    padding: 16px 14px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
     transition: transform 0.2s ease;
   }
-  .flex-kpi-blue { border-left: 4px solid #0056b3; }
-  .flex-kpi-green { border-left: 4px solid var(--verde-cedaenet); }
-  .flex-kpi-orange { border-left: 4px solid #e67e22; }
+
+  .flex-kpi-blue { border-left: 5px solid #0056b3; }
+  .flex-kpi-green { border-left: 5px solid var(--verde-cedaenet); }
+  .flex-kpi-orange { border-left: 5px solid #e67e22; }
 
   .kpi-mini-label-v3 {
     display: block;
     font-family: 'Montserrat', sans-serif;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #475569; /* Cinza escuro perfeitamente legível sobre fundo branco */
     letter-spacing: 0.05em;
     margin-bottom: 4px;
   }
+
   .kpi-mini-val-v3 {
     font-family: 'Ubuntu', sans-serif;
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-weight: 700;
-    color: #0f172a;
+    color: #0f172a; /* Texto em destaque chumbo/preto */
     line-height: 1.1;
   }
+
   .kpi-mini-sub-v3 {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: #64748b;
     margin-top: 4px;
+    font-weight: 600;
   }
-
   /* ==========================================================================
      AGENDA · REUNIÃO MENSAL
      ========================================================================== */
@@ -545,15 +551,14 @@
   }
 
   /* ==========================================================================
-     PERFORMANCE FEED MOBILE (TANTOS SMARTPHONES QUANTO TABLETS)
+     AJUSTES RESPONSIVOS MOBILE (COMPATIBILIDADE DE TELA)
      ========================================================================== */
   @media (max-width: 920px) {
     .topbar { padding: 10px 16px; }
-    .dma-tag-line { display: none; } /* Otimiza espaço no cabeçalho */
+    .dma-tag-line { display: none; }
 
     .hero-tech-v3 { padding: 24px 16px 36px; }
 
-    /* Transforma o Hero em uma única coluna vertical estilo Feed */
     .hero-tech__wrapper-v3 {
       grid-template-columns: 1fr;
       gap: 24px;
@@ -562,44 +567,20 @@
     .hero-main-title-v3 { font-size: 2rem; }
     .hero-description-v3 { margin-bottom: 20px; font-size: 0.9rem; }
 
-    /* CARROSSEL HORIZONTAL DE KPIS COM SWIPE / SNAP NO CELULAR */
+    /* KPIs Empilhados no Mobile em 1 Coluna (Sem scroll horizontal) */
     .kpi-mini-container-v3 {
-      display: flex;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      padding-bottom: 8px;
-      gap: 10px;
-      -webkit-overflow-scrolling: touch;
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+      overflow: visible !important;
+      scroll-snap-type: none !important;
     }
+
     .kpi-mini-card-v3 {
-      flex: 0 0 82%;
-      scroll-snap-align: start;
+      width: 100% !important;
+      flex: none !important;
     }
 
-    /* AGENDA REORGANIZADA PARA O CELULAR (CARDS 2x2 TOUCH) */
-    .agenda-cabecalho { display: none; }
-
-    .agenda-tabela { gap: 10px; }
-
-    .agenda-linha {
-      grid-template-columns: 1fr 1fr;
-      row-gap: 12px;
-      column-gap: 8px;
-      padding: 14px;
-    }
-
-    .agenda-col::before {
-      content: attr(data-label);
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #94a3b8;
-      margin-bottom: 3px;
-    }
-
-    /* WIDGET E GRÁFICOS AJUSTADOS EM CARDS DE FEED */
+    /* Ajustes dos botões e formulários no Mobile */
     .widget-top-logo-area-v3 .hero-selo-img-v3 { width: 170px; }
 
     .module-page {
@@ -637,9 +618,30 @@
   }
 
   @media (max-width: 480px) {
-    .kpi-mini-card-v3 { flex: 0 0 88%; }
     .hero-main-title-v3 { font-size: 1.75rem; }
   }
+   /* AGENDA REORGANIZADA PARA O CELULAR (CARDS 2x2 TOUCH) */
+    .agenda-cabecalho { display: none; }
+
+    .agenda-tabela { gap: 10px; }
+
+    .agenda-linha {
+      grid-template-columns: 1fr 1fr;
+      row-gap: 12px;
+      column-gap: 8px;
+      padding: 14px;
+    }
+
+    .agenda-col::before {
+      content: attr(data-label);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
 </style>
 
   <!-- ==========================================================================

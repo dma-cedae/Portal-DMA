@@ -179,8 +179,7 @@ function renderCategoriasColeta() {
   `).join("");
 }
 
-// ─── RENDERIZADOR DE GRÁFICOS (APEXCHARTS) ───────────────────────────────────
-
+// ─── GRÁFICOS INDIVIDUAIS (SEDE E LARANJAL) ──────────────────────────────────
 function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
   const isMobile = window.innerWidth <= 768;
 
@@ -188,46 +187,52 @@ function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
     series: [{ name: "Volume Reciclado", data: seriesData }],
     chart: {
       type: "bar",
-      height: isMobile ? 320 : height,
+      height: isMobile ? (categories.length * 55 + 60) : height, // Altura dinâmica baseada no nº de diretorias
       toolbar: { show: false },
       background: "transparent",
       fontFamily: "'Inter', sans-serif"
     },
-    // Paleta de cores atribuída a cada barra individualmente
-    colors: CORES_GRAFICO, 
+    colors: CORES_GRAFICO,
     plotOptions: {
       bar: {
-        horizontal: isMobile, // Barra horizontal no mobile, vertical no desktop
+        horizontal: isMobile, // Barra horizontal no celular
         columnWidth: "45%",
-        barHeight: "55%",
-        borderRadius: 6,
-        distributed: true, // ⚠️ OBRIGATÓRIO: Garante uma cor diferente para cada categoria
-        dataLabels: { position: "top" }
+        barHeight: "60%",
+        borderRadius: 4,
+        distributed: true,
+        dataLabels: { position: isMobile ? "right" : "top" }
       }
     },
     dataLabels: {
       enabled: true,
-      textAnchor: isMobile ? "start" : "middle",
+      textAnchor: "start",
       formatter: (val) => `${formatFloat(val)} kg`,
-      offsetY: isMobile ? 0 : -12,
+      offsetX: isMobile ? 8 : 0,
+      offsetY: isMobile ? -2 : -12,
       style: { 
-        fontSize: isMobile ? "10px" : "11px", 
-        fontWeight: 600, 
+        fontSize: isMobile ? "11px" : "10px", 
+        fontWeight: 700, 
         colors: ["#262117"] 
       }
     },
-    legend: { show: false }, // Esconde a legenda automática gerada pelo 'distributed'
-    xaxis: {
+    legend: { show: false },
+    xaxis: isMobile ? {
+      // Quando horizontal no mobile, o X vira o peso (números)
+      labels: { formatter: (val) => formatFloat(val), style: { colors: "#6B6255", fontSize: "10px" } }
+    } : {
+      // Quando vertical no desktop, o X vira as diretorias (nomes)
       categories: categories,
-      labels: {
-        rotate: isMobile ? 0 : -45,
-        rotateAlways: !isMobile,
-        style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 }
-      },
+      labels: { rotate: -45, rotateAlways: true, style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 } },
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
-    yaxis: {
+    yaxis: isMobile ? {
+      // Quando horizontal no mobile, o Y exibe o NOME da diretoria
+      categories: categories,
+      labels: { 
+        style: { colors: "#262117", fontSize: "11px", fontWeight: 700 } 
+      }
+    } : {
       labels: { formatter: (val) => formatFloat(val) },
       title: { text: "Peso (kg)", style: { color: "#6B6255", fontSize: "11px", fontWeight: 500 } }
     },
@@ -235,6 +240,7 @@ function buildBarOptionsIndividual({ seriesData, categories, height = 360 }) {
     tooltip: { y: { formatter: (val) => `${formatFloat(val)} kg` } }
   };
 }
+
 function renderCharts() {
   ["sede", "laranjal", "geral"].forEach(key => {
     if (state.charts[key] && typeof state.charts[key].destroy === "function") {
@@ -295,26 +301,26 @@ function renderCharts() {
       ],
       chart: {
         type: "bar",
-        height: 420,
-        toolbar: { show: true, tools: { download: false, selection: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
+        height: window.innerWidth <= 768 ? 480 : 420,
+        toolbar: { show: false },
         background: "transparent",
         fontFamily: "'Inter', sans-serif"
       },
       colors: [COR_SEDE_CONSOLIDADO, COR_LARANJAL_CONSOLIDADO],
       plotOptions: {
-            bar: {
-        horizontal: false,
-        columnWidth: "40%", // Reduzido de 60% para 40% para afastar as barras agrupadas
-        borderRadius: 4,
-        dataLabels: { position: "top" }
-      }
+        bar: {
+          horizontal: false,
+          columnWidth: window.innerWidth <= 768 ? "65%" : "40%",
+          borderRadius: 4,
+          dataLabels: { position: "top" }
+        }
       },
       dataLabels: {
         enabled: true,
-        textAnchor: "start",
+        textAnchor: "middle",
         formatter: (val) => (val > 0 ? `${formatFloat(val)} kg` : ""),
-        offsetY: -15,
-        style: { fontSize: "9px", fontWeight: 600, colors: ["#262117"] }
+        offsetY: -16,
+        style: { fontSize: window.innerWidth <= 768 ? "8px" : "9px", fontWeight: 700, colors: ["#262117"] }
       },
       legend: {
         show: true,
@@ -322,12 +328,15 @@ function renderCharts() {
         horizontalAlign: "center",
         fontSize: "12px",
         labels: { colors: "#6B6255" },
-        markers: { width: 12, height: 12, radius: 12 },
-        itemMargin: { horizontal: 15, vertical: 5 }
+        markers: { width: 12, height: 12, radius: 12 }
       },
       xaxis: {
         categories: todasDiretorias,
-        labels: { rotate: -45, rotateAlways: true, style: { colors: "#6B6255", fontSize: "11px", fontWeight: 600 } },
+        labels: { 
+          rotate: -45, 
+          rotateAlways: true, 
+          style: { colors: "#6B6255", fontSize: window.innerWidth <= 768 ? "10px" : "11px", fontWeight: 600 } 
+        },
         axisBorder: { show: false },
         axisTicks: { show: false }
       },

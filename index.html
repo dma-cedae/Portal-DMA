@@ -16,7 +16,19 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; background: #f4f7fa; min-height: 100vh; overflow-x: hidden; }
+
+    /* --- FUNDO COM GRADIENTE E PADRÃO GEOMÉTRICO AMBIENTAL --- */
+    body { 
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+      /* Fundo com transição suave do azul claro para o cinza corporativo */
+      background-color: #dce7f2;
+      background-image: 
+        radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.95) 0%, rgba(220, 231, 242, 0.9) 70%, rgba(195, 212, 230, 0.95) 100%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230056b3' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      min-height: 100vh; 
+      overflow-x: hidden; 
+      color: #1e293b;
+    }
 
     /* --- BARRA SUPERIOR (RESPONSIVA) --- */
     .gov-header { width: 100%; z-index: 1000; position: relative; }
@@ -43,12 +55,11 @@
       align-items: center;
       padding: 10px 6%;
       color: white;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
     }
 
     .brand-section { display: flex; align-items: center; gap: 15px; }
-    .brand-text b { font-size: 1.4rem; display: block; letter-spacing: -0.5px; }
-    .brand-text span { font-size: 0.75rem; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+    .brand-text b { font-size: 1.25rem; display: block; letter-spacing: -0.5px; }
 
     .nav-links { display: flex; align-items: center; gap: 20px; font-weight: 600; font-size: 0.9rem; }
     .nav-links a { color: white; text-decoration: none; }
@@ -64,32 +75,30 @@
     }
     .btn-area-tecnica:hover { background: #004494; }
 
-    /* --- CONTAINER DOS CARDS (EXPANDIDO PARA OCUPAR A TELA) --- */
+    /* --- CONTAINER DOS CARDS (CENTRALIZADO NA TELA INTEGRAL) --- */
     .container-hub {
       width: 100%;
-      max-width: 1400px; /* Largura expandida para preencher o monitor */
-      margin: 0 auto 60px;
-      padding: 50px 4% 0;
-    }
-
-    .hub-title {
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: var(--primary-blue);
-      margin-bottom: 30px;
+      max-width: 2300px;  /*aumenta largura dos cards na tela grande*/
+      margin: 0 auto;
+      padding: 40px 4%;
+      min-height: calc(100vh - 120px); /* Ocupa 100% da altura da tela descontando o header */
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* Centraliza no meio exato da tela */
+      position: relative;
     }
 
     /* --- GRID DE 3 COLUNAS --- */
     .showcase-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 28px;
+      gap: 100px;  /* ajusta o espaço entre os cards */
       width: 100%;
     }
 
-    /* --- CARDS ORIGINAIS --- */
+    /* --- CARDS AMBIENTAIS --- */
     .program-card {
-      height: 440px;
+      height: 500px;   /* altura dos cartoes na tela*/
       position: relative;
       border-radius: 20px;
       overflow: hidden;
@@ -98,17 +107,16 @@
       flex-direction: column;
       justify-content: flex-end;
       padding: 32px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.10);
+      box-shadow: 0 15px 35px rgba(0, 29, 61, 0.15); /* Sombra mais destacada */
       transition: transform 0.35s ease, box-shadow 0.35s ease;
-      border-top: 5px solid transparent;
+      border-top: 6px solid transparent;
     }
 
     .program-card:hover {
       transform: translateY(-8px);
-      box-shadow: 0 28px 50px rgba(0,0,0,0.16);
+      box-shadow: 0 24px 48px rgba(0, 29, 61, 0.22);
     }
 
-    /* Cores das bordas exatamente como no layout original */
     .program-card.status-ativo       { border-top-color: #ef4444; }
     .program-card.status-encerrado   { border-top-color: #22c55e; }
     .program-card.status-programado  { border-top-color: #e6d92f; }
@@ -123,12 +131,12 @@
 
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(0deg, rgba(0,29,61,0.92) 25%, rgba(0,29,61,0) 65%);
+      background: linear-gradient(0deg, rgba(0,29,61,0.94) 25%, rgba(0,29,61,0) 65%);
       z-index: 2;
     }
 
     .card-info { position: relative; z-index: 3; color: white; text-align: left; }
-    .card-info h2 { font-size: 1.6rem; margin-bottom: 10px; font-weight: 800; }
+    .card-info h2 { font-size: 1.6rem; margin-bottom: 10px; font-weight: 800; line-height: 1.2; }
     .card-info p  { font-size: 0.9rem; opacity: 0.9; line-height: 1.5; }
 
     .tag {
@@ -139,7 +147,7 @@
 
     /* --- RESPONSIVIDADE PARA CELULAR (MOBILE) --- */
     @media (max-width: 900px) {
-      .top-utility-bar { display: none; } /* Oculta a linha cinza no celular para não sobrepor */
+      .top-utility-bar { display: none; }
 
       .main-nav {
         padding: 10px 16px;
@@ -152,14 +160,14 @@
       }
 
       .brand-text b { font-size: 1.15rem; }
-      .brand-text span { font-size: 0.65rem; }
 
       .container-hub {
         padding: 24px 16px 40px;
+        min-height: auto;
       }
 
       .showcase-grid { 
-        grid-template-columns: 1fr; /* Empilha no mobile */
+        grid-template-columns: 1fr;
         gap: 20px;
       }
 
@@ -184,8 +192,7 @@
         <div style="width: 5px; height: 40px; background: rgba(255,255,255,0.2); margin-right: 20px;"></div>
 
         <div class="brand-text">
-          <b>Portal Ambiental</b>
-          <span>Sistema de Gestão Ambiental</span>
+          <b>Departamento de Programas Ambientais</b>
         </div>
       </div>
 
@@ -201,8 +208,6 @@
   </header>
 
   <main class="container-hub">
-    <h1 class="hub-title">Programas ambientais</h1>
-
     <div class="showcase-grid">
 
       <!-- COMBATE AO AEDES -->
